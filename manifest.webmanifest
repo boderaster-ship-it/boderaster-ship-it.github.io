@@ -1,0 +1,11 @@
+{
+  "name": "Aegis Grid Tower Defense",
+  "short_name": "AegisTD",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0f18",
+  "theme_color": "#101622",
+  "icons": [
+    {"src":"assets/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}
