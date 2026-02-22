@@ -47,7 +47,10 @@ const ui = {
   savedBuilds: document.getElementById('savedBuilds'),
   builderConfirmBtn: document.getElementById('builderConfirmBtn'),
   builderCancelBtn: document.getElementById('builderCancelBtn'),
+  campaignWorldSelect: document.getElementById('campaignWorldSelect'),
   campaignLevelSelect: document.getElementById('campaignLevelSelect'),
+  finalBossUnlock: document.getElementById('finalBossUnlock'),
+  playFinalBoss: document.getElementById('playFinalBoss'),
   unlockList: document.getElementById('unlockList'),
   upgradePointsLabel: document.getElementById('upgradePointsLabel'),
   levelCompleteModal: document.getElementById('levelCompleteModal'),
@@ -102,15 +105,47 @@ const metaDefs = [
   { key: 'econ', name: 'Versorgungslager', affects: 'Startguthaben', desc: 'Beginne jedes Level mit zusätzlichem Guthaben.', max: 3, unit: 'Credits' }
 ];
 
-const pathCells = [
-  [1, 1], [1, 2], [1, 3], [2, 3], [3, 3], [4, 3], [5, 3], [6, 3], [7, 3], [8, 3],
-  [9, 3], [10, 3], [11, 3], [12, 3], [13, 3], [14, 3], [14, 4], [14, 5], [13, 5], [12, 5],
-  [11, 5], [10, 5], [9, 5], [8, 5], [7, 5], [6, 5], [5, 5], [4, 5], [3, 5], [2, 5], [1, 5],
-  [1, 6], [1, 7], [2, 7], [3, 7], [4, 7], [5, 7], [6, 7], [7, 7], [8, 7], [9, 7], [10, 7],
-  [11, 7], [12, 7], [13, 7], [14, 7], [14, 8], [14, 9], [13, 9], [12, 9], [11, 9], [10, 9],
-  [9, 9], [8, 9], [7, 9], [6, 9], [5, 9], [4, 9], [3, 9], [2, 9], [1, 9], [1, 10], [1, 11],
-  [2, 11], [3, 11], [4, 11], [5, 11], [6, 11], [7, 11], [8, 11], [9, 11], [10, 11], [11, 11], [12, 11], [13, 11], [14, 11], [14, 12], [14, 13], [14, 14], [13, 14], [12, 14], [11, 14]
-];
+const worldPaths = {
+  1: {
+    1: [[1,1],[1,2],[1,3],[2,3],[3,3],[4,3],[5,3],[6,3],[7,3],[8,3],[9,3],[10,3],[11,3],[12,3],[13,3],[14,3],[14,4],[14,5],[13,5],[12,5],[11,5],[10,5],[9,5],[8,5],[7,5],[6,5],[5,5],[4,5],[3,5],[2,5],[1,5],[1,6],[1,7],[2,7],[3,7],[4,7],[5,7],[6,7],[7,7],[8,7],[9,7],[10,7],[11,7],[12,7],[13,7],[14,7],[14,8],[14,9],[13,9],[12,9],[11,9],[10,9],[9,9],[8,9],[7,9],[6,9],[5,9],[4,9],[3,9],[2,9],[1,9],[1,10],[1,11],[2,11],[3,11],[4,11],[5,11],[6,11],[7,11],[8,11],[9,11],[10,11],[11,11],[12,11],[13,11],[14,11],[14,12],[14,13],[14,14],[13,14],[12,14],[11,14]],
+    2: [[1,1],[2,1],[3,1],[4,1],[4,2],[4,3],[5,3],[6,3],[7,3],[8,3],[9,3],[10,3],[10,4],[10,5],[9,5],[8,5],[7,5],[6,5],[5,5],[4,5],[3,5],[2,5],[2,6],[2,7],[3,7],[4,7],[5,7],[6,7],[7,7],[8,7],[9,7],[10,7],[11,7],[12,7],[12,8],[12,9],[11,9],[10,9],[9,9],[8,9],[7,9],[6,9],[5,9],[4,9],[3,9],[2,9],[2,10],[2,11],[3,11],[4,11],[5,11],[6,11],[7,11],[8,11],[9,11],[10,11],[11,11],[12,11],[13,11],[14,11],[14,12],[14,13],[13,13],[12,13]],
+    3: [[2,1],[2,2],[2,3],[3,3],[4,3],[5,3],[6,3],[7,3],[8,3],[9,3],[10,3],[11,3],[12,3],[13,3],[13,4],[13,5],[12,5],[11,5],[10,5],[9,5],[8,5],[7,5],[6,5],[5,5],[4,5],[3,5],[2,5],[2,6],[2,7],[3,7],[4,7],[5,7],[6,7],[7,7],[8,7],[9,7],[10,7],[11,7],[12,7],[13,7],[13,8],[13,9],[12,9],[11,9],[10,9],[9,9],[8,9],[7,9],[6,9],[5,9],[4,9],[3,9],[2,9],[2,10],[2,11],[3,11],[4,11],[5,11],[6,11],[7,11],[8,11],[9,11],[10,11],[11,11],[12,11],[13,11],[13,12],[13,13],[12,13],[11,13],[10,13]],
+    4: [[1,2],[2,2],[3,2],[4,2],[5,2],[6,2],[7,2],[8,2],[9,2],[10,2],[11,2],[12,2],[13,2],[14,2],[14,3],[14,4],[13,4],[12,4],[11,4],[10,4],[9,4],[8,4],[7,4],[6,4],[5,4],[4,4],[3,4],[2,4],[1,4],[1,5],[1,6],[2,6],[3,6],[4,6],[5,6],[6,6],[7,6],[8,6],[9,6],[10,6],[11,6],[12,6],[13,6],[14,6],[14,7],[14,8],[13,8],[12,8],[11,8],[10,8],[9,8],[8,8],[7,8],[6,8],[5,8],[4,8],[3,8],[2,8],[1,8],[1,9],[1,10],[2,10],[3,10],[4,10],[5,10],[6,10],[7,10],[8,10],[9,10],[10,10],[11,10],[12,10],[13,10],[14,10],[14,11],[14,12],[13,12],[12,12]],
+    5: [[1,1],[1,2],[2,2],[3,2],[4,2],[5,2],[6,2],[7,2],[8,2],[9,2],[10,2],[11,2],[12,2],[13,2],[14,2],[14,3],[14,4],[13,4],[12,4],[11,4],[10,4],[9,4],[8,4],[7,4],[6,4],[5,4],[4,4],[3,4],[2,4],[1,4],[1,5],[1,6],[2,6],[3,6],[4,6],[5,6],[6,6],[7,6],[8,6],[9,6],[10,6],[11,6],[12,6],[13,6],[14,6],[14,7],[14,8],[13,8],[12,8],[11,8],[10,8],[9,8],[8,8],[7,8],[6,8],[5,8],[4,8],[3,8],[2,8],[1,8],[1,9],[1,10],[2,10],[3,10],[4,10],[5,10],[6,10],[7,10],[8,10],[9,10],[10,10],[11,10],[12,10],[13,10],[14,10],[14,11],[14,12],[13,12],[12,12],[11,12]],
+    6: [[1,1],[2,1],[3,1],[4,1],[5,1],[6,1],[7,1],[8,1],[9,1],[10,1],[11,1],[12,1],[13,1],[14,1],[14,2],[14,3],[13,3],[12,3],[11,3],[10,3],[9,3],[8,3],[7,3],[6,3],[5,3],[4,3],[3,3],[2,3],[1,3],[1,4],[1,5],[2,5],[3,5],[4,5],[5,5],[6,5],[7,5],[8,5],[9,5],[10,5],[11,5],[12,5],[13,5],[14,5],[14,6],[14,7],[13,7],[12,7],[11,7],[10,7],[9,7],[8,7],[7,7],[6,7],[5,7],[4,7],[3,7],[2,7],[1,7],[1,8],[1,9],[2,9],[3,9],[4,9],[5,9],[6,9],[7,9],[8,9],[9,9],[10,9],[11,9],[12,9],[13,9],[14,9],[14,10],[14,11],[13,11],[12,11],[11,11],[10,11],[9,11]]
+  },
+  2: {},3:{},4:{}
+};
+const mirrorX = p => p.map(([x,z]) => [15 - x, z]);
+const shiftZ = (p, d) => p.map(([x,z]) => [x, Math.max(1, Math.min(14, z + d))]);
+Object.entries(worldPaths[1]).forEach(([k,v]) => { worldPaths[2][k] = mirrorX(v); worldPaths[3][k] = shiftZ(v, (Number(k)%2===0?1:-1)); worldPaths[4][k] = mirrorX(shiftZ(v, (Number(k)%2===0?-1:1))); });
+
+const worldThemes = {
+  1:{name:'World 1 · Frontier', bg:0x9fd5ff, fog:0xbfdff4, terrain:0x314f3a, road:0x6a5643, edge:0x9f8a6f, mod:'Onboarding', intro:'Grundlagen: Mix aus Runnern und Tanks.'},
+  2:{name:'World 2 · Highlands', bg:0xb7e0bf, fog:0xcbe7c7, terrain:0x4c6a43, road:0x705f46, edge:0xac9a7b, mod:'Ökonomie-Druck', intro:'Mehr Schilde und schnelle Rush-Wellen.'},
+  3:{name:'World 3 · Ice', bg:0xcde6ff, fog:0xdff2ff, terrain:0x97b6c9, road:0x6e8ca1, edge:0xb8d7ea, mod:'Frostfront', intro:'Eis-Feinde: schnell, frostresistent, Schilde regenerieren.'},
+  4:{name:'World 4 · Lava', bg:0x381b14, fog:0x5a2a1e, terrain:0x5d2c1f, road:0x8c5131, edge:0xd28d5a, mod:'Hitzewelle', intro:'Panzerung, Elite-Wut und extremer Druck.'}
+};
+
+const campaignDefs = Array.from({ length: 24 }, (_, i) => {
+  const world = Math.floor(i / 6) + 1;
+  const levelInWorld = (i % 6) + 1;
+  const level = i + 1;
+  const difficulty = 1 + i * 0.12;
+  const recommendedTowers = world === 1 ? (levelInWorld >= 3 ? 2 : 1) : world === 2 ? 3 : world === 3 ? 4 : 5;
+  return {
+    level, world, levelInWorld, waves: 10 + (world >= 3 ? 1 : 0), difficulty,
+    rewardCredits: 170 + i * 32,
+    rewardTokens: 2 + Math.floor(i / 4),
+    unlockTower: level === 2 ? 'missile' : level === 4 ? 'cryo' : level === 6 ? 'flame' : null,
+    waveTheme: world === 4 ? 'Elite / Tank / Rage' : world === 3 ? 'Frost rush / Shield wall' : world === 2 ? 'Rush / Ökonomie-Druck' : 'Basis-Mix',
+    recommendedTowers,
+    intro: worldThemes[world].intro
+  };
+});
+
+const FINAL_BOSS_LEVEL = 25;
+
 
 const state = {
   money: 220,
@@ -155,12 +190,15 @@ state.unlocks = state.unlocks || { towerBuilder: false };
 state.campaign = state.campaign || {};
 state.campaign.completed = state.campaign.completed || {};
 state.campaign.unlockedLevel = state.campaign.unlockedLevel || 1;
+state.campaign.selectedWorld = state.campaign.selectedWorld || 1;
 state.campaign.selectedLevel = state.campaign.selectedLevel || 1;
+state.campaign.finalBossUnlocked = !!state.campaign.finalBossUnlocked;
+state.campaign.bossCompleted = !!state.campaign.bossCompleted;
 if ((state.campaign.completed && state.campaign.completed[1]) || (state.campaign.unlockedLevel || 1) > 1) state.unlocks.towerBuilder = true;
 syncProgressUnlocks();
 
-const board = { w: 16, h: 16, tile: 1.12, blocked: new Set(), path: pathCells };
-const pathCellSet = new Set(board.path.map(([x, z]) => `${x},${z}`));
+const board = { w: 16, h: 16, tile: 1.12, blocked: new Set(), path: [...worldPaths[1][1]] };
+let pathCellSet = new Set(board.path.map(([x, z]) => `${x},${z}`));
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
 renderer.shadowMap.enabled = true;
@@ -258,6 +296,38 @@ function worldToCell(pos) {
   const z = Math.floor(pos.z / board.tile);
   if (x < 0 || z < 0 || x >= board.w || z >= board.h) return null;
   return [x, z];
+}
+
+
+function getSelectedCampaignDef() {
+  return campaignDefs.find(d => d.world === (state.campaign.selectedWorld || 1) && d.levelInWorld === (state.campaign.selectedLevel || 1)) || campaignDefs[0];
+}
+
+function setBoardPath(path) {
+  board.path = [...path];
+  pathCellSet = new Set(board.path.map(([x, z]) => `${x},${z}`));
+}
+
+function applyWorldTheme(worldId) {
+  const theme = worldThemes[worldId] || worldThemes[1];
+  scene.background = new THREE.Color(theme.bg);
+  scene.fog = new THREE.Fog(theme.fog, 45, worldId === 4 ? 105 : 130);
+  if (terrain?.material) terrain.material.color.setHex(theme.terrain);
+}
+
+function rebuildWorldForCampaign() {
+  const def = getSelectedCampaignDef();
+  setBoardPath(worldPaths[def.world][def.levelInWorld]);
+  while (world.children.length) world.remove(world.children[0]);
+  world.add(terrain);
+  buildPath();
+  buildEnvironmentProps();
+  createMarker(board.path[0], 0x4ef5ad);
+  createMarker(board.path[board.path.length - 1], 0xff7d8d);
+  world.add(boardPlane, ghost, hoverTile, rangeRing, blockedCross);
+  buildPads.clear();
+  buildBuildZonePads();
+  applyWorldTheme(def.world);
 }
 
 function getHeight(x, z) {
@@ -377,15 +447,6 @@ function showToast(text, good = true) {
 }
 
 
-
-const campaignDefs = Array.from({ length: 6 }, (_, i) => ({
-  level: i + 1,
-  waves: 10,
-  rewardCredits: 140 + i * 35,
-  rewardTokens: 2 + (i > 1 ? 1 : 0),
-  unlockTower: i === 1 ? 'missile' : i === 3 ? 'cryo' : i === 5 ? 'flame' : null
-}));
-
 function saveMeta() { localStorage.setItem('aegis-meta', JSON.stringify(state.meta)); }
 function saveCampaign() { localStorage.setItem('aegis-campaign', JSON.stringify(state.campaign)); }
 function saveUnlocks() { localStorage.setItem('aegis-unlocks', JSON.stringify(state.unlocks)); }
@@ -469,26 +530,34 @@ function buildMeta() {
 }
 
 function buildCampaignMenu() {
+  const selWorld = state.campaign.selectedWorld || 1;
+  ui.campaignWorldSelect.innerHTML = '';
+  for (let world = 1; world <= 4; world++) {
+    const unlocked = world === 1 || !!state.campaign.completed[(world - 1) * 6];
+    const b = document.createElement('button');
+    b.disabled = !unlocked;
+    b.textContent = unlocked ? worldThemes[world].name : `World ${world} (Gesperrt · Schließe World ${world-1} ab)`;
+    b.className = 'levelBtn' + (world === selWorld ? ' active' : '');
+    b.onclick = () => { state.campaign.selectedWorld = world; state.campaign.selectedLevel = 1; saveCampaign(); buildCampaignMenu(); };
+    ui.campaignWorldSelect.appendChild(b);
+  }
   ui.campaignLevelSelect.innerHTML = '';
-  campaignDefs.forEach(def => {
+  for (let lvl = 1; lvl <= 6; lvl++) {
+    const abs = (selWorld - 1) * 6 + lvl;
+    const completed = !!state.campaign.completed[abs];
+    const unlocked = abs <= (state.campaign.unlockedLevel || 1) && (selWorld === 1 || !!state.campaign.completed[(selWorld - 1) * 6]);
+    const def = campaignDefs[abs - 1];
     const btn = document.createElement('button');
-    const completed = !!state.campaign.completed[def.level];
-    const unlocked = def.level <= state.campaign.unlockedLevel;
     btn.className = 'levelBtn';
     btn.disabled = !unlocked;
-    btn.innerHTML = `Level ${def.level}<br><small>${completed ? 'Abgeschlossen' : unlocked ? 'Freigeschaltet' : `Gesperrt · Schließe Level ${def.level - 1} ab`}</small>`;
-    btn.onclick = () => {
-      state.campaign.selectedLevel = def.level;
-      saveCampaign();
-      if (unlocked) start('campaign');
-    };
-    if (state.campaign.selectedLevel === def.level) btn.classList.add('active');
+    btn.innerHTML = `L${lvl}<br><small>${completed ? 'Abgeschlossen' : unlocked ? 'Freigeschaltet' : (lvl===1 ? `Schließe World ${selWorld-1} ab` : 'Schließe vorheriges Level ab')}</small><br><small>Empf. Türme: ${def.recommendedTowers}</small>`;
+    btn.onclick = () => { state.campaign.selectedWorld = selWorld; state.campaign.selectedLevel = lvl; saveCampaign(); start('campaign'); };
+    if (state.campaign.selectedLevel === lvl) btn.classList.add('active');
     ui.campaignLevelSelect.appendChild(btn);
-  });
-  const towerRows = Object.keys(towerDefs).map(k => {
-    const lv = getTowerUnlockLevel(k);
-    return `<div>${towerDefs[k].icon} ${towerDefs[k].name} — ${isTowerUnlocked(k) ? 'Freigeschaltet' : `Gesperrt: Schließe Level ${lv} ab`}</div>`;
-  });
+  }
+  ui.finalBossUnlock.textContent = state.campaign.finalBossUnlocked ? 'Final Boss Unlocked: Defeat the Apex Enemy' : 'Final Boss gesperrt: Schließe alle 24 Kampagnenlevel ab';
+  ui.playFinalBoss.classList.toggle('hidden', !state.campaign.finalBossUnlocked);
+  const towerRows = Object.keys(towerDefs).map(k => `<div>${towerDefs[k].icon} ${towerDefs[k].name} — ${isTowerUnlocked(k) ? 'Freigeschaltet' : `Gesperrt: Schließe Level ${getTowerUnlockLevel(k)} ab`}</div>`);
   const abilityRows = Object.keys(abilities).map(k => `<div>${abilities[k].icon} ${abilities[k].name} — ${isAbilityUnlocked(k) ? 'Freigeschaltet' : `Gesperrt: Schließe Level ${getAbilityUnlockLevel(k)} ab`}</div>`);
   const builderRow = `<div>🧩 Turm-Editor — ${isTowerBuilderUnlocked() ? 'Freigeschaltet' : 'Gesperrt: Schließe Kampagnenlevel 1 ab'}</div>`;
   ui.unlockList.innerHTML = [...towerRows, ...abilityRows, builderRow].join('');
@@ -689,9 +758,10 @@ function initAbilities() {
 }
 
 function refreshWavePreview() {
-  const txt = state.wave % 5 === 4 ? '👹 Boss + gemischte Eskorte' : 'Schnelle + Panzer + Schild-Mix';
-  const levelText = state.mode === 'campaign' ? ` · Level ${state.currentLevel} Welle ${Math.min(state.wave + 1, state.levelWaves)}/${state.levelWaves}` : '';
-  ui.wavePreview.textContent = `Nächste Welle: ${txt} · ${modeRules[state.mode].mod}${levelText}`;
+  const def = state.mode === 'campaign' ? getSelectedCampaignDef() : null;
+  const txt = def ? `${def.waveTheme} · ${worldThemes[def.world].mod}` : (state.wave % 5 === 4 ? '👹 Boss + Eskorte' : 'Mix');
+  const levelText = state.mode === 'campaign' ? ` · W${def.world}-L${def.levelInWorld} Welle ${Math.min(state.wave + 1, state.levelWaves)}/${state.levelWaves}` : '';
+  ui.wavePreview.textContent = `Nächste Welle: ${txt}${levelText}`;
 }
 
 function spawnWave() {
@@ -727,13 +797,14 @@ function handleLevelComplete() {
   if (rewards.unlockTower) unlockTower(rewards.unlockTower);
   Object.keys(abilities).forEach(k => { if (state.currentLevel >= getAbilityUnlockLevel(k)) unlockAbility(k); });
   state.campaign.completed[state.currentLevel] = true;
+  if (state.currentLevel >= 24) state.campaign.finalBossUnlocked = true;
   if (state.currentLevel >= 1) state.unlocks.towerBuilder = true;
   state.campaign.unlockedLevel = Math.max(state.campaign.unlockedLevel || 1, state.currentLevel + 1);
   saveMeta();
   saveCampaign();
   saveUnlocks();
-  ui.levelCompleteSummary.textContent = `Level ${state.currentLevel} abgeschlossen: ${state.levelWaves} / ${state.levelWaves} Wellen überlebt.`;
-  ui.levelRewards.innerHTML = `<div>+${rewards.credits} Credits</div><div>+${rewards.tokens} Upgrade-Punkte</div>${rewards.unlockTower ? `<div>Freigeschalteter Turm: ${towerDefs[rewards.unlockTower].name}</div>` : ''}`;
+  ui.levelCompleteSummary.textContent = `World ${(Math.floor((state.currentLevel-1)/6)+1)} Level ${((state.currentLevel-1)%6)+1} abgeschlossen: ${state.levelWaves}/${state.levelWaves} Wellen.`;
+  ui.levelRewards.innerHTML = `<div>+${rewards.credits} Credits</div><div>+${rewards.tokens} Upgrade-Punkte</div>${rewards.unlockTower ? `<div>Freigeschalteter Turm: ${towerDefs[rewards.unlockTower].name}</div>` : ''}<div>${state.currentLevel>=24?'Final Boss Mode freigeschaltet!':''}</div>`;
   ui.levelCompleteModal.classList.remove('hidden');
   state.paused = true;
   buildCampaignMenu();
@@ -792,6 +863,8 @@ function makeTower(type, cell, customCfg = null) {
 }
 
 function spawnEnemy(boss = false) {
+  const cdef = state.mode === 'campaign' ? campaignDefs[Math.min(state.currentLevel,24)-1] : null;
+  const world = cdef?.world || 1;
   const keys = Object.keys(enemyArchetypes);
   const archetype = boss ? 'tank' : keys[Math.floor(Math.random() * keys.length)];
   const def = enemyArchetypes[archetype];
@@ -800,8 +873,13 @@ function spawnEnemy(boss = false) {
   const mesh = new THREE.Mesh(geo, mat);
   mesh.castShadow = true;
   world.add(mesh);
-  const hp = (boss ? 540 : def.hp + state.wave * 8) * modeRules[state.mode].scale;
-  return { mesh, t: 0, speed: (boss ? 0.58 : def.speed) + state.wave * 0.01, hp, maxHp: hp, freeze: 0, archetype, boss, shield: boss ? 120 : (def.shield || 0), flying: !!def.flying, bob: Math.random() * 5 };
+  const isFinalBoss = state.mode === 'boss' && boss;
+  const hpMult = world === 4 ? 1.42 : world === 3 ? 1.25 : world === 2 ? 1.12 : 1;
+  const hp = ((isFinalBoss ? 4800 : boss ? 680 : def.hp + state.wave * 9) * hpMult) * (modeRules[state.mode]?.scale || 1.2);
+  const spd = (isFinalBoss ? 0.4 : boss ? 0.62 : def.speed) + state.wave * 0.012 + (world===3 ? 0.08 : 0);
+  const frostResist = world === 3 ? 0.55 : 0;
+  const armor = world === 4 ? 0.2 + Math.min(0.4, state.wave * 0.02) : 0;
+  return { mesh, t: 0, speed: spd, hp, maxHp: hp, freeze: 0, archetype, boss, shield: isFinalBoss ? 700 : boss ? 160 : (def.shield || 0) + (world>=3?20:0), flying: !!def.flying, bob: Math.random() * 5, world, frostResist, armor, rage: world===4 };
 }
 
 function getProjectile() {
@@ -843,13 +921,14 @@ function fireTower(tower, enemy) {
 }
 
 function applyHit(enemy, damage, slow = 0, burn = 0, customStats = null) {
+  const dealt = damage * (1 - (enemy.armor || 0));
   if (enemy.shield > 0) {
-    enemy.shield -= damage;
+    enemy.shield -= dealt;
     if (enemy.shield < 0) enemy.hp += enemy.shield;
   } else {
-    enemy.hp -= damage;
+    enemy.hp -= dealt;
   }
-  const freezeDur = slow > 0 ? 0.45 + slow : 0;
+  const freezeDur = slow > 0 ? (0.45 + slow) * (1 - (enemy.frostResist || 0)) : 0;
   enemy.freeze = Math.max(enemy.freeze, freezeDur);
   enemy.burn = Math.max(enemy.burn || 0, burn || 0);
   if (customStats?.shatter && enemy.freeze > 0.2) enemy.hp -= damage * customStats.shatter;
@@ -1288,8 +1367,9 @@ ui.cancelBuildBtn.onclick = () => {
 ui.startWaveBtn.onclick = () => {
   if (!state.buildPhase) return;
   if (state.mode === 'campaign' && state.wave >= state.levelWaves) return;
-  if (state.towers.length === 0) {
-    showToast('Platziere zuerst mindestens einen Turm.', false);
+  const minTowers = state.mode === 'campaign' ? (campaignDefs[Math.min(state.currentLevel,24)-1]?.recommendedTowers || 1) : 1;
+  if (state.towers.length < minTowers) {
+    showToast(`Dieses Level benötigt mindestens ${minTowers} Türme.`, false);
     return;
   }
   spawnWave();
@@ -1322,9 +1402,16 @@ ui.menuBtn.onclick = () => { state.paused = true; state.gameStarted = false; ui.
 
 function start(mode) {
   state.mode = mode;
-  state.currentLevel = mode === 'campaign' ? (state.campaign.selectedLevel || 1) : 1;
-  state.levelWaves = mode === 'campaign' ? ((campaignDefs.find(x => x.level === state.currentLevel)?.waves) || 10) : 999;
-  state.money = 220 + (state.meta.econ || 0) * 45;
+  if (mode === 'campaign') {
+    const w = state.campaign.selectedWorld || 1;
+    const l = state.campaign.selectedLevel || 1;
+    state.currentLevel = (w - 1) * 6 + l;
+  } else if (mode === 'boss') {
+    state.currentLevel = FINAL_BOSS_LEVEL;
+  } else state.currentLevel = 1;
+  const cur = campaignDefs.find(x => x.level === Math.min(state.currentLevel,24));
+  state.levelWaves = mode === 'campaign' ? (cur?.waves || 10) : mode === 'boss' ? 15 : 999;
+  state.money = (mode === 'boss' ? 520 : 220) + (state.meta.econ || 0) * 45;
   state.lives = 20;
   state.wave = 0;
   state.inWave = false;
@@ -1342,6 +1429,7 @@ function start(mode) {
   state.betweenWaveCountdown = 0;
   state.gameStarted = true;
   ui.mainMenu.classList.add('hidden');
+  if (mode === 'campaign') rebuildWorldForCampaign();
   ui.bossWarning.classList.add('hidden');
   syncProgressUnlocks();
   initDock();
@@ -1357,6 +1445,7 @@ ui.playCampaign.onclick = () => {
 };
 ui.playEndless.onclick = () => start('endless');
 ui.playChallenge.onclick = () => start('challenge');
+ui.playFinalBoss.onclick = () => start('boss');
 ui.overviewBtn.onclick = () => unifiedOverview(true);
 ui.speedBtn.onclick = () => { state.gameSpeed = state.gameSpeed >= 4 ? 1 : state.gameSpeed + 1; };
 ui.continueBtn.onclick = () => {
