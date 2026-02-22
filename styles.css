@@ -1,69 +1,81 @@
 :root {
   color-scheme: dark;
   font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --ui: rgba(9, 22, 35, 0.78);
-  --stroke: rgba(106, 169, 240, 0.5);
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: linear-gradient(#a9d7ff, #d8efff 38%, #eff7ff); overflow: hidden; padding-bottom: env(safe-area-inset-bottom); }
 #app { width: 100vw; height: 100dvh; min-height: 100vh; position: relative; padding-bottom: calc(env(safe-area-inset-bottom) + 6px); }
 #gameCanvas { width: 100%; height: 100%; display: block; touch-action: none; }
-.glass {
-  position: absolute;
-  background: var(--ui);
-  border: 1px solid var(--stroke);
-  border-radius: 14px;
-  backdrop-filter: blur(4px);
-}
+
 #hud {
-  left: 8px; right: 8px; top: calc(8px + env(safe-area-inset-top));
-  padding: 10px;
-  display: grid; grid-template-columns: repeat(7, minmax(0,1fr));
-  gap: 8px; text-align: center; font-weight: 700; font-size: 15px;
+  position: absolute;
+  top: calc(8px + env(safe-area-inset-top));
+  left: 10px;
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 700;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
 }
-.smallBtn { padding: 6px 8px; font-size: 13px; }
-#wavePreview { top: calc(128px + env(safe-area-inset-top)); left: 8px; right: 8px; min-height: 40px; padding: 8px; display: flex; gap: 8px; align-items: center; overflow-x: auto; }
-#bossWarning { left: 20%; right: 20%; top: 176px; text-align: center; padding: 8px; color: #ff879f; font-weight: 800; }
-#abilityBar {
-  left: 8px; right: 8px; bottom: calc(116px + env(safe-area-inset-bottom));
-  padding: 8px; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px;
+#controlBar {
+  position: absolute;
+  top: calc(106px + env(safe-area-inset-top));
+  left: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-#towerDock {
-  left: 8px; right: 8px; bottom: calc(8px + env(safe-area-inset-bottom));
-  min-height: 100px; padding: 8px;
-  display: grid; grid-auto-flow: column; grid-auto-columns: 88px; gap: 8px;
+.iconBtn, .dockBtn, .abilityBtn, .sideCamBtn {
+  border: 1px solid rgba(145, 205, 255, 0.65);
+  border-radius: 999px;
+  background: rgba(8, 19, 31, 0.36);
+  color: #f2fbff;
+  backdrop-filter: blur(2px);
+}
+.iconBtn, .sideCamBtn { width: 40px; height: 40px; padding: 0; font-size: 18px; }
+#speedLabel { font-weight: 800; font-size: 13px; min-width: 26px; text-shadow: 0 2px 4px rgba(0,0,0,.6); }
+.sideCamBtn { position: absolute; top: 50%; right: 8px; transform: translateY(-50%); z-index: 6; }
+
+#wavePreview { position: absolute; top: calc(156px + env(safe-area-inset-top)); left: 10px; right: 10px; font-size: 12px; font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,.65); }
+#bossWarning { position: absolute; left: 24%; right: 24%; top: calc(176px + env(safe-area-inset-top)); text-align: center; color: #ff879f; font-weight: 900; }
+
+#abilityBar, #towerDock {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  gap: 8px;
   overflow-x: auto;
+  padding-bottom: 2px;
 }
-#buildPanel { left: 8px; right: 8px; bottom: calc(232px + env(safe-area-inset-bottom)); padding: 10px; display: flex; justify-content: space-between; align-items: center; }
-#selectionPanel { left: 8px; right: 8px; bottom: calc(232px + env(safe-area-inset-bottom)); padding: 10px; }
+#abilityBar { bottom: calc(64px + env(safe-area-inset-bottom)); }
+#towerDock { bottom: calc(8px + env(safe-area-inset-bottom)); }
+.dockBtn, .abilityBtn { width: 44px; height: 44px; min-width: 44px; padding: 0; font-size: 21px; display: grid; place-items: center; }
+.dockBtn.active { outline: 2px solid #69ffbf; }
+.dockBtn.locked, .abilityBtn.disabled { opacity: .45; }
+
+#buildPanel, #selectionPanel {
+  position: absolute; left: 8px; right: 8px; bottom: calc(116px + env(safe-area-inset-bottom));
+  background: rgba(6, 15, 22, 0.6); border: 1px solid rgba(143, 198, 246, 0.42); border-radius: 10px; padding: 8px;
+}
+#buildPanel { display: flex; justify-content: space-between; align-items: center; }
 #selectedName { margin: 4px 0; }
 #selectedStats, #upgradeDiff { font-size: 14px; margin-bottom: 8px; }
 .row { display: flex; gap: 8px; }
-button {
-  border: 1px solid #4d79a8; border-radius: 12px; background: #11243a; color: #e4f2ff;
-  padding: 10px; font-size: 14px; font-weight: 700;
-}
-.dockBtn, .abilityBtn { min-height: 76px; font-size: 13px; display: grid; place-items: center; text-align: center; }
-.dockBtn.active { outline: 2px solid #69ffbf; }
-.dockBtn.locked, .abilityBtn.disabled { opacity: .5; }
+button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; color: #e4f2ff; padding: 10px; font-size: 14px; font-weight: 700; }
 .deltaUp { color: #7affbf; }
 .deltaDown { color: #ff8fa8; }
 .modal { position: absolute; inset: 0; background: rgba(1, 4, 8, 0.78); display: grid; place-items: center; z-index: 8; }
-.sheet { width: min(92vw, 460px); max-height: 86vh; overflow: auto; background: #0f1a29; border: 1px solid var(--stroke); border-radius: 16px; padding: 16px; }
+.sheet { width: min(92vw, 460px); max-height: 86vh; overflow: auto; background: #0f1a29; border: 1px solid rgba(106, 169, 240, 0.5); border-radius: 16px; padding: 16px; }
 .settings { display: grid; gap: 8px; }
 #metaTree { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin-bottom: 12px; }
 #toast { position: absolute; left: 50%; top: 48%; transform: translate(-50%, -50%); background: #154926; border: 1px solid #6ccf96; padding: 10px 14px; border-radius: 10px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 12; }
 #toast.show { opacity: 1; }
 #updateBtn { position: absolute; left: 12px; right: 12px; top: calc(140px + env(safe-area-inset-top)); z-index: 20; }
 .hidden { display: none !important; }
-
-.phase { padding: 6px 8px; border-radius: 10px; font-size: 12px; align-self: center; }
-.phase.build { background: rgba(66, 128, 88, 0.45); border: 1px solid rgba(120, 211, 156, 0.7); }
-.phase.wave { background: rgba(129, 72, 82, 0.45); border: 1px solid rgba(238, 133, 152, 0.7); }
-#startWaveBtn:disabled { opacity: 0.55; }
-
-#cameraControls { top: calc(82px + env(safe-area-inset-top)); left: 8px; right: 8px; padding: 8px; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
-
+.phase { font-size: 12px; font-weight: 800; }
+.phase.build { color: #b9ffd7; }
+.phase.wave { color: #ffd0d9; }
 #campaignLevelSelect { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin-bottom: 10px; }
 .levelBtn.active { outline: 2px solid #7fd7ff; }
 #unlockList { display: grid; gap: 6px; margin-bottom: 12px; font-size: 14px; }
