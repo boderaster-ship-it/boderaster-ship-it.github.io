@@ -35,7 +35,17 @@ const ui = {
   audioToggle: document.getElementById('audioToggle'),
   shakeToggle: document.getElementById('shakeToggle'),
   perfToggle: document.getElementById('perfToggle'),
-  updateBtn: document.getElementById('updateBtn')
+  updateBtn: document.getElementById('updateBtn'),
+  fitMapBtn: document.getElementById('fitMapBtn'),
+  overviewBtn: document.getElementById('overviewBtn'),
+  resetCameraBtn: document.getElementById('resetCameraBtn'),
+  campaignLevelSelect: document.getElementById('campaignLevelSelect'),
+  unlockList: document.getElementById('unlockList'),
+  upgradePointsLabel: document.getElementById('upgradePointsLabel'),
+  levelCompleteModal: document.getElementById('levelCompleteModal'),
+  levelCompleteSummary: document.getElementById('levelCompleteSummary'),
+  levelRewards: document.getElementById('levelRewards'),
+  continueBtn: document.getElementById('continueBtn')
 };
 
 const modeRules = {
@@ -66,10 +76,10 @@ const abilities = {
 };
 
 const metaDefs = [
-  { key: 'branchCrit', label: 'Crit branch', max: 1 },
-  { key: 'branchChain', label: 'Chain branch', max: 1 },
-  { key: 'dot', label: 'DoT stacks', max: 3 },
-  { key: 'econ', label: 'Start cash+', max: 3 }
+  { key: 'branchCrit', name: 'Precision Core', affects: 'Bastion critical chance', desc: 'Adds critical strikes for Bastion towers.', max: 1, unit: '%' },
+  { key: 'branchChain', name: 'Relay Core', affects: 'Arc Prism chaining', desc: 'Arc Prism bolts can chain to extra targets.', max: 1, unit: 'targets' },
+  { key: 'dot', name: 'Burning Payloads', affects: 'Damage-over-time strength', desc: 'Projectiles apply stronger burn after impact.', max: 3, unit: 'stacks' },
+  { key: 'econ', name: 'Supply Cache', affects: 'Starting credits', desc: 'Begin each level with extra credits.', max: 3, unit: 'credits' }
 ];
 
 const pathCells = [
@@ -104,9 +114,19 @@ const state = {
   paused: false,
   gameStarted: false,
   shake: 0,
-  meta: JSON.parse(localStorage.getItem('aegis-meta') || '{"research":5}'),
-  pools: { enemies: [], projectiles: [], effects: [] }
+  meta: JSON.parse(localStorage.getItem('aegis-meta') || '{"upgradePoints":5,"unlockedTowers":["cannon","laser"]}'),
+  pools: { enemies: [], projectiles: [], effects: [] },
+  campaign: JSON.parse(localStorage.getItem('aegis-campaign') || '{"selectedLevel":1,"completed":{},"unlockedLevel":1}'),
+  currentLevel: 1,
+  levelWaves: 10,
+  pendingLevelRewards: null
 };
+
+state.meta.unlockedTowers = state.meta.unlockedTowers || ['cannon', 'laser'];
+state.campaign = state.campaign || {};
+state.campaign.completed = state.campaign.completed || {};
+state.campaign.unlockedLevel = state.campaign.unlockedLevel || 1;
+state.campaign.selectedLevel = state.campaign.selectedLevel || 1;
 
 const board = { w: 16, h: 16, tile: 1.12, blocked: new Set(), path: pathCells };
 const pathCellSet = new Set(board.path.map(([x, z]) => `${x},${z}`));
@@ -115,18 +135,18 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = 1.35;
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.setSize(window.innerWidth, window.innerHeight, false);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0a1118);
-scene.fog = new THREE.Fog(0x0d1621, 14, 42);
-const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 120);
-const cam = { yaw: 0.65, pitch: 0.96, dist: 20, target: new THREE.Vector3(0, 0, 8.2), velYaw: 0, velPitch: 0, velDist: 0, panVel: new THREE.Vector2() };
+scene.background = new THREE.Color(0x9fd5ff);
+scene.fog = new THREE.Fog(0xbfdff4, 45, 130);
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 220);
+const cam = { yaw: 0.6, pitch: 0.98, dist: 24, target: new THREE.Vector3(0, 0, 8.2), velYaw: 0, velPitch: 0, velDist: 0, panVel: new THREE.Vector2(), transitioning: null };
 
-scene.add(new THREE.HemisphereLight(0x9ac9ff, 0x10161f, 0.55));
-const dir = new THREE.DirectionalLight(0xfff2db, 1.15);
+scene.add(new THREE.HemisphereLight(0xd9efff, 0x6f9269, 1.05));
+const dir = new THREE.DirectionalLight(0xfff5dd, 1.6);
 dir.position.set(9, 18, 9);
 dir.castShadow = true;
 dir.shadow.mapSize.set(2048, 2048);
@@ -134,7 +154,14 @@ dir.shadow.camera.left = -22;
 dir.shadow.camera.right = 22;
 dir.shadow.camera.top = 22;
 dir.shadow.camera.bottom = -22;
+dir.shadow.radius = 4;
 scene.add(dir);
+
+const sky = new THREE.Mesh(
+  new THREE.SphereGeometry(190, 32, 24),
+  new THREE.MeshBasicMaterial({ color: 0xc8e7ff, side: THREE.BackSide })
+);
+scene.add(sky);
 
 const world = new THREE.Group();
 scene.add(world);
@@ -178,18 +205,23 @@ function getHeight(x, z) {
 }
 
 function buildTerrain() {
-  const geometry = new THREE.PlaneGeometry(board.w * board.tile, board.h * board.tile, board.w, board.h);
+  const extra = 14;
+  const terrainW = (board.w + extra * 2) * board.tile;
+  const terrainH = (board.h + extra * 2) * board.tile;
+  const segW = board.w + extra * 2;
+  const segH = board.h + extra * 2;
+  const geometry = new THREE.PlaneGeometry(terrainW, terrainH, segW, segH);
   const pos = geometry.attributes.position;
   for (let i = 0; i < pos.count; i++) {
-    const vx = pos.getX(i) / board.tile + board.w / 2;
-    const vz = pos.getY(i) / board.tile;
+    const vx = pos.getX(i) / board.tile + board.w / 2 + extra;
+    const vz = pos.getY(i) / board.tile + extra;
     pos.setZ(i, getHeight(vx, vz));
   }
   geometry.computeVertexNormals();
   const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0x314f3a, roughness: 0.96, metalness: 0.02 }));
   mesh.rotation.x = -Math.PI / 2;
   mesh.receiveShadow = true;
-  mesh.position.set(0, -0.02, board.h * board.tile * 0.5 - board.tile * 0.5);
+  mesh.position.set(0, -0.03, board.h * board.tile * 0.5 - board.tile * 0.5);
   return mesh;
 }
 
@@ -254,25 +286,96 @@ function showToast(text, good = true) {
   showToast.t = setTimeout(() => toastEl.classList.remove('show'), 1600);
 }
 
+
+
+const campaignDefs = Array.from({ length: 6 }, (_, i) => ({
+  level: i + 1,
+  waves: 10,
+  rewardCredits: 140 + i * 35,
+  rewardTokens: 2 + (i > 1 ? 1 : 0),
+  unlockTower: i === 1 ? 'missile' : i === 3 ? 'cryo' : null
+}));
+
+function saveMeta() { localStorage.setItem('aegis-meta', JSON.stringify(state.meta)); }
+function saveCampaign() { localStorage.setItem('aegis-campaign', JSON.stringify(state.campaign)); }
+
+function getTowerUnlockLevel(key) {
+  return key === 'missile' ? 2 : key === 'cryo' ? 4 : 1;
+}
+
+function isTowerUnlocked(key) {
+  return (state.meta.unlockedTowers || []).includes(key);
+}
+
+function unlockTower(key) {
+  state.meta.unlockedTowers = state.meta.unlockedTowers || ['cannon', 'laser'];
+  if (!state.meta.unlockedTowers.includes(key)) state.meta.unlockedTowers.push(key);
+}
+
+function tweenCamera(target, ms = 700) {
+  cam.transitioning = {
+    start: performance.now(), dur: ms,
+    from: { yaw: cam.yaw, pitch: cam.pitch, dist: cam.dist, tx: cam.target.x, tz: cam.target.z },
+    to: target
+  };
+}
+
+function fitMapCamera(animated = true) {
+  const target = { yaw: 0.58, pitch: 1.27, dist: 39, tx: 0, tz: board.h * board.tile * 0.52 };
+  if (animated) tweenCamera(target, 650);
+  else { cam.yaw = target.yaw; cam.pitch = target.pitch; cam.dist = target.dist; cam.target.set(target.tx, 0, target.tz); }
+}
+
+function resetCamera(animated = true) {
+  const target = { yaw: 0.6, pitch: 0.98, dist: 24, tx: 0, tz: 8.2 };
+  if (animated) tweenCamera(target, 500);
+  else { cam.yaw = target.yaw; cam.pitch = target.pitch; cam.dist = target.dist; cam.target.set(target.tx, 0, target.tz); }
+}
+
 function buildMeta() {
-  if (!state.meta || typeof state.meta !== 'object') state.meta = { research: 5 };
-  state.meta.research = state.meta.research || 0;
+  if (!state.meta || typeof state.meta !== 'object') state.meta = { upgradePoints: 5, unlockedTowers: ['cannon', 'laser'] };
+  state.meta.upgradePoints = state.meta.upgradePoints || 0;
+  state.meta.unlockedTowers = state.meta.unlockedTowers || ['cannon', 'laser'];
+  ui.upgradePointsLabel.textContent = `Upgrade Points: ${state.meta.upgradePoints}`;
   ui.metaTree.innerHTML = '';
   for (const m of metaDefs) {
     const lvl = state.meta[m.key] || 0;
+    const cost = 2 + lvl;
+    const reqText = m.key === 'branchChain' ? 'Unlock: Complete Level 2' : m.key === 'dot' ? 'Unlock: Complete Level 3' : 'Unlock: Complete Level 1';
+    const valueCur = m.key === 'econ' ? `${lvl * 45} credits` : `${lvl} ${m.unit}`;
+    const valueNextRaw = Math.min(m.max, lvl + 1);
+    const valueNext = m.key === 'econ' ? `${valueNextRaw * 45} credits` : `${valueNextRaw} ${m.unit}`;
     const btn = document.createElement('button');
-    btn.textContent = `${m.label} ${lvl}/${m.max} · cost ${2 + lvl}`;
-    btn.disabled = lvl >= m.max || state.meta.research < 2 + lvl;
+    btn.innerHTML = `<strong>${m.name}</strong><br><small>${m.affects}</small><br><small>${valueCur} → ${valueNext} · Cost ${cost}</small><br><small>${reqText}</small>`;
+    btn.disabled = lvl >= m.max || state.meta.upgradePoints < cost;
     btn.onclick = () => {
-      const cost = 2 + (state.meta[m.key] || 0);
-      if ((state.meta.research || 0) < cost) return;
-      state.meta.research -= cost;
+      if ((state.meta.upgradePoints || 0) < cost || lvl >= m.max) return;
+      state.meta.upgradePoints -= cost;
       state.meta[m.key] = (state.meta[m.key] || 0) + 1;
-      localStorage.setItem('aegis-meta', JSON.stringify(state.meta));
+      saveMeta();
       buildMeta();
     };
     ui.metaTree.appendChild(btn);
   }
+}
+
+function buildCampaignMenu() {
+  ui.campaignLevelSelect.innerHTML = '';
+  campaignDefs.forEach(def => {
+    const btn = document.createElement('button');
+    const completed = !!state.campaign.completed[def.level];
+    const unlocked = def.level <= state.campaign.unlockedLevel;
+    btn.className = 'levelBtn';
+    btn.disabled = !unlocked;
+    btn.innerHTML = `Level ${def.level}<br><small>${completed ? 'Completed' : unlocked ? 'Unlocked' : `Locked · Complete Level ${def.level - 1}`}</small>`;
+    btn.onclick = () => { state.campaign.selectedLevel = def.level; saveCampaign(); buildCampaignMenu(); };
+    if (state.campaign.selectedLevel === def.level) btn.classList.add('active');
+    ui.campaignLevelSelect.appendChild(btn);
+  });
+  ui.unlockList.innerHTML = Object.keys(towerDefs).map(k => {
+    const lv = getTowerUnlockLevel(k);
+    return `<div>${towerDefs[k].icon} ${towerDefs[k].name} — ${isTowerUnlocked(k) ? 'Unlocked' : `Locked: Complete Level ${lv}`}</div>`;
+  }).join('');
 }
 
 function initDock() {
@@ -282,6 +385,7 @@ function initDock() {
     btn.className = 'dockBtn';
     btn.innerHTML = `${d.icon}<small>${d.name}<br>${d.cost}¢</small>`;
     btn.onclick = () => {
+      if (!isTowerUnlocked(key)) return showToast(`Locked: Complete Level ${getTowerUnlockLevel(key)}`, false);
       state.selectedTowerType = key;
       state.buildMode = true;
       ui.buildPanel.classList.remove('hidden');
@@ -298,7 +402,7 @@ function updateDock() {
     const el = document.getElementById(`dock-${key}`);
     if (!el) return;
     el.classList.toggle('active', state.selectedTowerType === key && state.buildMode);
-    el.classList.toggle('locked', state.money < towerDefs[key].cost);
+    el.classList.toggle('locked', state.money < towerDefs[key].cost || !isTowerUnlocked(key));
   });
 }
 
@@ -320,7 +424,8 @@ function initAbilities() {
 
 function refreshWavePreview() {
   const txt = state.wave % 5 === 4 ? '👹 Boss + mixed escorts' : 'Fast + tank + shield mix';
-  ui.wavePreview.textContent = `Next Wave: ${txt} · ${modeRules[state.mode].mod}`;
+  const levelText = state.mode === 'campaign' ? ` · Level ${state.currentLevel} Wave ${Math.min(state.wave + 1, state.levelWaves)}/${state.levelWaves}` : '';
+  ui.wavePreview.textContent = `Next Wave: ${txt} · ${modeRules[state.mode].mod}${levelText}`;
 }
 
 function spawnWave() {
@@ -332,12 +437,34 @@ function spawnWave() {
   state.buildPhase = false;
   if (state.wave % 5 === 0) ui.bossWarning.classList.remove('hidden');
   refreshWavePreview();
+  resetCamera(false);
 }
 
 function beginBuildPhase() {
   state.buildPhase = true;
   state.inWave = false;
   ui.bossWarning.classList.add('hidden');
+  if (state.mode === 'campaign' && state.wave >= state.levelWaves) handleLevelComplete();
+}
+
+
+
+function handleLevelComplete() {
+  const def = campaignDefs.find(x => x.level === state.currentLevel) || campaignDefs[0];
+  const rewards = { credits: def.rewardCredits, tokens: def.rewardTokens, unlockTower: def.unlockTower };
+  state.money += rewards.credits;
+  state.meta.upgradePoints += rewards.tokens;
+  if (rewards.unlockTower) unlockTower(rewards.unlockTower);
+  state.campaign.completed[state.currentLevel] = true;
+  state.campaign.unlockedLevel = Math.max(state.campaign.unlockedLevel || 1, state.currentLevel + 1);
+  saveMeta();
+  saveCampaign();
+  ui.levelCompleteSummary.textContent = `Level ${state.currentLevel} cleared: ${state.levelWaves} / ${state.levelWaves} waves survived.`;
+  ui.levelRewards.innerHTML = `<div>+${rewards.credits} credits</div><div>+${rewards.tokens} upgrade points</div>${rewards.unlockTower ? `<div>Unlocked tower: ${towerDefs[rewards.unlockTower].name}</div>` : ''}`;
+  ui.levelCompleteModal.classList.remove('hidden');
+  state.paused = true;
+  buildCampaignMenu();
+  buildMeta();
 }
 
 function makeTower(type, cell) {
@@ -463,14 +590,27 @@ function updateUI() {
 
 function updateCamera() {
   cam.yaw += cam.velYaw;
-  cam.pitch = clamp(cam.pitch + cam.velPitch, 0.52, 1.2);
-  cam.dist = clamp(cam.dist + cam.velDist, 10, 30);
-  cam.target.x = clamp(cam.target.x + cam.panVel.x, -7, 7);
-  cam.target.z = clamp(cam.target.z + cam.panVel.y, 2, board.h * board.tile - 1.5);
+  cam.pitch = clamp(cam.pitch + cam.velPitch, 0.58, 1.34);
+  cam.dist = clamp(cam.dist + cam.velDist, 9, 44);
+  cam.target.x = clamp(cam.target.x + cam.panVel.x, -10, 10);
+  cam.target.z = clamp(cam.target.z + cam.panVel.y, -2, board.h * board.tile + 5);
   cam.velYaw *= 0.9;
   cam.velPitch *= 0.9;
   cam.velDist *= 0.84;
   cam.panVel.multiplyScalar(0.86);
+
+  if (cam.transitioning) {
+    const tNow = performance.now();
+    const k = Math.min(1, (tNow - cam.transitioning.start) / cam.transitioning.dur);
+    const e = 1 - Math.pow(1 - k, 3);
+    const tr = cam.transitioning;
+    cam.yaw = tr.from.yaw + (tr.to.yaw - tr.from.yaw) * e;
+    cam.pitch = tr.from.pitch + (tr.to.pitch - tr.from.pitch) * e;
+    cam.dist = tr.from.dist + (tr.to.dist - tr.from.dist) * e;
+    cam.target.x = tr.from.tx + (tr.to.tx - tr.from.tx) * e;
+    cam.target.z = tr.from.tz + (tr.to.tz - tr.from.tz) * e;
+    if (k >= 1) cam.transitioning = null;
+  }
 
   const p = new THREE.Vector3(
     Math.sin(cam.yaw) * Math.cos(cam.pitch),
@@ -519,7 +659,7 @@ function animate(now) {
     const e = state.enemies[i];
     if (e.hp <= 0) {
       state.money += e.boss ? 70 : 12;
-      state.meta.research = (state.meta.research || 0) + (e.boss ? 2 : 0);
+      state.meta.upgradePoints = (state.meta.upgradePoints || 0) + (e.boss ? 1 : 0);
       e.mesh.visible = false;
       world.remove(e.mesh);
       state.pools.enemies.push(e.mesh);
@@ -698,12 +838,10 @@ canvas.addEventListener('pointerup', e => {
   }
 });
 
-canvas.addEventListener('dblclick', () => {
-  cam.target.set(0, 0, 8.2);
-  cam.yaw = 0.65;
-  cam.pitch = 0.96;
-  cam.dist = 20;
-});
+canvas.addEventListener('dblclick', () => resetCamera(true));
+canvas.addEventListener('wheel', e => {
+  cam.velDist += e.deltaY * 0.004;
+}, { passive: true });
 
 ui.cancelBuildBtn.onclick = () => {
   state.buildMode = false;
@@ -713,6 +851,7 @@ ui.cancelBuildBtn.onclick = () => {
 };
 ui.startWaveBtn.onclick = () => {
   if (!state.buildPhase) return;
+  if (state.mode === 'campaign' && state.wave >= state.levelWaves) return;
   if (state.towers.length === 0) {
     showToast('Place at least one tower first.', false);
     return;
@@ -745,6 +884,8 @@ ui.menuBtn.onclick = () => { state.paused = true; state.gameStarted = false; ui.
 
 function start(mode) {
   state.mode = mode;
+  state.currentLevel = mode === 'campaign' ? (state.campaign.selectedLevel || 1) : 1;
+  state.levelWaves = mode === 'campaign' ? ((campaignDefs.find(x => x.level === state.currentLevel)?.waves) || 10) : 999;
   state.money = 220 + (state.meta.econ || 0) * 45;
   state.lives = 20;
   state.wave = 0;
@@ -762,11 +903,24 @@ function start(mode) {
   ui.mainMenu.classList.add('hidden');
   ui.bossWarning.classList.add('hidden');
   refreshWavePreview();
+  resetCamera(false);
 }
 
-ui.playCampaign.onclick = () => start('campaign');
+ui.playCampaign.onclick = () => {
+  const sel = state.campaign.selectedLevel || 1;
+  if (sel > (state.campaign.unlockedLevel || 1)) return showToast('This level is locked.', false);
+  start('campaign');
+};
 ui.playEndless.onclick = () => start('endless');
 ui.playChallenge.onclick = () => start('challenge');
+ui.fitMapBtn.onclick = () => fitMapCamera(true);
+ui.overviewBtn.onclick = () => tweenCamera({ yaw: 0.6, pitch: 1.32, dist: 34, tx: 0, tz: board.h * board.tile * 0.5 }, 600);
+ui.resetCameraBtn.onclick = () => resetCamera(true);
+ui.continueBtn.onclick = () => {
+  ui.levelCompleteModal.classList.add('hidden');
+  ui.mainMenu.classList.remove('hidden');
+  state.gameStarted = false;
+};
 
 window.addEventListener('resize', () => {
   const w = window.innerWidth;
@@ -792,8 +946,9 @@ if ('serviceWorker' in navigator) {
 }
 
 buildMeta();
+buildCampaignMenu();
 initDock();
 initAbilities();
 refreshWavePreview();
-showToast('Build first, then tap Start Wave. 1 finger rotate, 2 fingers pan/zoom');
+showToast('Build first, then tap Start Wave. 1 finger rotate, 2 fingers pan/zoom. Use Show Whole Field anytime.');
 requestAnimationFrame(animate);
