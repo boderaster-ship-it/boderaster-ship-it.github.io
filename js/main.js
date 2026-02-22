@@ -85,10 +85,10 @@ const builderModules = {
 const moduleKeys = Object.keys(builderModules);
 
 const enemyArchetypes = {
-  runner: { color: 0x8effbd, speed: 1.2, hp: 50, size: 0.28 },
-  tank: { color: 0xffc857, speed: 0.82, hp: 130, size: 0.42 },
-  shielded: { color: 0x9d7cff, speed: 0.95, hp: 90, size: 0.34, shield: 60 },
-  flyer: { color: 0x85d9ff, speed: 1.35, hp: 65, size: 0.24, flying: true }
+  runner: { color: 0x67d98a, speed: 1.2, hp: 50, size: 0.28, accents: 0x294c33, type: 'runner' },
+  tank: { color: 0xbf6a44, speed: 0.82, hp: 130, size: 0.42, accents: 0x5a3327, type: 'tank' },
+  shielded: { color: 0x7b67d9, speed: 0.95, hp: 90, size: 0.34, shield: 60, accents: 0xaad9ff, type: 'shielded' },
+  flyer: { color: 0x6dcaf2, speed: 1.35, hp: 65, size: 0.24, flying: true, accents: 0xd9f4ff, type: 'flyer' }
 };
 
 const abilities = {
@@ -172,7 +172,7 @@ const state = {
   gameStarted: false,
   shake: 0,
   meta: JSON.parse(localStorage.getItem('aegis-meta') || '{"upgradePoints":5,"unlockedTowers":["cannon","laser"]}'),
-  pools: { enemies: [], projectiles: [], effects: [] },
+  pools: { enemies: [], projectiles: [], effects: [], healthBars: [], fragments: [], particles: [], shockwaves: [] },
   campaign: JSON.parse(localStorage.getItem('aegis-campaign') || '{"selectedLevel":1,"completed":{},"unlockedLevel":1}'),
   currentLevel: 1,
   levelWaves: 10,
@@ -199,6 +199,7 @@ syncProgressUnlocks();
 
 const board = { w: 16, h: 16, tile: 1.12, blocked: new Set(), path: [...worldPaths[1][1]] };
 let pathCellSet = new Set(board.path.map(([x, z]) => `${x},${z}`));
+const GROUND_Y = 0;
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
 renderer.shadowMap.enabled = true;
@@ -262,7 +263,7 @@ const boardPlane = new THREE.Mesh(
   new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide })
 );
 boardPlane.rotation.x = -Math.PI / 2;
-boardPlane.position.set(0, 0.18, board.h * board.tile * 0.5 - board.tile * 0.5);
+boardPlane.position.set(0, GROUND_Y + 0.18, board.h * board.tile * 0.5 - board.tile * 0.5);
 world.add(boardPlane, ghost, hoverTile, rangeRing, blockedCross);
 
 const buildPads = new Map();
@@ -333,8 +334,7 @@ function rebuildWorldForCampaign() {
 }
 
 function getHeight(x, z) {
-  const n = Math.sin(x * 0.61) * 0.2 + Math.cos(z * 0.54) * 0.2 + Math.sin((x + z) * 0.33) * 0.3;
-  return n * 0.42;
+  return GROUND_Y;
 }
 
 function buildTerrain() {
@@ -344,17 +344,10 @@ function buildTerrain() {
   const segW = board.w + extra * 2;
   const segH = board.h + extra * 2;
   const geometry = new THREE.PlaneGeometry(terrainW, terrainH, segW, segH);
-  const pos = geometry.attributes.position;
-  for (let i = 0; i < pos.count; i++) {
-    const vx = pos.getX(i) / board.tile + board.w / 2 + extra;
-    const vz = pos.getY(i) / board.tile + extra;
-    pos.setZ(i, getHeight(vx, vz));
-  }
-  geometry.computeVertexNormals();
   const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0x314f3a, roughness: 0.96, metalness: 0.02 }));
   mesh.rotation.x = -Math.PI / 2;
   mesh.receiveShadow = true;
-  mesh.position.set(0, -0.03, board.h * board.tile * 0.5 - board.tile * 0.5);
+  mesh.position.set(0, GROUND_Y - 0.03, board.h * board.tile * 0.5 - board.tile * 0.5);
   return mesh;
 }
 
@@ -438,6 +431,111 @@ function createMarker(cell, color) {
   marker.position.copy(p).setY(p.y + 0.25);
   world.add(marker);
 }
+function createEnemyMesh(def, boss = false) {
+  const g = new THREE.Group();
+  const bodyScale = boss ? 1.3 : 1;
+  const body = new THREE.Mesh(new THREE.SphereGeometry(def.size * 0.95 * bodyScale, 14, 12), new THREE.MeshStandardMaterial({ color: def.color, roughness: 0.65, metalness: 0.2 }));
+  body.castShadow = true;
+  g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(def.size * 0.58 * bodyScale, 12, 10), new THREE.MeshStandardMaterial({ color: def.accents || 0xffffff, emissive: def.accents || def.color, emissiveIntensity: 0.18, roughness: 0.45 }));
+  head.position.set(0, def.size * 0.62 * bodyScale, def.size * 0.68 * bodyScale);
+  head.castShadow = true;
+  g.add(head);
+  const limbMat = new THREE.MeshStandardMaterial({ color: 0x2f2631, roughness: 0.85 });
+  if (def.flying) {
+    for (let i = -1; i <= 1; i += 2) {
+      const wing = new THREE.Mesh(new THREE.ConeGeometry(def.size * 0.42 * bodyScale, def.size * 1.2 * bodyScale, 3), new THREE.MeshStandardMaterial({ color: def.accents || 0xc9f2ff, transparent: true, opacity: 0.85, emissive: def.accents || 0x9fe9ff, emissiveIntensity: 0.28 }));
+      wing.rotation.z = i * Math.PI * 0.42;
+      wing.rotation.x = Math.PI * 0.5;
+      wing.position.set(i * def.size * 0.72 * bodyScale, def.size * 0.28 * bodyScale, 0);
+      g.add(wing);
+    }
+  } else {
+    for (let i = 0; i < 4; i++) {
+      const signX = i < 2 ? -1 : 1;
+      const back = i % 2 === 0 ? -1 : 1;
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(def.size * 0.1 * bodyScale, def.size * 0.13 * bodyScale, def.size * 0.72 * bodyScale, 7), limbMat);
+      leg.position.set(signX * def.size * 0.52 * bodyScale, -def.size * 0.18 * bodyScale, back * def.size * 0.4 * bodyScale);
+      leg.castShadow = true;
+      g.add(leg);
+    }
+  }
+  if (def.type === 'runner') {
+    const hornMat = new THREE.MeshStandardMaterial({ color: 0xefe8cb, roughness: 0.4 });
+    [-1, 1].forEach(side => {
+      const horn = new THREE.Mesh(new THREE.ConeGeometry(def.size * 0.13 * bodyScale, def.size * 0.48 * bodyScale, 7), hornMat);
+      horn.position.set(side * def.size * 0.32 * bodyScale, def.size * 0.98 * bodyScale, def.size * 0.56 * bodyScale);
+      horn.rotation.z = -side * 0.35;
+      g.add(horn);
+    });
+  } else if (def.type === 'tank' || boss) {
+    const armor = new THREE.Mesh(new THREE.BoxGeometry(def.size * 1.7 * bodyScale, def.size * 0.82 * bodyScale, def.size * 1.55 * bodyScale), new THREE.MeshStandardMaterial({ color: 0x4f3630, metalness: 0.5, roughness: 0.45 }));
+    armor.position.y = def.size * 0.18 * bodyScale;
+    armor.castShadow = true;
+    g.add(armor);
+  } else if (def.type === 'shielded') {
+    const shell = new THREE.Mesh(new THREE.SphereGeometry(def.size * 1.35 * bodyScale, 14, 12), new THREE.MeshStandardMaterial({ color: 0x7db6ff, transparent: true, opacity: 0.18, emissive: 0x7db6ff, emissiveIntensity: 0.5 }));
+    shell.name = 'shieldShell';
+    g.add(shell);
+  }
+  return g;
+}
+
+function getHealthBar() {
+  const bar = state.pools.healthBars.pop() || (() => {
+    const root = new THREE.Group();
+    const bg = new THREE.Mesh(new THREE.PlaneGeometry(0.85, 0.11), new THREE.MeshBasicMaterial({ color: 0x1a1a1a, transparent: true, opacity: 0.82, depthWrite: false }));
+    const fill = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.07), new THREE.MeshBasicMaterial({ color: 0x67ff95, depthWrite: false }));
+    fill.position.z = 0.001;
+    const shield = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.035), new THREE.MeshBasicMaterial({ color: 0x8db5ff, transparent: true, opacity: 0.92, depthWrite: false }));
+    shield.position.y = 0.07;
+    shield.position.z = 0.002;
+    root.add(bg, fill, shield);
+    root.userData = { fill, shield };
+    return root;
+  })();
+  bar.visible = true;
+  if (!bar.parent) world.add(bar);
+  return bar;
+}
+
+function releaseHealthBar(bar) {
+  if (!bar) return;
+  bar.visible = false;
+  if (bar.parent) bar.parent.remove(bar);
+  state.pools.healthBars.push(bar);
+}
+
+function spawnDeathFx(enemy) {
+  const pieces = enemy.boss ? 16 : 10;
+  const base = enemy.mesh.position.clone();
+  for (let i = 0; i < pieces; i++) {
+    const frag = state.pools.fragments.pop() || { mesh: new THREE.Mesh(new THREE.DodecahedronGeometry(0.08 + Math.random() * 0.09, 0), new THREE.MeshStandardMaterial({ color: 0xa8b0bc, roughness: 0.8 })), vel: new THREE.Vector3(), life: 0 };
+    frag.mesh.visible = true;
+    if (!frag.mesh.parent) world.add(frag.mesh);
+    frag.mesh.position.copy(base).add(new THREE.Vector3((Math.random() - 0.5) * 0.35, 0.2 + Math.random() * 0.35, (Math.random() - 0.5) * 0.35));
+    frag.vel.set((Math.random() - 0.5) * 3.7, 2.2 + Math.random() * 2.6, (Math.random() - 0.5) * 3.7);
+    frag.life = 0.85 + Math.random() * 0.5;
+    frag.mesh.material.color.setHex(enemy.isFinalBoss ? 0xff5d78 : enemy.def?.color || 0xc7d0db);
+    state.effects.push({ kind: 'fragment', frag });
+  }
+  for (let i = 0; i < 8; i++) {
+    const particle = state.pools.particles.pop() || { mesh: new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffb78a, transparent: true, opacity: 0.9 })), vel: new THREE.Vector3(), life: 0 };
+    particle.mesh.visible = true;
+    if (!particle.mesh.parent) world.add(particle.mesh);
+    particle.mesh.position.copy(base).add(new THREE.Vector3(0, 0.25, 0));
+    particle.vel.set((Math.random() - 0.5) * 2.8, 1.2 + Math.random() * 1.5, (Math.random() - 0.5) * 2.8);
+    particle.life = 0.34 + Math.random() * 0.26;
+    state.effects.push({ kind: 'particle', particle });
+  }
+  const shock = state.pools.shockwaves.pop() || new THREE.Mesh(new THREE.RingGeometry(0.2, 0.24, 26), new THREE.MeshBasicMaterial({ color: 0xffc6a5, transparent: true, opacity: 0.68, side: THREE.DoubleSide, depthWrite: false }));
+  shock.visible = true;
+  shock.rotation.x = -Math.PI / 2;
+  shock.position.copy(base).setY(GROUND_Y + 0.06);
+  if (!shock.parent) world.add(shock);
+  state.effects.push({ kind: 'shockwave', mesh: shock, life: 0.42, maxLife: 0.42 });
+}
+
 
 function showToast(text, good = true) {
   toastEl.textContent = text;
@@ -870,19 +968,41 @@ function spawnEnemy(boss = false) {
   const keys = Object.keys(enemyArchetypes);
   const archetype = boss ? 'tank' : keys[Math.floor(Math.random() * keys.length)];
   const def = enemyArchetypes[archetype];
-  const geo = boss ? new THREE.CapsuleGeometry(0.5, 1.1, 6, 10) : def.flying ? new THREE.OctahedronGeometry(def.size * 1.25, 0) : new THREE.CapsuleGeometry(def.size, def.size * 0.8, 6, 8);
-  const mat = new THREE.MeshStandardMaterial({ color: boss ? 0xff557f : def.color, emissive: boss ? 0x65172e : def.color, emissiveIntensity: boss ? 0.4 : 0.2 });
-  const mesh = new THREE.Mesh(geo, mat);
+  const mesh = createEnemyMesh(def, boss);
   mesh.castShadow = true;
   world.add(mesh);
+  const healthBar = getHealthBar();
   const isFinalBoss = state.mode === 'boss' && boss;
   const hpMult = worldId === 4 ? 1.42 : worldId === 3 ? 1.25 : worldId === 2 ? 1.12 : 1;
   const hp = ((isFinalBoss ? 4800 : boss ? 680 : def.hp + state.wave * 9) * hpMult) * (modeRules[state.mode]?.scale || 1.2);
   const spd = (isFinalBoss ? 0.4 : boss ? 0.62 : def.speed) + state.wave * 0.012 + (worldId===3 ? 0.08 : 0);
   const frostResist = worldId === 3 ? 0.55 : 0;
   const armor = worldId === 4 ? 0.2 + Math.min(0.4, state.wave * 0.02) : 0;
-  return { mesh, t: 0, speed: spd, hp, maxHp: hp, freeze: 0, archetype, boss, shield: isFinalBoss ? 700 : boss ? 160 : (def.shield || 0) + (worldId>=3?20:0), flying: !!def.flying, bob: Math.random() * 5, world: worldId, frostResist, armor, rage: worldId===4 };
+  return {
+    mesh,
+    healthBar,
+    def,
+    t: 0,
+    speed: spd,
+    hp,
+    maxHp: hp,
+    freeze: 0,
+    archetype,
+    boss,
+    isFinalBoss,
+    shield: isFinalBoss ? 700 : boss ? 160 : (def.shield || 0) + (worldId>=3?20:0),
+    maxShield: isFinalBoss ? 700 : boss ? 160 : (def.shield || 0) + (worldId>=3?20:0),
+    flying: !!def.flying,
+    bob: Math.random() * 5,
+    world: worldId,
+    frostResist,
+    armor,
+    rage: worldId===4,
+    hitFlash: 0,
+    deathScale: boss ? 1.4 : 1
+  };
 }
+
 
 function getProjectile() {
   const p = state.pools.projectiles.pop() || { mesh: new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), new THREE.MeshBasicMaterial({ color: 0xfff3a5 })), alive: false };
@@ -934,6 +1054,7 @@ function applyHit(enemy, damage, slow = 0, burn = 0, customStats = null) {
   enemy.freeze = Math.max(enemy.freeze, freezeDur);
   enemy.burn = Math.max(enemy.burn || 0, burn || 0);
   if (customStats?.shatter && enemy.freeze > 0.2) enemy.hp -= damage * customStats.shatter;
+  enemy.hitFlash = 0.16;
   state.effects.push({ pos: enemy.mesh.position.clone(), life: 0.34, color: enemy.boss ? 0xff7d8d : 0xffd6a5 });
   if (ui.shakeToggle.checked) state.shake = Math.min(0.22, state.shake + 0.035);
 }
@@ -1091,6 +1212,8 @@ function animate(now) {
     if (e.hp <= 0) {
       state.money += e.boss ? 70 : 12;
       state.meta.upgradePoints = (state.meta.upgradePoints || 0) + (e.boss ? 1 : 0);
+      spawnDeathFx(e);
+      releaseHealthBar(e.healthBar);
       e.mesh.visible = false;
       world.remove(e.mesh);
       state.pools.enemies.push(e.mesh);
@@ -1100,12 +1223,14 @@ function animate(now) {
 
     const speed = e.freeze > 0 ? 0 : e.speed * (state.mode === 'challenge' ? 1.15 : 1);
     e.freeze = Math.max(0, e.freeze - simDt);
+    e.hitFlash = Math.max(0, (e.hitFlash || 0) - simDt);
     if (e.burn > 0) { e.hp -= simDt * (2.2 * e.burn); e.burn = Math.max(0, e.burn - simDt); }
     e.t += simDt * speed / (board.path.length * 0.58);
     const idx = Math.floor(e.t * (board.path.length - 1));
     if (idx >= board.path.length - 1) {
       state.lives -= e.boss ? 4 : 1;
       state.enemies.splice(i, 1);
+      releaseHealthBar(e.healthBar);
       world.remove(e.mesh);
       state.pools.enemies.push(e.mesh);
       if (state.lives <= 0) {
@@ -1119,11 +1244,43 @@ function animate(now) {
     const f = e.t * (board.path.length - 1) - idx;
     const a = cellToWorld(...board.path[idx]);
     const b = cellToWorld(...board.path[idx + 1]);
-    const yLift = e.flying ? 0.6 + Math.sin(now * 0.006 + e.bob) * 0.18 : 0.3;
+    const yLift = e.flying ? 0.62 + Math.sin(now * 0.006 + e.bob) * 0.2 : 0.32 + Math.abs(Math.sin(now * 0.01 + e.bob)) * 0.06;
     e.mesh.position.lerpVectors(a, b, f).setY((a.y * (1 - f) + b.y * f) + yLift);
-    e.mesh.rotation.y += dt * 1.8;
-    e.mesh.scale.setScalar(e.boss ? 1.45 : 1);
-    e.mesh.material.emissive = new THREE.Color(e.freeze > 0 ? 0x8edbff : (e.shield > 0 ? 0x7f8cff : 0x14222f));
+    e.mesh.rotation.y += dt * (e.flying ? 1.8 : 1.1);
+    const pulse = 1 + Math.sin(now * 0.012 + e.bob) * 0.04;
+    const hitScale = e.hitFlash > 0 ? 1.12 : 1;
+    e.mesh.scale.setScalar((e.boss ? 1.45 : 1) * pulse * hitScale);
+    e.mesh.traverse(part => {
+      if (part.material?.emissive) {
+        const em = e.hitFlash > 0 ? 0xffd8b1 : (e.freeze > 0 ? 0x8edbff : (e.shield > 0 ? 0x7f8cff : 0x18232d));
+        part.material.emissive.setHex(em);
+        part.material.emissiveIntensity = e.hitFlash > 0 ? 0.55 : (e.flying ? 0.25 : 0.18);
+      }
+      if (part.name === 'shieldShell') {
+        part.visible = e.shield > 0;
+        part.material.opacity = 0.12 + (e.shield > 0 ? 0.16 : 0);
+      }
+    });
+
+    if (e.healthBar) {
+      const hpRatio = Math.max(0, e.hp / e.maxHp);
+      const hpColor = hpRatio > 0.6 ? 0x67ff95 : hpRatio > 0.3 ? 0xffd166 : 0xff5d73;
+      e.healthBar.position.copy(e.mesh.position).add(new THREE.Vector3(0, e.boss ? 1.7 : 1.25, 0));
+      e.healthBar.quaternion.copy(camera.quaternion);
+      const fill = e.healthBar.userData.fill;
+      fill.scale.x = Math.max(0.001, hpRatio);
+      fill.position.x = -(0.8 * (1 - hpRatio)) * 0.5;
+      fill.material.color.setHex(hpColor);
+      const shield = e.healthBar.userData.shield;
+      if (e.maxShield > 0) {
+        const shieldRatio = Math.max(0, e.shield / e.maxShield);
+        shield.visible = shieldRatio > 0;
+        shield.scale.x = Math.max(0.001, shieldRatio);
+        shield.position.x = -(0.8 * (1 - shieldRatio)) * 0.5;
+      } else {
+        shield.visible = false;
+      }
+    }
   }
 
   for (const t of state.towers) {
@@ -1162,6 +1319,52 @@ function animate(now) {
 
   for (let i = state.effects.length - 1; i >= 0; i--) {
     const fx = state.effects[i];
+    if (fx.kind === 'fragment') {
+      const f = fx.frag;
+      f.life -= simDt;
+      f.vel.y -= simDt * 5.8;
+      f.mesh.position.addScaledVector(f.vel, simDt);
+      f.mesh.rotation.x += simDt * 5;
+      f.mesh.rotation.y += simDt * 6.5;
+      f.mesh.material.opacity = Math.max(0, f.life * 1.2);
+      f.mesh.material.transparent = true;
+      if (f.life <= 0) {
+        f.mesh.visible = false;
+        if (f.mesh.parent) f.mesh.parent.remove(f.mesh);
+        state.pools.fragments.push(f);
+        state.effects.splice(i, 1);
+      }
+      continue;
+    }
+    if (fx.kind === 'particle') {
+      const p = fx.particle;
+      p.life -= simDt;
+      p.vel.y -= simDt * 2.8;
+      p.mesh.position.addScaledVector(p.vel, simDt);
+      p.mesh.material.opacity = Math.max(0, p.life * 2.5);
+      p.mesh.scale.setScalar(0.8 + (1 - p.life) * 0.9);
+      if (p.life <= 0) {
+        p.mesh.visible = false;
+        if (p.mesh.parent) p.mesh.parent.remove(p.mesh);
+        state.pools.particles.push(p);
+        state.effects.splice(i, 1);
+      }
+      continue;
+    }
+    if (fx.kind === 'shockwave') {
+      fx.life -= simDt;
+      const prog = 1 - (fx.life / fx.maxLife);
+      fx.mesh.scale.setScalar(1 + prog * 7.5);
+      fx.mesh.material.opacity = Math.max(0, (1 - prog) * 0.7);
+      if (fx.life <= 0) {
+        fx.mesh.visible = false;
+        if (fx.mesh.parent) fx.mesh.parent.remove(fx.mesh);
+        state.pools.shockwaves.push(fx.mesh);
+        state.effects.splice(i, 1);
+      }
+      continue;
+    }
+
     fx.life -= simDt;
     if (!fx.mesh) {
       fx.mesh = state.pools.effects.pop() || new THREE.Mesh(new THREE.RingGeometry(0.2, 0.26, 24), new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }));
@@ -1419,7 +1622,7 @@ function start(mode) {
   state.inWave = false;
   state.buildPhase = true;
   state.towers.forEach(t => world.remove(t.mesh));
-  state.enemies.forEach(e => world.remove(e.mesh));
+  state.enemies.forEach(e => { releaseHealthBar(e.healthBar); world.remove(e.mesh); });
   state.towers = [];
   state.enemies = [];
   state.projectiles = [];
