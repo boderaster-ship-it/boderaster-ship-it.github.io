@@ -81,3 +81,24 @@ button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; co
 #unlockList { display: grid; gap: 6px; margin-bottom: 12px; font-size: 14px; }
 #upgradePointsLabel { margin-bottom: 8px; color: #9bd4ff; font-weight: 700; }
 #levelRewards { display: grid; gap: 8px; margin: 8px 0 14px; }
+
+
+#towerBuilderBtn { font-size: 17px; }
+.builderSheet { width: min(94vw, 520px); max-height: 88vh; }
+.builderModules { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin: 8px 0; }
+.builderModuleBtn { border-radius: 12px; min-height: 62px; display:flex; flex-direction:column; align-items:flex-start; gap:2px; font-size:12px; }
+.builderModuleBtn strong { font-size: 13px; }
+.builderSlots { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 6px; margin-bottom: 10px; }
+.builderSlot { min-height: 46px; border: 1px dashed #6ba9dd; border-radius: 10px; display:grid; place-items:center; background: rgba(18,33,51,.45); font-size: 19px; }
+.builderSlot.filled { border-style: solid; }
+.builderPreview { font-size: 13px; line-height: 1.45; margin-bottom: 10px; background: rgba(8,16,26,.6); border:1px solid rgba(106,169,240,.35); border-radius:10px; padding:8px; }
+.savedBuilds { display:grid; grid-template-columns: repeat(1,minmax(0,1fr)); gap: 6px; margin-bottom: 10px; }
+.savedBuildRow { display:flex; justify-content:space-between; gap:8px; align-items:center; font-size:12px; border:1px solid rgba(122,174,220,.35); border-radius:10px; padding:7px; }
+.savedBuildRow button { padding: 6px 8px; font-size: 12px; }
+.tiny { opacity: .82; font-size: 12px; margin-top: -2px; }
+@media (max-width: 420px) {
+  #controlBar { top: calc(96px + env(safe-area-inset-top)); }
+  #wavePreview { top: calc(145px + env(safe-area-inset-top)); }
+  #bossWarning { top: calc(167px + env(safe-area-inset-top)); }
+  .builderModules { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
