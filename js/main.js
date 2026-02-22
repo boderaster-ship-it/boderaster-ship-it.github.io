@@ -370,8 +370,7 @@ function saveClearedObstacleCell(cellKey) {
 function hpGradientColor(ratio) {
   const r = clamp(ratio, 0, 1);
   const c = new THREE.Color();
-  if (r > 0.5) c.lerpColors(new THREE.Color(0xffd84f), new THREE.Color(0x4dff7d), (r - 0.5) / 0.5);
-  else c.lerpColors(new THREE.Color(0xff4f5d), new THREE.Color(0xffd84f), r / 0.5);
+  c.lerpColors(new THREE.Color(0x2d7a45), new THREE.Color(0x67ff95), r);
   return c.getHex();
 }
 
