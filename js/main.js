@@ -206,12 +206,41 @@ createMarker(board.path[board.path.length - 1], 0xff7d8d);
 
 const ghost = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 1.25, 10), new THREE.MeshStandardMaterial({ color: 0x57ffa3, transparent: true, opacity: 0.45 }));
 ghost.visible = false;
-const hoverTile = new THREE.Mesh(new THREE.BoxGeometry(board.tile * 0.96, 0.05, board.tile * 0.96), new THREE.MeshStandardMaterial({ color: 0x57ffa3, transparent: true, opacity: 0.45 }));
+const hoverTile = new THREE.Mesh(new THREE.BoxGeometry(board.tile * 0.94, 0.04, board.tile * 0.94), new THREE.MeshStandardMaterial({ color: 0x57ffa3, emissive: 0x1a5f3f, emissiveIntensity: 0.35, transparent: true, opacity: 0.4 }));
 hoverTile.visible = false;
-const rangeRing = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.03, 48), new THREE.MeshBasicMaterial({ color: 0x57ffa3, transparent: true, opacity: 0.45, side: THREE.DoubleSide }));
+const rangeRing = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.03, 48), new THREE.MeshBasicMaterial({ color: 0x57ffa3, transparent: true, opacity: 0.34, side: THREE.DoubleSide }));
 rangeRing.rotation.x = -Math.PI / 2;
 rangeRing.visible = false;
-world.add(ghost, hoverTile, rangeRing);
+const blockedCross = new THREE.Group();
+const crossMat = new THREE.MeshBasicMaterial({ color: 0xff667a, transparent: true, opacity: 0.75 });
+const crossA = new THREE.Mesh(new THREE.BoxGeometry(board.tile * 0.66, 0.028, 0.08), crossMat);
+const crossB = crossA.clone();
+crossA.rotation.y = Math.PI / 4;
+crossB.rotation.y = -Math.PI / 4;
+blockedCross.add(crossA, crossB);
+blockedCross.visible = false;
+const boardPlane = new THREE.Mesh(
+  new THREE.PlaneGeometry(board.w * board.tile, board.h * board.tile),
+  new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide })
+);
+boardPlane.rotation.x = -Math.PI / 2;
+boardPlane.position.set(0, 0.18, board.h * board.tile * 0.5 - board.tile * 0.5);
+world.add(boardPlane, ghost, hoverTile, rangeRing, blockedCross);
+
+const buildPads = new Map();
+const BUILD_PAD_COLORS = {
+  free: 0x385844,
+  occupied: 0x364047,
+  hoverValid: 0x67e9a8,
+  hoverInvalid: 0xff7e8e
+};
+const BUILD_TAP_MOVE_PX = Math.min(34, Math.max(28, Math.round((window.devicePixelRatio || 1) * 16)));
+const TAP_MAX_MS = 320;
+const PAN_MULT = 0.0031;
+const PINCH_MULT = 0.0038;
+let hoverVisualState = { valid: true, pulse: 0 };
+
+buildBuildZonePads();
 
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
@@ -274,6 +303,35 @@ function buildPath() {
     leftEdge.receiveShadow = rightEdge.receiveShadow = true;
     world.add(leftEdge, rightEdge);
   }
+}
+
+function buildBuildZonePads() {
+  const padGeo = new THREE.CylinderGeometry(board.tile * 0.41, board.tile * 0.44, 0.055, 18);
+  const topGeo = new THREE.RingGeometry(board.tile * 0.3, board.tile * 0.41, 24);
+  for (let z = 0; z < board.h; z++) {
+    for (let x = 0; x < board.w; x++) {
+      const key = `${x},${z}`;
+      if (pathCellSet.has(key)) continue;
+      const p = cellToWorld(x, z);
+      const pad = new THREE.Mesh(padGeo, new THREE.MeshStandardMaterial({ color: BUILD_PAD_COLORS.free, roughness: 0.9, metalness: 0.08 }));
+      const ring = new THREE.Mesh(topGeo, new THREE.MeshBasicMaterial({ color: 0x8fd6b4, transparent: true, opacity: 0.22, side: THREE.DoubleSide }));
+      pad.position.copy(p).setY(p.y + 0.038);
+      ring.position.copy(p).setY(p.y + 0.072);
+      ring.rotation.x = -Math.PI / 2;
+      pad.receiveShadow = true;
+      buildPads.set(key, { pad, ring });
+      world.add(pad, ring);
+    }
+  }
+}
+
+function syncBuildPads() {
+  buildPads.forEach((entry, key) => {
+    const occupied = board.blocked.has(key);
+    entry.pad.material.color.setHex(occupied ? BUILD_PAD_COLORS.occupied : BUILD_PAD_COLORS.free);
+    entry.pad.material.emissive?.setHex(occupied ? 0x182129 : 0x13281d);
+    entry.ring.material.opacity = occupied ? 0.12 : 0.2;
+  });
 }
 
 function buildEnvironmentProps() {
@@ -816,6 +874,10 @@ function placeTowerAt(cell) {
     board.blocked.add(key);
     state.towers.push(makeTower('custom', cell, state.activeBuild));
     state.buildMode = false;
+    ghost.visible = false;
+    rangeRing.visible = false;
+    blockedCross.visible = false;
+    syncBuildPads();
     ui.buildPanel.classList.add('hidden');
     showToast(`${state.activeBuild.name} deployed`);
     return true;
@@ -826,6 +888,10 @@ function placeTowerAt(cell) {
   board.blocked.add(key);
   state.towers.push(makeTower(state.selectedTowerType, cell));
   state.buildMode = false;
+  ghost.visible = false;
+  rangeRing.visible = false;
+  blockedCross.visible = false;
+  syncBuildPads();
   ui.buildPanel.classList.add('hidden');
   showToast(`${def.name} deployed`);
   return true;
@@ -868,14 +934,14 @@ function updateUI() {
 
 function updateCamera() {
   cam.yaw += cam.velYaw;
-  cam.pitch = clamp(cam.pitch + cam.velPitch, 0.58, 1.34);
+  cam.pitch = clamp(cam.pitch + cam.velPitch, 0.64, 1.28);
   cam.dist = clamp(cam.dist + cam.velDist, 9, 44);
   cam.target.x = clamp(cam.target.x + cam.panVel.x, -10, 10);
   cam.target.z = clamp(cam.target.z + cam.panVel.y, -2, board.h * board.tile + 5);
-  cam.velYaw *= 0.9;
-  cam.velPitch *= 0.9;
-  cam.velDist *= 0.84;
-  cam.panVel.multiplyScalar(0.86);
+  cam.velYaw *= 0.78;
+  cam.velPitch *= 0.78;
+  cam.velDist *= 0.76;
+  cam.panVel.multiplyScalar(0.72);
 
   if (cam.transitioning) {
     const tNow = performance.now();
@@ -1033,6 +1099,15 @@ function animate(now) {
     }
   }
 
+  syncBuildPads();
+  if (hoverTile.visible && state.buildMode && state.selectedTowerType) {
+    hoverVisualState.pulse += simDt * 4.8;
+    const pulse = 0.5 + Math.sin(hoverVisualState.pulse) * 0.5;
+    const ringOpacity = hoverVisualState.valid ? 0.24 + pulse * 0.2 : 0.2 + pulse * 0.08;
+    rangeRing.material.opacity += (ringOpacity - rangeRing.material.opacity) * 0.2;
+    hoverTile.material.opacity += ((hoverVisualState.valid ? 0.42 : 0.34) - hoverTile.material.opacity) * 0.2;
+  }
+
   updateCamera();
   updateUI();
   renderer.render(scene, camera);
@@ -1042,36 +1117,76 @@ function pickCell(clientX, clientY) {
   const rect = canvas.getBoundingClientRect();
   pointer.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
   raycaster.setFromCamera(pointer, camera);
-  const hits = raycaster.intersectObject(terrain);
+  const hits = raycaster.intersectObject(boardPlane);
   if (!hits.length) return null;
   return worldToCell(hits[0].point);
 }
 
+function isValidPlacementCell(cell) {
+  if (!cell) return false;
+  const key = `${cell[0]},${cell[1]}`;
+  return !board.blocked.has(key) && !pathCellSet.has(key);
+}
+
+function updateHoverVisual(cell, force = false) {
+  if (!cell) {
+    state.hoverCell = null;
+    hoverTile.visible = false;
+    blockedCross.visible = false;
+    if (!state.buildMode) {
+      ghost.visible = false;
+      rangeRing.visible = false;
+    }
+    return;
+  }
+  state.hoverCell = cell;
+  const worldPos = cellToWorld(cell[0], cell[1]);
+  hoverTile.visible = true;
+  hoverTile.position.copy(worldPos).setY(worldPos.y + 0.045);
+  const valid = isValidPlacementCell(cell);
+  hoverVisualState.valid = valid;
+
+  if (state.buildMode && state.selectedTowerType) {
+    const snapY = worldPos.y + 0.6;
+    if (!ghost.visible || force) ghost.position.copy(worldPos).setY(snapY);
+    else ghost.position.lerp(new THREE.Vector3(worldPos.x, snapY, worldPos.z), 0.42);
+    ghost.visible = true;
+    rangeRing.visible = true;
+    rangeRing.position.copy(ghost.position).setY(worldPos.y + 0.062);
+    const towerDef = state.selectedTowerType === 'custom' ? state.activeBuild : towerDefs[state.selectedTowerType];
+    const range = towerDef?.stats?.range || towerDef?.range || 5;
+    rangeRing.scale.setScalar(range);
+    hoverTile.material.color.setHex(valid ? BUILD_PAD_COLORS.hoverValid : BUILD_PAD_COLORS.hoverInvalid);
+    ghost.material.color.setHex(valid ? BUILD_PAD_COLORS.hoverValid : BUILD_PAD_COLORS.hoverInvalid);
+    rangeRing.material.color.setHex(valid ? 0x67e9a8 : 0xff7788);
+    blockedCross.visible = !valid;
+    if (!valid) blockedCross.position.copy(worldPos).setY(worldPos.y + 0.09);
+  }
+}
+
 let touches = new Map();
+let touchSession = null;
 canvas.addEventListener('pointerdown', e => {
   canvas.setPointerCapture(e.pointerId);
   touches.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now() });
   if (touches.size === 1) {
+    touchSession = {
+      primaryId: e.pointerId,
+      startedInBuild: !!(state.buildMode && state.selectedTowerType),
+      intentPlacement: !!(state.buildMode && state.selectedTowerType),
+      canceledByGesture: false,
+      movedBeyondTap: false
+    };
     const cell = pickCell(e.clientX, e.clientY);
-    if (!cell) return;
-    const worldPos = cellToWorld(cell[0], cell[1]);
-    state.hoverCell = cell;
-    hoverTile.visible = true;
-    hoverTile.position.copy(worldPos).setY(worldPos.y + 0.04);
-    if (state.buildMode && state.selectedTowerType) {
-      const valid = !board.blocked.has(`${cell[0]},${cell[1]}`) && !pathCellSet.has(`${cell[0]},${cell[1]}`);
-      ghost.visible = true;
-      ghost.position.copy(worldPos).setY(worldPos.y + 0.6);
-      rangeRing.visible = true;
-      rangeRing.position.copy(worldPos).setY(worldPos.y + 0.06);
-      rangeRing.scale.setScalar(towerDefs[state.selectedTowerType].range);
-      hoverTile.material.color.setHex(valid ? 0x57ffa3 : 0xff6b7f);
-      ghost.material.color.setHex(valid ? 0x57ffa3 : 0xff6b7f);
-    }
+    updateHoverVisual(cell, true);
   }
   if (touches.size === 2) {
     const [a, b] = [...touches.values()];
     touches.gesture = { d: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 };
+    if (touchSession?.startedInBuild) {
+      touchSession.canceledByGesture = true;
+      touchSession.intentPlacement = false;
+    }
   }
 });
 
@@ -1079,25 +1194,22 @@ canvas.addEventListener('pointermove', e => {
   if (!touches.has(e.pointerId)) return;
   const prev = touches.get(e.pointerId);
   touches.set(e.pointerId, { ...prev, x: e.clientX, y: e.clientY });
-  if (touches.size === 1) {
-    cam.velYaw += -e.movementX * 0.0017;
-    cam.velPitch += e.movementY * 0.0013;
-    const cell = pickCell(e.clientX, e.clientY);
-    if (!cell) return;
-    const worldPos = cellToWorld(cell[0], cell[1]);
-    state.hoverCell = cell;
-    hoverTile.visible = true;
-    hoverTile.position.copy(worldPos).setY(worldPos.y + 0.04);
-    if (state.buildMode && state.selectedTowerType) {
-      const valid = !board.blocked.has(`${cell[0]},${cell[1]}`) && !pathCellSet.has(`${cell[0]},${cell[1]}`);
-      ghost.visible = true;
-      ghost.position.copy(worldPos).setY(worldPos.y + 0.6);
-      rangeRing.visible = true;
-      rangeRing.position.copy(worldPos).setY(worldPos.y + 0.05);
-      rangeRing.scale.setScalar(towerDefs[state.selectedTowerType].range);
-      hoverTile.material.color.setHex(valid ? 0x57ffa3 : 0xff6b7f);
-      ghost.material.color.setHex(valid ? 0x57ffa3 : 0xff6b7f);
+
+  if (touchSession && e.pointerId === touchSession.primaryId) {
+    const moved = Math.hypot(e.clientX - prev.sx, e.clientY - prev.sy);
+    if (moved > BUILD_TAP_MOVE_PX) {
+      touchSession.movedBeyondTap = true;
+      touchSession.intentPlacement = false;
     }
+  }
+
+  if (touches.size === 1) {
+    if (!(state.buildMode && state.selectedTowerType)) {
+      cam.velYaw += -e.movementX * 0.0014;
+      cam.velPitch += e.movementY * 0.0011;
+    }
+    const cell = pickCell(e.clientX, e.clientY);
+    updateHoverVisual(cell);
   } else if (touches.size === 2) {
     const vals = [...touches.values()].filter(v => v && v.x !== undefined);
     const [a, b] = vals;
@@ -1105,10 +1217,14 @@ canvas.addEventListener('pointermove', e => {
     const d = Math.hypot(a.x - b.x, a.y - b.y);
     const cx = (a.x + b.x) / 2;
     const cy = (a.y + b.y) / 2;
-    cam.velDist += (g.d - d) * 0.004;
-    cam.panVel.x += -(cx - g.cx) * 0.004;
-    cam.panVel.y += (cy - g.cy) * 0.004;
+    cam.velDist += (g.d - d) * PINCH_MULT;
+    cam.panVel.x += -(cx - g.cx) * PAN_MULT;
+    cam.panVel.y += (cy - g.cy) * PAN_MULT;
     touches.gesture = { d, cx, cy };
+    if (touchSession?.startedInBuild) {
+      touchSession.canceledByGesture = true;
+      touchSession.intentPlacement = false;
+    }
   }
 });
 
@@ -1117,23 +1233,31 @@ canvas.addEventListener('pointerup', e => {
   touches.delete(e.pointerId);
   if (touches.size < 2) delete touches.gesture;
   const dt = performance.now() - (was?.t || 0);
-  const moved = was ? Math.hypot((was.x||0)-(was.sx||0), (was.y||0)-(was.sy||0)) : 99;
-  if (dt < 260 && moved < 18) {
+  const moved = was ? Math.hypot((was.x || 0) - (was.sx || 0), (was.y || 0) - (was.sy || 0)) : 99;
+  const isTap = dt <= TAP_MAX_MS && moved <= BUILD_TAP_MOVE_PX;
+  const shouldAttemptPlacement = !!(touchSession && e.pointerId === touchSession.primaryId && touchSession.startedInBuild && !touchSession.canceledByGesture && !touchSession.movedBeyondTap && isTap);
+  if (isTap) {
     const nowTap = performance.now();
     if (nowTap - lastTapAt < 300) {
       unifiedOverview(true);
       lastTapAt = 0;
+      touchSession = null;
       return;
     }
     lastTapAt = nowTap;
     const cell = pickCell(e.clientX, e.clientY);
     if (!cell) return;
-    if (state.buildMode && state.selectedTowerType) placeTowerAt(cell);
+    if (shouldAttemptPlacement) placeTowerAt(cell);
+    else if (state.buildMode && state.selectedTowerType) updateHoverVisual(cell, true);
     else state.selectedTower = state.towers.find(t => t.cell[0] === cell[0] && t.cell[1] === cell[1]) || null;
   }
+  if (touchSession && e.pointerId === touchSession.primaryId) touchSession = null;
 });
 
-canvas.addEventListener('pointercancel', e => { touches.delete(e.pointerId); });
+canvas.addEventListener('pointercancel', e => {
+  touches.delete(e.pointerId);
+  if (touchSession && touchSession.primaryId === e.pointerId) touchSession = null;
+});
 canvas.addEventListener('dblclick', () => unifiedOverview(true));
 canvas.addEventListener('wheel', e => {
   cam.velDist += e.deltaY * 0.004;
@@ -1158,6 +1282,7 @@ ui.cancelBuildBtn.onclick = () => {
   state.buildMode = false;
   ghost.visible = false;
   rangeRing.visible = false;
+  blockedCross.visible = false;
   ui.buildPanel.classList.add('hidden');
 };
 ui.startWaveBtn.onclick = () => {
@@ -1186,6 +1311,7 @@ ui.sellBtn.onclick = () => {
   const baseCost = t.custom ? t.custom.cost : towerDefs[t.type].cost;
   state.money += Math.round(baseCost * 0.65);
   board.blocked.delete(`${t.cell[0]},${t.cell[1]}`);
+  syncBuildPads();
   world.remove(t.mesh);
   state.towers = state.towers.filter(x => x !== t);
   state.selectedTower = null;
@@ -1210,6 +1336,7 @@ function start(mode) {
   state.projectiles = [];
   state.effects = [];
   board.blocked.clear();
+  syncBuildPads();
   state.paused = false;
   state.gameSpeed = 1;
   state.betweenWaveCountdown = 0;
