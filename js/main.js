@@ -16,6 +16,9 @@ const ui = {
   buildPanel: document.getElementById('buildPanel'),
   buildTitle: document.getElementById('buildTitle'),
   cancelBuildBtn: document.getElementById('cancelBuildBtn'),
+  obstaclePanel: document.getElementById('obstaclePanel'),
+  obstacleTitle: document.getElementById('obstacleTitle'),
+  clearObstacleBtn: document.getElementById('clearObstacleBtn'),
   selectionPanel: document.getElementById('selectionPanel'),
   selectedName: document.getElementById('selectedName'),
   selectedStats: document.getElementById('selectedStats'),
@@ -121,10 +124,10 @@ const shiftZ = (p, d) => p.map(([x,z]) => [x, Math.max(1, Math.min(14, z + d))])
 Object.entries(worldPaths[1]).forEach(([k,v]) => { worldPaths[2][k] = mirrorX(v); worldPaths[3][k] = shiftZ(v, (Number(k)%2===0?1:-1)); worldPaths[4][k] = mirrorX(shiftZ(v, (Number(k)%2===0?-1:1))); });
 
 const worldThemes = {
-  1:{name:'World 1 · Frontier', bg:0x9fd5ff, fog:0xbfdff4, terrain:0x314f3a, road:0x6a5643, edge:0x9f8a6f, mod:'Onboarding', intro:'Grundlagen: Mix aus Runnern und Tanks.'},
-  2:{name:'World 2 · Highlands', bg:0xb7e0bf, fog:0xcbe7c7, terrain:0x4c6a43, road:0x705f46, edge:0xac9a7b, mod:'Ökonomie-Druck', intro:'Mehr Schilde und schnelle Rush-Wellen.'},
-  3:{name:'World 3 · Ice', bg:0xcde6ff, fog:0xdff2ff, terrain:0x97b6c9, road:0x6e8ca1, edge:0xb8d7ea, mod:'Frostfront', intro:'Eis-Feinde: schnell, frostresistent, Schilde regenerieren.'},
-  4:{name:'World 4 · Lava', bg:0x381b14, fog:0x5a2a1e, terrain:0x5d2c1f, road:0x8c5131, edge:0xd28d5a, mod:'Hitzewelle', intro:'Panzerung, Elite-Wut und extremer Druck.'}
+  1:{name:'World 1 · Forest', bg:0x9fd5ff, fog:0xb8d7bc, terrain:0x3f6a45, road:0x6b5a42, edge:0xa18b6c, ambient:0xcce7cf, sun:0xfff2dc, sunIntensity:1.45, fogFar:130, sky:0xc8e7ff, prop:'forest', vfx:'pollen', intro:'Wald-Biome: Bäume, Felsen und klare Tageslicht-Sicht.'},
+  2:{name:'World 2 · Ice', bg:0xcde6ff, fog:0xd8edff, terrain:0x9dbbcf, road:0x6f8ea4, edge:0xc6e1f3, ambient:0xd8edff, sun:0xe4f2ff, sunIntensity:1.25, fogFar:108, sky:0xe5f4ff, prop:'ice', vfx:'frost', intro:'Eis-Biome: gefrorene Hindernisse, kaltes Licht, Nebel.'},
+  3:{name:'World 3 · Lava', bg:0x381b14, fog:0x5a2a1e, terrain:0x5f2c1f, road:0x8e5332, edge:0xd3905e, ambient:0x694033, sun:0xffb073, sunIntensity:1.95, fogFar:96, sky:0x58362d, prop:'lava', vfx:'embers', intro:'Lava-Biome: vulkanischer Boden, Asche und Hitze.'},
+  4:{name:'World 4 · Convergence Arena', bg:0x67543a, fog:0x8d7b65, terrain:0x4f5944, road:0x8b7150, edge:0xc0aa86, ambient:0xb8c4ad, sun:0xffd8b0, sunIntensity:1.58, fogFar:102, sky:0x8ea8a1, prop:'hybrid', vfx:'hybrid', intro:'Finale Arena: gezielte Fusion aus Wald, Eis und Lava.'}
 };
 
 const campaignDefs = Array.from({ length: 24 }, (_, i) => {
@@ -173,6 +176,8 @@ const state = {
   shake: 0,
   meta: JSON.parse(localStorage.getItem('aegis-meta') || '{"upgradePoints":5,"unlockedTowers":["cannon","laser"]}'),
   pools: { enemies: [], projectiles: [], effects: [], healthBars: [], fragments: [], particles: [], shockwaves: [] },
+  particlesFrame: 0,
+  maxParticlesFrame: 70,
   campaign: JSON.parse(localStorage.getItem('aegis-campaign') || '{"selectedLevel":1,"completed":{},"unlockedLevel":1}'),
   currentLevel: 1,
   levelWaves: 10,
@@ -180,7 +185,8 @@ const state = {
   activeBuild: null,
   builderDraft: [],
   unlocks: JSON.parse(localStorage.getItem('aegis-unlocks') || '{"towerBuilder":false}'),
-  lastPointerTap: 0
+  lastPointerTap: 0,
+  obstacleTap: { key: null, expires: 0 }
 };
 
 state.meta.unlockedTowers = state.meta.unlockedTowers || ['cannon', 'laser'];
@@ -194,6 +200,7 @@ state.campaign.selectedWorld = Number(state.campaign.selectedWorld) || 1;
 state.campaign.selectedLevel = Number(state.campaign.selectedLevel) || 1;
 state.campaign.finalBossUnlocked = !!state.campaign.finalBossUnlocked;
 state.campaign.bossCompleted = !!state.campaign.bossCompleted;
+state.campaign.clearedObstacles = state.campaign.clearedObstacles || {};
 if ((state.campaign.completed && state.campaign.completed[1]) || (state.campaign.unlockedLevel || 1) > 1) state.unlocks.towerBuilder = true;
 syncProgressUnlocks();
 
@@ -215,7 +222,8 @@ scene.fog = new THREE.Fog(0xbfdff4, 45, 130);
 const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 220);
 const cam = { yaw: 0.6, pitch: 0.98, dist: 24, target: new THREE.Vector3(0, 0, 8.2), velYaw: 0, velPitch: 0, velDist: 0, panVel: new THREE.Vector2(), transitioning: null };
 
-scene.add(new THREE.HemisphereLight(0xd9efff, 0x6f9269, 1.05));
+const hemi = new THREE.HemisphereLight(0xd9efff, 0x6f9269, 1.05);
+scene.add(hemi);
 const dir = new THREE.DirectionalLight(0xfff5dd, 1.6);
 dir.position.set(9, 18, 9);
 dir.castShadow = true;
@@ -267,6 +275,7 @@ boardPlane.position.set(0, GROUND_Y + 0.18, board.h * board.tile * 0.5 - board.t
 world.add(boardPlane, ghost, hoverTile, rangeRing, blockedCross);
 
 const buildPads = new Map();
+const obstacleCells = new Map();
 const BUILD_PAD_COLORS = {
   free: 0x385844,
   occupied: 0x364047,
@@ -306,6 +315,74 @@ function getSelectedCampaignDef() {
   return campaignDefs.find(d => d.world === worldId && d.levelInWorld === levelId) || campaignDefs[0];
 }
 
+
+function getLevelKey() {
+  const w = Number(state.campaign.selectedWorld) || 1;
+  const l = Number(state.campaign.selectedLevel) || 1;
+  return `${w}-${l}`;
+}
+
+function getClearedObstacleSet() {
+  const key = getLevelKey();
+  const arr = state.campaign.clearedObstacles[key] || [];
+  return new Set(arr);
+}
+
+function saveClearedObstacleCell(cellKey) {
+  const levelKey = getLevelKey();
+  const cur = new Set(state.campaign.clearedObstacles[levelKey] || []);
+  cur.add(cellKey);
+  state.campaign.clearedObstacles[levelKey] = [...cur];
+  saveCampaign();
+}
+
+function hpGradientColor(ratio) {
+  const r = clamp(ratio, 0, 1);
+  const c = new THREE.Color();
+  if (r > 0.5) c.lerpColors(new THREE.Color(0xffd84f), new THREE.Color(0x4dff7d), (r - 0.5) / 0.5);
+  else c.lerpColors(new THREE.Color(0xff4f5d), new THREE.Color(0xffd84f), r / 0.5);
+  return c.getHex();
+}
+
+function emitParticleBurst(base, cfg = {}) {
+  const quality = ui.perfToggle.checked ? 0.55 : 1;
+  const enemies = state.enemies.length;
+  const lod = enemies > 45 ? 0.42 : enemies > 28 ? 0.62 : 1;
+  const count = Math.min((cfg.count || 8), Math.max(2, Math.floor((cfg.count || 8) * quality * lod)));
+  if (state.particlesFrame > state.maxParticlesFrame) return;
+  for (let i = 0; i < count; i++) {
+    if (state.particlesFrame > state.maxParticlesFrame) break;
+    const particle = state.pools.particles.pop() || { mesh: new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffb78a, transparent: true, opacity: 0.9 })), vel: new THREE.Vector3(), life: 0 };
+    particle.mesh.visible = true;
+    if (!particle.mesh.parent) world.add(particle.mesh);
+    particle.mesh.position.copy(base).add(new THREE.Vector3((Math.random()-0.5)*0.12, cfg.y || 0.2, (Math.random()-0.5)*0.12));
+    const spread = cfg.spread || 2.8;
+    particle.vel.set((Math.random() - 0.5) * spread, (cfg.up || 1.5) + Math.random() * spread * 0.35, (Math.random() - 0.5) * spread);
+    particle.life = (cfg.life || 0.35) + Math.random() * 0.24;
+    particle.mesh.material.color.setHex(cfg.color || 0xffb78a);
+    state.effects.push({ kind: 'particle', particle });
+    state.particlesFrame++;
+  }
+}
+
+function spawnImpactFx(position, damageType = 'kinetic') {
+  const map = {
+    kinetic: { flash: 0xffdeb3, particle: 0xffb474, count: 7, ring: 0xffcaa2 },
+    ice: { flash: 0xc8f1ff, particle: 0x9fe8ff, count: 8, ring: 0xbcefff },
+    arc: { flash: 0xe1c4ff, particle: 0xaf8dff, count: 9, ring: 0xd4bbff },
+    explosive: { flash: 0xffb680, particle: 0xff8f5f, count: 10, ring: 0xffa171 },
+    beam: { flash: 0xfff4e5, particle: 0xffd9c6, count: 6, ring: 0xffe4cf }
+  };
+  const cfg = map[damageType] || map.kinetic;
+  state.effects.push({ pos: position.clone(), life: 0.24, color: cfg.flash, radius: 1.1 });
+  emitParticleBurst(position, { color: cfg.particle, count: cfg.count, spread: 2.4, life: 0.28, y: 0.2 });
+  const shock = state.pools.shockwaves.pop() || new THREE.Mesh(new THREE.RingGeometry(0.2, 0.24, 26), new THREE.MeshBasicMaterial({ color: cfg.ring, transparent: true, opacity: 0.68, side: THREE.DoubleSide, depthWrite: false }));
+  shock.visible = true;
+  shock.rotation.x = -Math.PI / 2;
+  shock.position.copy(position).setY(GROUND_Y + 0.08);
+  if (!shock.parent) world.add(shock);
+  state.effects.push({ kind: 'shockwave', mesh: shock, life: 0.24, maxLife: 0.24 });
+}
 function setBoardPath(path) {
   board.path = [...path];
   pathCellSet = new Set(board.path.map(([x, z]) => `${x},${z}`));
@@ -314,8 +391,13 @@ function setBoardPath(path) {
 function applyWorldTheme(worldId) {
   const theme = worldThemes[worldId] || worldThemes[1];
   scene.background = new THREE.Color(theme.bg);
-  scene.fog = new THREE.Fog(theme.fog, 45, worldId === 4 ? 105 : 130);
+  scene.fog = new THREE.Fog(theme.fog, 38, theme.fogFar || (worldId === 4 ? 105 : 130));
   if (terrain?.material) terrain.material.color.setHex(theme.terrain);
+  sky.material.color.setHex(theme.sky || theme.bg);
+  hemi.color.setHex(theme.ambient || 0xd9efff);
+  hemi.groundColor.setHex(worldId === 3 ? 0x5e3a2c : 0x6f9269);
+  dir.color.setHex(theme.sun || 0xfff5dd);
+  dir.intensity = theme.sunIntensity || 1.6;
 }
 
 function rebuildWorldForCampaign() {
@@ -352,8 +434,10 @@ function buildTerrain() {
 }
 
 function buildPath() {
-  const roadMat = new THREE.MeshStandardMaterial({ color: 0x6a5643, roughness: 0.92, metalness: 0.02 });
-  const edgeMat = new THREE.MeshStandardMaterial({ color: 0x9f8a6f, roughness: 0.8 });
+  const w = getSelectedCampaignDef().world;
+  const theme = worldThemes[w] || worldThemes[1];
+  const roadMat = new THREE.MeshStandardMaterial({ color: theme.road, roughness: 0.92, metalness: w === 2 ? 0.08 : 0.02 });
+  const edgeMat = new THREE.MeshStandardMaterial({ color: theme.edge, roughness: 0.8 });
   for (const [x, z] of board.path) {
     const center = cellToWorld(x, z);
     const pathTile = new THREE.Mesh(new THREE.BoxGeometry(board.tile * 0.93, 0.07, board.tile * 0.86), roadMat);
@@ -392,35 +476,52 @@ function buildBuildZonePads() {
 
 function syncBuildPads() {
   buildPads.forEach((entry, key) => {
-    const occupied = board.blocked.has(key);
-    entry.pad.material.color.setHex(occupied ? BUILD_PAD_COLORS.occupied : BUILD_PAD_COLORS.free);
+    const obstacle = obstacleCells.has(key);
+    const occupied = board.blocked.has(key) || obstacle;
+    entry.pad.material.color.setHex(obstacle ? 0x4f3e3e : (occupied ? BUILD_PAD_COLORS.occupied : BUILD_PAD_COLORS.free));
     entry.pad.material.emissive?.setHex(occupied ? 0x182129 : 0x13281d);
     entry.ring.material.opacity = occupied ? 0.12 : 0.2;
   });
 }
 
 function buildEnvironmentProps() {
-  const rockMat = new THREE.MeshStandardMaterial({ color: 0x70787a, roughness: 0.86 });
-  const treeTrunkMat = new THREE.MeshStandardMaterial({ color: 0x4f3b2f, roughness: 0.96 });
-  const treeLeafMat = new THREE.MeshStandardMaterial({ color: 0x3a6543, roughness: 0.9 });
+  obstacleCells.clear();
+  const worldId = getSelectedCampaignDef().world;
+  const theme = worldThemes[worldId] || worldThemes[1];
+  const cleared = getClearedObstacleSet();
   for (let z = 0; z < board.h; z++) {
     for (let x = 0; x < board.w; x++) {
-      if (pathCellSet.has(`${x},${z}`)) continue;
+      const key = `${x},${z}`;
+      if (pathCellSet.has(key)) continue;
       const worldPos = cellToWorld(x, z);
       const seed = Math.abs(Math.sin(x * 12.99 + z * 78.23));
-      if (seed > 0.82) {
-        const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.26 + seed * 0.28, 0), rockMat);
-        rock.position.copy(worldPos).add(new THREE.Vector3(0, 0.2, 0));
-        rock.castShadow = rock.receiveShadow = true;
-        world.add(rock);
-      } else if (seed < 0.22) {
-        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.11, 0.45, 8), treeTrunkMat);
-        const crown = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.7, 8), treeLeafMat);
-        trunk.position.copy(worldPos).add(new THREE.Vector3(0, 0.25, 0));
-        crown.position.copy(worldPos).add(new THREE.Vector3(0, 0.75, 0));
-        trunk.castShadow = crown.castShadow = true;
-        world.add(trunk, crown);
+      let chance = worldId === 1 ? 0.3 : worldId === 2 ? 0.34 : worldId === 3 ? 0.36 : 0.38;
+      const spawn = seed > (1 - chance) || seed < chance * 0.45;
+      if (!spawn || cleared.has(key)) continue;
+      const obstacle = new THREE.Group();
+      obstacle.position.copy(worldPos);
+      obstacle.userData = { obstacle: true, cellKey: key, world: worldId, kind: 'rock' };
+      if (theme.prop === 'forest' || (theme.prop === 'hybrid' && seed < 0.33)) {
+        obstacle.userData.kind = 'tree';
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.11, 0.5, 8), new THREE.MeshStandardMaterial({ color: 0x4f3b2f, roughness: 0.96 }));
+        const crown = new THREE.Mesh(new THREE.ConeGeometry(0.33, 0.78, 8), new THREE.MeshStandardMaterial({ color: 0x3a6543, roughness: 0.9 }));
+        trunk.position.y = 0.25; crown.position.y = 0.78;
+        obstacle.add(trunk, crown);
+      } else if (theme.prop === 'ice' || (theme.prop === 'hybrid' && seed < 0.66)) {
+        obstacle.userData.kind = 'ice';
+        const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.32, 0), new THREE.MeshStandardMaterial({ color: 0xaad8ff, emissive: 0x7cc6ff, emissiveIntensity: 0.2, roughness: 0.25, metalness: 0.12 }));
+        crystal.position.y = 0.32;
+        obstacle.add(crystal);
+      } else {
+        obstacle.userData.kind = 'lavaRock';
+        const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.32, 0), new THREE.MeshStandardMaterial({ color: 0x5f3a2a, roughness: 0.75 }));
+        const ember = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff8b3d }));
+        ember.position.set(0.08, 0.2, -0.05);
+        obstacle.add(rock, ember);
       }
+      obstacle.traverse(m => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
+      world.add(obstacle);
+      obstacleCells.set(key, obstacle);
     }
   }
 }
@@ -484,10 +585,10 @@ function createEnemyMesh(def, boss = false) {
 function getHealthBar() {
   const bar = state.pools.healthBars.pop() || (() => {
     const root = new THREE.Group();
-    const bg = new THREE.Mesh(new THREE.PlaneGeometry(0.85, 0.11), new THREE.MeshBasicMaterial({ color: 0x1a1a1a, transparent: true, opacity: 0.82, depthWrite: false }));
-    const fill = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.07), new THREE.MeshBasicMaterial({ color: 0x67ff95, depthWrite: false }));
+    const bg = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.12), new THREE.MeshBasicMaterial({ color: 0x0d1014, transparent: true, opacity: 0.9, depthWrite: false }));
+    const fill = new THREE.Mesh(new THREE.PlaneGeometry(0.84, 0.072), new THREE.MeshBasicMaterial({ color: 0x67ff95, depthWrite: false }));
     fill.position.z = 0.001;
-    const shield = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.035), new THREE.MeshBasicMaterial({ color: 0x8db5ff, transparent: true, opacity: 0.92, depthWrite: false }));
+    const shield = new THREE.Mesh(new THREE.PlaneGeometry(0.84, 0.035), new THREE.MeshBasicMaterial({ color: 0x7d8dff, transparent: true, opacity: 0.95, depthWrite: false }));
     shield.position.y = 0.07;
     shield.position.z = 0.002;
     root.add(bg, fill, shield);
@@ -507,7 +608,7 @@ function releaseHealthBar(bar) {
 }
 
 function spawnDeathFx(enemy) {
-  const pieces = enemy.boss ? 16 : 10;
+  const pieces = enemy.boss ? 18 : 11;
   const base = enemy.mesh.position.clone();
   for (let i = 0; i < pieces; i++) {
     const frag = state.pools.fragments.pop() || { mesh: new THREE.Mesh(new THREE.DodecahedronGeometry(0.08 + Math.random() * 0.09, 0), new THREE.MeshStandardMaterial({ color: 0xa8b0bc, roughness: 0.8 })), vel: new THREE.Vector3(), life: 0 };
@@ -519,7 +620,8 @@ function spawnDeathFx(enemy) {
     frag.mesh.material.color.setHex(enemy.isFinalBoss ? 0xff5d78 : enemy.def?.color || 0xc7d0db);
     state.effects.push({ kind: 'fragment', frag });
   }
-  for (let i = 0; i < 8; i++) {
+  emitParticleBurst(base, { color: enemy.world === 3 ? 0xff8a5f : enemy.world === 2 ? 0xade7ff : 0xffc094, count: enemy.boss ? 16 : 10, spread: enemy.world === 3 ? 3.4 : 2.7, life: 0.42, y: 0.25 });
+  for (let i = 0; i < 4; i++) {
     const particle = state.pools.particles.pop() || { mesh: new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffb78a, transparent: true, opacity: 0.9 })), vel: new THREE.Vector3(), life: 0 };
     particle.mesh.visible = true;
     if (!particle.mesh.parent) world.add(particle.mesh);
@@ -1033,16 +1135,17 @@ function fireTower(tower, enemy) {
   p.mesh.position.copy(p.pos);
   p.mesh.material.color.setHex(d.color);
   state.projectiles.push(p);
+  p.damageType = p.kind === 'ice' ? 'ice' : p.kind === 'bolt' ? 'arc' : p.kind === 'missile' ? 'explosive' : p.kind === 'beam' ? 'beam' : p.kind === 'flame' ? 'explosive' : 'kinetic';
   if (customStats?.chain > 0) {
     const linked = state.enemies.filter(e => e !== enemy && e.mesh.position.distanceTo(enemy.mesh.position) < customStats.chainRange).slice(0, customStats.chain);
-    linked.forEach(e => applyHit(e, p.damage * (0.48 + customStats.shock), customStats.slow, 0, customStats));
+    linked.forEach(e => applyHit(e, p.damage * (0.48 + customStats.shock), customStats.slow, 0, customStats, p.damageType));
   }
   tower.barrel.position.z = -0.08;
   tower.recoil = 0.11;
   state.effects.push({ pos: p.pos.clone(), life: 0.18, color: d.color, radius: 0.8 });
 }
 
-function applyHit(enemy, damage, slow = 0, burn = 0, customStats = null) {
+function applyHit(enemy, damage, slow = 0, burn = 0, customStats = null, damageType = 'kinetic') {
   const dealt = damage * (1 - (enemy.armor || 0));
   if (enemy.shield > 0) {
     enemy.shield -= dealt;
@@ -1051,11 +1154,12 @@ function applyHit(enemy, damage, slow = 0, burn = 0, customStats = null) {
     enemy.hp -= dealt;
   }
   const freezeDur = slow > 0 ? (0.45 + slow) * (1 - (enemy.frostResist || 0)) : 0;
+  enemy.lastFreeze = enemy.freeze || 0;
   enemy.freeze = Math.max(enemy.freeze, freezeDur);
   enemy.burn = Math.max(enemy.burn || 0, burn || 0);
   if (customStats?.shatter && enemy.freeze > 0.2) enemy.hp -= damage * customStats.shatter;
   enemy.hitFlash = 0.16;
-  state.effects.push({ pos: enemy.mesh.position.clone(), life: 0.34, color: enemy.boss ? 0xff7d8d : 0xffd6a5 });
+  spawnImpactFx(enemy.mesh.position.clone(), damageType);
   if (ui.shakeToggle.checked) state.shake = Math.min(0.22, state.shake + 0.035);
 }
 
@@ -1063,7 +1167,7 @@ function triggerNuke() {
   const center = cellToWorld(Math.floor(board.w / 2), Math.floor(board.h / 2));
   state.effects.push({ pos: center.clone(), life: 0.95, color: 0xff6b6b, radius: 8.2 });
   state.enemies.forEach(e => {
-    if (e.mesh.position.distanceTo(center) < 8.2) applyHit(e, 130);
+    if (e.mesh.position.distanceTo(center) < 8.2) applyHit(e, 130, 0, 0, null, 'explosive');
   });
 }
 
@@ -1188,6 +1292,7 @@ function animate(now) {
   }
 
   const simDt = dt * state.gameSpeed;
+  state.particlesFrame = 0;
   for (const k of Object.keys(state.abilityCooldowns)) state.abilityCooldowns[k] = Math.max(0, state.abilityCooldowns[k] - simDt);
   state.buffs.overclock = Math.max(0, state.buffs.overclock - simDt);
 
@@ -1222,6 +1327,7 @@ function animate(now) {
     }
 
     const speed = e.freeze > 0 ? 0 : e.speed * (state.mode === 'challenge' ? 1.15 : 1);
+    const wasFrozen = e.freeze > 0.12;
     e.freeze = Math.max(0, e.freeze - simDt);
     e.hitFlash = Math.max(0, (e.hitFlash || 0) - simDt);
     if (e.burn > 0) { e.hp -= simDt * (2.2 * e.burn); e.burn = Math.max(0, e.burn - simDt); }
@@ -1249,6 +1355,7 @@ function animate(now) {
     e.mesh.rotation.y += dt * (e.flying ? 1.8 : 1.1);
     const pulse = 1 + Math.sin(now * 0.012 + e.bob) * 0.04;
     const hitScale = e.hitFlash > 0 ? 1.12 : 1;
+    if (wasFrozen && e.freeze <= 0.01) emitParticleBurst(e.mesh.position.clone(), { color: 0xbfefff, count: 8, spread: 2.1, life: 0.26, y: 0.22 });
     e.mesh.scale.setScalar((e.boss ? 1.45 : 1) * pulse * hitScale);
     e.mesh.traverse(part => {
       if (part.material?.emissive) {
@@ -1264,8 +1371,8 @@ function animate(now) {
 
     if (e.healthBar) {
       const hpRatio = Math.max(0, e.hp / e.maxHp);
-      const hpColor = hpRatio > 0.6 ? 0x67ff95 : hpRatio > 0.3 ? 0xffd166 : 0xff5d73;
-      e.healthBar.position.copy(e.mesh.position).add(new THREE.Vector3(0, e.boss ? 1.7 : 1.25, 0));
+      const hpColor = hpGradientColor(hpRatio);
+      e.healthBar.position.lerp(e.mesh.position.clone().add(new THREE.Vector3(0, e.boss ? 1.72 : 1.28, 0)), 0.55);
       e.healthBar.quaternion.copy(camera.quaternion);
       const fill = e.healthBar.userData.fill;
       fill.scale.x = Math.max(0.001, hpRatio);
@@ -1311,8 +1418,8 @@ function animate(now) {
     p.pos.add(dirV.normalize().multiplyScalar(step));
     p.mesh.position.copy(p.pos);
     if (step < 0.2) {
-      if (p.aoe) state.enemies.forEach(e => { if (e.mesh.position.distanceTo(p.pos) < p.aoe) applyHit(e, p.damage, p.slow, p.kind === 'flame' ? 1.4 : 0, p.custom); });
-      else applyHit(p.target, p.damage, p.slow, p.kind === 'flame' ? 1.4 : 0, p.custom);
+      if (p.aoe) state.enemies.forEach(e => { if (e.mesh.position.distanceTo(p.pos) < p.aoe) applyHit(e, p.damage, p.slow, p.kind === 'flame' ? 1.4 : 0, p.custom, p.damageType); });
+      else applyHit(p.target, p.damage, p.slow, p.kind === 'flame' ? 1.4 : 0, p.custom, p.damageType);
       releaseProjectile(i);
     }
   }
@@ -1409,7 +1516,7 @@ function pickCell(clientX, clientY) {
 function isValidPlacementCell(cell) {
   if (!cell) return false;
   const key = `${cell[0]},${cell[1]}`;
-  return !board.blocked.has(key) && !pathCellSet.has(key);
+  return !board.blocked.has(key) && !pathCellSet.has(key) && !obstacleCells.has(key);
 }
 
 function updateHoverVisual(cell, force = false) {
@@ -1448,6 +1555,29 @@ function updateHoverVisual(cell, force = false) {
   }
 }
 
+
+function clearObstacle(cellKey) {
+  const obs = obstacleCells.get(cellKey);
+  if (!obs) return;
+  if (state.money < 300) return showToast('Nicht genug Credits', false);
+  const now = performance.now();
+  if (state.obstacleTap.key !== cellKey || state.obstacleTap.expires < now) {
+    state.obstacleTap = { key: cellKey, expires: now + 1400 };
+    return showToast('Erneut tippen zum Bestätigen', false);
+  }
+  state.money -= 300;
+  const base = obs.position.clone();
+  const kind = obs.userData.kind;
+  const c = kind === 'tree' ? 0xc29162 : kind === 'ice' ? 0xb8ebff : 0xff8a4a;
+  emitParticleBurst(base, { color: c, count: 14, spread: 3.2, life: 0.45, y: 0.2 });
+  state.effects.push({ pos: base.clone(), life: 0.45, color: c, radius: 1.8 });
+  world.remove(obs);
+  obstacleCells.delete(cellKey);
+  saveClearedObstacleCell(cellKey);
+  syncBuildPads();
+  ui.obstaclePanel.classList.add('hidden');
+  showToast('Hindernis entfernt');
+}
 let touches = new Map();
 let touchSession = null;
 canvas.addEventListener('pointerdown', e => {
@@ -1533,7 +1663,18 @@ canvas.addEventListener('pointerup', e => {
     if (!cell) return;
     if (shouldAttemptPlacement) placeTowerAt(cell);
     else if (state.buildMode && state.selectedTowerType) updateHoverVisual(cell, true);
-    else state.selectedTower = state.towers.find(t => t.cell[0] === cell[0] && t.cell[1] === cell[1]) || null;
+    else {
+      const key = `${cell[0]},${cell[1]}`;
+      const obstacle = obstacleCells.get(key);
+      if (obstacle) {
+        ui.obstacleTitle.textContent = 'Hindernis';
+        ui.obstaclePanel.classList.remove('hidden');
+        ui.clearObstacleBtn.onclick = () => clearObstacle(key);
+      } else {
+        ui.obstaclePanel.classList.add('hidden');
+      }
+      state.selectedTower = state.towers.find(t => t.cell[0] === cell[0] && t.cell[1] === cell[1]) || null;
+    }
   }
   if (touchSession && e.pointerId === touchSession.primaryId) touchSession = null;
 });
@@ -1628,6 +1769,7 @@ function start(mode) {
   state.projectiles = [];
   state.effects = [];
   board.blocked.clear();
+  ui.obstaclePanel.classList.add('hidden');
   syncBuildPads();
   state.paused = false;
   state.gameSpeed = 1;
