@@ -206,7 +206,7 @@ const state = {
   gameStarted: false,
   shake: 0,
   meta: safeJSONParse('aegis-meta', { upgradePoints: 5, unlockedTowers: ['cannon', 'laser'] }),
-  pools: { enemies: [], projectiles: [], effects: [], healthBars: [], fragments: [], particles: [], shockwaves: [] },
+  pools: { projectiles: [], effects: [], healthBars: [], fragments: [], particles: [], shockwaves: [] },
   particlesFrame: 0,
   maxParticlesFrame: 70,
   campaign: safeJSONParse('aegis-campaign', { selectedLevel: 1, selectedWorld: 1, completed: {}, unlockedLevel: 1, clearedObstacles: {} }),
@@ -216,7 +216,6 @@ const state = {
   activeBuild: null,
   builderDraft: [],
   unlocks: safeJSONParse('aegis-unlocks', { towerBuilder: false }),
-  lastPointerTap: 0,
   obstacleTap: { key: null, expires: 0 }
 };
 
@@ -659,9 +658,9 @@ function getHealthBar() {
     const fillWidth = 0.84;
     const fillHeight = 0.072;
     const root = new THREE.Group();
-    const bgMat = new THREE.MeshBasicMaterial({ color: 0x0d1014, transparent: true, opacity: 0.9, depthTest: false, depthWrite: false, toneMapped: false });
-    const fillMat = new THREE.MeshBasicMaterial({ color: 0x4ee56f, depthTest: false, depthWrite: false, toneMapped: false });
-    const shieldMat = new THREE.MeshBasicMaterial({ color: 0x7d8dff, transparent: true, opacity: 0.95, depthTest: false, depthWrite: false, toneMapped: false });
+    const bgMat = new THREE.MeshBasicMaterial({ color: 0x0d1014, transparent: true, opacity: 0.9, depthTest: false, depthWrite: false, toneMapped: false, side: THREE.DoubleSide });
+    const fillMat = new THREE.MeshBasicMaterial({ color: 0x4ee56f, depthTest: false, depthWrite: false, toneMapped: false, side: THREE.DoubleSide });
+    const shieldMat = new THREE.MeshBasicMaterial({ color: 0x7d8dff, transparent: true, opacity: 0.95, depthTest: false, depthWrite: false, toneMapped: false, side: THREE.DoubleSide });
     const bg = new THREE.Mesh(new THREE.PlaneGeometry(barWidth, 0.12), bgMat);
     const fillGeo = new THREE.PlaneGeometry(fillWidth, fillHeight);
     fillGeo.translate(fillWidth * 0.5, 0, 0);
@@ -675,6 +674,10 @@ function getHealthBar() {
     bg.renderOrder = 120;
     fill.renderOrder = 121;
     shield.renderOrder = 122;
+    root.frustumCulled = false;
+    bg.frustumCulled = false;
+    fill.frustumCulled = false;
+    shield.frustumCulled = false;
     root.add(bg, fill, shield);
     root.renderOrder = 120;
     root.userData = { fill, shield, fillWidth, lastHpRatio: null, lastShieldRatio: null };
@@ -754,9 +757,9 @@ function isAbilityUnlocked(key) {
 
 function unlockAbility(key) {
   state.meta.unlockedAbilities = state.meta.unlockedAbilities || ['freeze'];
-state.meta.savedBuilds = state.meta.savedBuilds || [];
-state.unlocks = state.unlocks || { towerBuilder: false };
-  if (!state.meta.unlockedAbilities.includes(key)) state.meta.unlockedAbilities.push(key);
+  if (!state.meta.unlockedAbilities.includes(key)) {
+    state.meta.unlockedAbilities.push(key);
+  }
 }
 
 function syncProgressUnlocks() {
@@ -1434,7 +1437,6 @@ function animate(now) {
       releaseHealthBar(e.healthBar);
       e.mesh.visible = false;
       world.remove(e.mesh);
-      state.pools.enemies.push(e.mesh);
       state.enemies.splice(i, 1);
       continue;
     }
@@ -1451,7 +1453,6 @@ function animate(now) {
       state.enemies.splice(i, 1);
       releaseHealthBar(e.healthBar);
       world.remove(e.mesh);
-      state.pools.enemies.push(e.mesh);
       if (state.lives <= 0) {
         state.paused = true;
         ui.mainMenu.classList.remove('hidden');
@@ -1589,7 +1590,6 @@ function animate(now) {
     }
   }
 
-  syncBuildPads();
   if (hoverTile.visible && state.buildMode && state.selectedTowerType) {
     hoverVisualState.pulse += simDt * 4.8;
     const pulse = 0.5 + Math.sin(hoverVisualState.pulse) * 0.5;
