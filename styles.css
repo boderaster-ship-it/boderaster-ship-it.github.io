@@ -1,12 +1,12 @@
 :root {
   color-scheme: dark;
   font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --ui: rgba(9, 16, 27, 0.8);
+  --ui: rgba(9, 22, 35, 0.78);
   --stroke: rgba(106, 169, 240, 0.5);
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: #05070d; overflow: hidden; }
-#app { width: 100vw; height: 100vh; position: relative; }
+body { margin: 0; background: linear-gradient(#a9d7ff, #d8efff 38%, #eff7ff); overflow: hidden; padding-bottom: env(safe-area-inset-bottom); }
+#app { width: 100vw; height: 100dvh; min-height: 100vh; position: relative; padding-bottom: calc(env(safe-area-inset-bottom) + 6px); }
 #gameCanvas { width: 100%; height: 100%; display: block; touch-action: none; }
 .glass {
   position: absolute;
@@ -22,8 +22,8 @@ body { margin: 0; background: #05070d; overflow: hidden; }
   gap: 8px; text-align: center; font-weight: 700; font-size: 15px;
 }
 .smallBtn { padding: 6px 8px; font-size: 13px; }
-#wavePreview { top: calc(82px + env(safe-area-inset-top)); left: 8px; right: 8px; min-height: 40px; padding: 8px; display: flex; gap: 8px; align-items: center; overflow-x: auto; }
-#bossWarning { left: 20%; right: 20%; top: 130px; text-align: center; padding: 8px; color: #ff879f; font-weight: 800; }
+#wavePreview { top: calc(128px + env(safe-area-inset-top)); left: 8px; right: 8px; min-height: 40px; padding: 8px; display: flex; gap: 8px; align-items: center; overflow-x: auto; }
+#bossWarning { left: 20%; right: 20%; top: 176px; text-align: center; padding: 8px; color: #ff879f; font-weight: 800; }
 #abilityBar {
   left: 8px; right: 8px; bottom: calc(116px + env(safe-area-inset-bottom));
   padding: 8px; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px;
@@ -61,3 +61,11 @@ button {
 .phase.build { background: rgba(66, 128, 88, 0.45); border: 1px solid rgba(120, 211, 156, 0.7); }
 .phase.wave { background: rgba(129, 72, 82, 0.45); border: 1px solid rgba(238, 133, 152, 0.7); }
 #startWaveBtn:disabled { opacity: 0.55; }
+
+#cameraControls { top: calc(82px + env(safe-area-inset-top)); left: 8px; right: 8px; padding: 8px; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+
+#campaignLevelSelect { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin-bottom: 10px; }
+.levelBtn.active { outline: 2px solid #7fd7ff; }
+#unlockList { display: grid; gap: 6px; margin-bottom: 12px; font-size: 14px; }
+#upgradePointsLabel { margin-bottom: 8px; color: #9bd4ff; font-weight: 700; }
+#levelRewards { display: grid; gap: 8px; margin: 8px 0 14px; }

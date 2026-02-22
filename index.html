@@ -22,6 +22,12 @@
       <button id="pauseBtn" class="smallBtn">Pause</button>
     </header>
 
+    <section id="cameraControls" class="glass">
+      <button id="fitMapBtn" class="smallBtn">Show Whole Field</button>
+      <button id="overviewBtn" class="smallBtn">Overview</button>
+      <button id="resetCameraBtn" class="smallBtn">Reset Camera</button>
+    </section>
+
     <section id="wavePreview" class="glass"></section>
     <section id="bossWarning" class="glass hidden">⚠️ BOSS INCOMING</section>
 
@@ -54,8 +60,13 @@
           <button id="playEndless">Endless</button>
           <button id="playChallenge">Challenge</button>
         </div>
-        <h3>Meta Progression</h3>
+        <h3>Campaign Levels</h3>
+        <div id="campaignLevelSelect"></div>
+        <h3>Command Center Upgrades</h3>
+        <div id="upgradePointsLabel"></div>
         <div id="metaTree"></div>
+        <h3>Tower Unlocks</h3>
+        <div id="unlockList"></div>
         <h3>Settings</h3>
         <div class="settings">
           <label><input type="checkbox" id="audioToggle" checked /> Audio</label>
@@ -64,6 +75,15 @@
         </div>
       </div>
     </main>
+
+    <section id="levelCompleteModal" class="modal hidden">
+      <div class="sheet">
+        <h2>Level Complete</h2>
+        <p id="levelCompleteSummary"></p>
+        <div id="levelRewards"></div>
+        <button id="continueBtn">Continue</button>
+      </div>
+    </section>
 
     <section id="pauseMenu" class="modal hidden">
       <div class="sheet">
