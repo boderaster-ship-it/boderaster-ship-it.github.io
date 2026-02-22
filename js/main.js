@@ -132,10 +132,10 @@ const abilities = {
 };
 
 const metaDefs = [
-  { key: 'branchCrit', name: 'Präzisionskern', affects: 'Bastion-Kritchance', desc: 'Fügt Bastion-Türmen kritische Treffer hinzu.', max: 1, unit: '%' },
-  { key: 'branchChain', name: 'Relaiskern', affects: 'Arc-Prisma-Kettenangriff', desc: 'Arc-Prisma-Projektile können auf zusätzliche Ziele überspringen.', max: 1, unit: 'Ziele' },
-  { key: 'dot', name: 'Brennende Ladungen', affects: 'Stärke von Schaden über Zeit', desc: 'Projektile verursachen nach dem Treffer stärkeren Brand.', max: 3, unit: 'Stapel' },
-  { key: 'econ', name: 'Versorgungslager', affects: 'Startguthaben', desc: 'Beginne jedes Level mit zusätzlichem Guthaben.', max: 3, unit: 'Credits' }
+  { key: 'branchCrit', name: 'Präzisionskern', affects: 'Bastion-Kritchance', desc: 'Fügt Bastion-Türmen kritische Treffer hinzu.', unit: '%' },
+  { key: 'branchChain', name: 'Relaiskern', affects: 'Arc-Prisma-Kettenangriff', desc: 'Arc-Prisma-Projektile können auf zusätzliche Ziele überspringen.', unit: 'Ziele' },
+  { key: 'dot', name: 'Brennende Ladungen', affects: 'Stärke von Schaden über Zeit', desc: 'Projektile verursachen nach dem Treffer stärkeren Brand.', unit: 'Stapel' },
+  { key: 'econ', name: 'Versorgungslager', affects: 'Startguthaben', desc: 'Beginne jedes Level mit zusätzlichem Guthaben.', unit: 'Credits' }
 ];
 
 const worldPaths = {
@@ -805,13 +805,13 @@ function buildMeta() {
     const cost = 2 + lvl;
     const reqText = m.key === 'branchChain' ? 'Freischaltung: Level 2 abschließen' : m.key === 'dot' ? 'Freischaltung: Level 3 abschließen' : 'Freischaltung: Level 1 abschließen';
     const valueCur = m.key === 'econ' ? `${lvl * 45} Credits` : `${lvl} ${m.unit}`;
-    const valueNextRaw = Math.min(m.max, lvl + 1);
+    const valueNextRaw = lvl + 1;
     const valueNext = m.key === 'econ' ? `${valueNextRaw * 45} Credits` : `${valueNextRaw} ${m.unit}`;
     const btn = document.createElement('button');
     btn.innerHTML = `<strong>${m.name}</strong><br><small>${m.affects}</small><br><small>${valueCur} → ${valueNext} · Kosten ${cost}</small><br><small>${reqText}</small>`;
-    btn.disabled = lvl >= m.max || state.meta.upgradePoints < cost;
+    btn.disabled = state.meta.upgradePoints < cost;
     btn.onclick = () => {
-      if ((state.meta.upgradePoints || 0) < cost || lvl >= m.max) return;
+      if ((state.meta.upgradePoints || 0) < cost) return;
       state.meta.upgradePoints -= cost;
       state.meta[m.key] = (state.meta[m.key] || 0) + 1;
       saveMeta();
