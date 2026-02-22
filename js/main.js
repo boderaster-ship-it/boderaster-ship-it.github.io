@@ -190,8 +190,8 @@ state.unlocks = state.unlocks || { towerBuilder: false };
 state.campaign = state.campaign || {};
 state.campaign.completed = state.campaign.completed || {};
 state.campaign.unlockedLevel = state.campaign.unlockedLevel || 1;
-state.campaign.selectedWorld = state.campaign.selectedWorld || 1;
-state.campaign.selectedLevel = state.campaign.selectedLevel || 1;
+state.campaign.selectedWorld = Number(state.campaign.selectedWorld) || 1;
+state.campaign.selectedLevel = Number(state.campaign.selectedLevel) || 1;
 state.campaign.finalBossUnlocked = !!state.campaign.finalBossUnlocked;
 state.campaign.bossCompleted = !!state.campaign.bossCompleted;
 if ((state.campaign.completed && state.campaign.completed[1]) || (state.campaign.unlockedLevel || 1) > 1) state.unlocks.towerBuilder = true;
@@ -300,7 +300,9 @@ function worldToCell(pos) {
 
 
 function getSelectedCampaignDef() {
-  return campaignDefs.find(d => d.world === (state.campaign.selectedWorld || 1) && d.levelInWorld === (state.campaign.selectedLevel || 1)) || campaignDefs[0];
+  const worldId = Number(state.campaign.selectedWorld) || 1;
+  const levelId = Number(state.campaign.selectedLevel) || 1;
+  return campaignDefs.find(d => d.world === worldId && d.levelInWorld === levelId) || campaignDefs[0];
 }
 
 function setBoardPath(path) {
@@ -864,7 +866,7 @@ function makeTower(type, cell, customCfg = null) {
 
 function spawnEnemy(boss = false) {
   const cdef = state.mode === 'campaign' ? campaignDefs[Math.min(state.currentLevel,24)-1] : null;
-  const world = cdef?.world || 1;
+  const worldId = cdef?.world || 1;
   const keys = Object.keys(enemyArchetypes);
   const archetype = boss ? 'tank' : keys[Math.floor(Math.random() * keys.length)];
   const def = enemyArchetypes[archetype];
@@ -874,12 +876,12 @@ function spawnEnemy(boss = false) {
   mesh.castShadow = true;
   world.add(mesh);
   const isFinalBoss = state.mode === 'boss' && boss;
-  const hpMult = world === 4 ? 1.42 : world === 3 ? 1.25 : world === 2 ? 1.12 : 1;
+  const hpMult = worldId === 4 ? 1.42 : worldId === 3 ? 1.25 : worldId === 2 ? 1.12 : 1;
   const hp = ((isFinalBoss ? 4800 : boss ? 680 : def.hp + state.wave * 9) * hpMult) * (modeRules[state.mode]?.scale || 1.2);
-  const spd = (isFinalBoss ? 0.4 : boss ? 0.62 : def.speed) + state.wave * 0.012 + (world===3 ? 0.08 : 0);
-  const frostResist = world === 3 ? 0.55 : 0;
-  const armor = world === 4 ? 0.2 + Math.min(0.4, state.wave * 0.02) : 0;
-  return { mesh, t: 0, speed: spd, hp, maxHp: hp, freeze: 0, archetype, boss, shield: isFinalBoss ? 700 : boss ? 160 : (def.shield || 0) + (world>=3?20:0), flying: !!def.flying, bob: Math.random() * 5, world, frostResist, armor, rage: world===4 };
+  const spd = (isFinalBoss ? 0.4 : boss ? 0.62 : def.speed) + state.wave * 0.012 + (worldId===3 ? 0.08 : 0);
+  const frostResist = worldId === 3 ? 0.55 : 0;
+  const armor = worldId === 4 ? 0.2 + Math.min(0.4, state.wave * 0.02) : 0;
+  return { mesh, t: 0, speed: spd, hp, maxHp: hp, freeze: 0, archetype, boss, shield: isFinalBoss ? 700 : boss ? 160 : (def.shield || 0) + (worldId>=3?20:0), flying: !!def.flying, bob: Math.random() * 5, world: worldId, frostResist, armor, rage: worldId===4 };
 }
 
 function getProjectile() {
@@ -1403,8 +1405,8 @@ ui.menuBtn.onclick = () => { state.paused = true; state.gameStarted = false; ui.
 function start(mode) {
   state.mode = mode;
   if (mode === 'campaign') {
-    const w = state.campaign.selectedWorld || 1;
-    const l = state.campaign.selectedLevel || 1;
+    const w = Number(state.campaign.selectedWorld) || 1;
+    const l = Number(state.campaign.selectedLevel) || 1;
     state.currentLevel = (w - 1) * 6 + l;
   } else if (mode === 'boss') {
     state.currentLevel = FINAL_BOSS_LEVEL;
