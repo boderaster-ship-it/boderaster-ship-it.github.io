@@ -1301,7 +1301,7 @@ function triggerNuke() {
 
 function placeTowerAt(cell) {
   const key = `${cell[0]},${cell[1]}`;
-  if (board.blocked.has(key) || pathCellSet.has(key)) return false;
+  if (!isValidPlacementCell(cell)) return false;
   if (state.selectedTowerType === 'custom') {
     if (!state.activeBuild || state.money < state.activeBuild.cost) return false;
     state.money -= state.activeBuild.cost;
@@ -1833,7 +1833,7 @@ ui.startWaveBtn.onclick = () => {
 };
 ui.upgradeBtn.onclick = () => {
   const t = state.selectedTower;
-  if (!t || t.level >= 4) return;
+  if (!t) return;
   const cost = 45 * t.level;
   if (state.money < cost) return showToast('Mehr Credits benötigt', false);
   state.money -= cost;
