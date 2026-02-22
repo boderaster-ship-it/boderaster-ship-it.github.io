@@ -24,6 +24,7 @@
       <button id="startWaveBtn" class="iconBtn" aria-label="Start wave">▶️</button>
       <button id="pauseBtn" class="iconBtn" aria-label="Pause">⏸️</button>
       <button id="speedBtn" class="iconBtn" aria-label="Change speed">⏩</button>
+      <button id="towerBuilderBtn" class="iconBtn hidden" aria-label="Tower Builder">🧩</button>
       <span id="speedLabel">x1</span>
     </section>
 
@@ -89,6 +90,21 @@
         <h2>Paused</h2>
         <button id="resumeBtn">Resume</button>
         <button id="menuBtn">Main Menu</button>
+      </div>
+    </section>
+
+    <section id="towerBuilderModal" class="modal hidden">
+      <div class="sheet builderSheet">
+        <h2>Tower Builder</h2>
+        <p class="tiny">Order does not matter. Mix 2-5 modules.</p>
+        <div id="builderModules" class="builderModules"></div>
+        <div id="builderSlots" class="builderSlots"></div>
+        <div id="builderPreview" class="builderPreview"></div>
+        <div id="savedBuilds" class="savedBuilds"></div>
+        <div class="row">
+          <button id="builderConfirmBtn">Arm Placement</button>
+          <button id="builderCancelBtn">Cancel</button>
+        </div>
       </div>
     </section>
 

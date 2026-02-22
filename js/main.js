@@ -37,8 +37,16 @@ const ui = {
   updateBtn: document.getElementById('updateBtn'),
   overviewBtn: document.getElementById('overviewBtn'),
   speedBtn: document.getElementById('speedBtn'),
+  towerBuilderBtn: document.getElementById('towerBuilderBtn'),
   speedLabel: document.getElementById('speedLabel'),
   nextWaveTimer: document.getElementById('nextWaveTimer'),
+  towerBuilderModal: document.getElementById('towerBuilderModal'),
+  builderModules: document.getElementById('builderModules'),
+  builderSlots: document.getElementById('builderSlots'),
+  builderPreview: document.getElementById('builderPreview'),
+  savedBuilds: document.getElementById('savedBuilds'),
+  builderConfirmBtn: document.getElementById('builderConfirmBtn'),
+  builderCancelBtn: document.getElementById('builderCancelBtn'),
   campaignLevelSelect: document.getElementById('campaignLevelSelect'),
   unlockList: document.getElementById('unlockList'),
   upgradePointsLabel: document.getElementById('upgradePointsLabel'),
@@ -61,6 +69,17 @@ const towerDefs = {
   cryo: { icon: '❄️', name: 'Frost Coil', cost: 90, damage: 6, range: 5.8, rate: 0.55, color: 0x9bf6ff, projectile: 'ice', slow: 0.45 },
   flame: { icon: '🔥', name: 'Pyre', cost: 105, damage: 4, range: 4.4, rate: 0.12, color: 0xff8c42, projectile: 'flame', burn: 1.4 }
 };
+
+
+const builderModules = {
+  kinetic: { icon: '🔩', name: 'Kinetic', cost: 34, dmg: 1.2, range: 0.2, cd: -0.02, effects: 'Reinforced plating + ballistic recoil. Boosts baseline damage.' },
+  cryo: { icon: '🧊', name: 'Cryo', cost: 40, dmg: 0.82, range: 0.15, cd: 0.02, effects: 'Applies chill stacks and freeze chance.' },
+  arc: { icon: '⚡', name: 'Arc', cost: 46, dmg: 0.88, range: 0.25, cd: 0.01, effects: 'Adds chain arcs and shock amplification.' },
+  explosive: { icon: '💣', name: 'Explosive', cost: 52, dmg: 1.05, range: -0.05, cd: 0.08, effects: 'Adds splash blasts, knockback pulse and area denial.' },
+  beam: { icon: '🎯', name: 'Beam', cost: 58, dmg: 1.26, range: 0.3, cd: 0.14, effects: 'Focus lens for precision damage and armor pierce.' }
+};
+
+const moduleKeys = Object.keys(builderModules);
 
 const enemyArchetypes = {
   runner: { color: 0x8effbd, speed: 1.2, hp: 50, size: 0.28 },
@@ -122,15 +141,22 @@ const state = {
   campaign: JSON.parse(localStorage.getItem('aegis-campaign') || '{"selectedLevel":1,"completed":{},"unlockedLevel":1}'),
   currentLevel: 1,
   levelWaves: 10,
-  pendingLevelRewards: null
+  pendingLevelRewards: null,
+  activeBuild: null,
+  builderDraft: [],
+  unlocks: JSON.parse(localStorage.getItem('aegis-unlocks') || '{"towerBuilder":false}'),
+  lastPointerTap: 0
 };
 
 state.meta.unlockedTowers = state.meta.unlockedTowers || ['cannon', 'laser'];
 state.meta.unlockedAbilities = state.meta.unlockedAbilities || ['freeze'];
+state.meta.savedBuilds = state.meta.savedBuilds || [];
+state.unlocks = state.unlocks || { towerBuilder: false };
 state.campaign = state.campaign || {};
 state.campaign.completed = state.campaign.completed || {};
 state.campaign.unlockedLevel = state.campaign.unlockedLevel || 1;
 state.campaign.selectedLevel = state.campaign.selectedLevel || 1;
+if ((state.campaign.completed && state.campaign.completed[1]) || (state.campaign.unlockedLevel || 1) > 1) state.unlocks.towerBuilder = true;
 syncProgressUnlocks();
 
 const board = { w: 16, h: 16, tile: 1.12, blocked: new Set(), path: pathCells };
@@ -190,6 +216,7 @@ world.add(ghost, hoverTile, rangeRing);
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 let last = performance.now();
+let lastTapAt = 0;
 
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
@@ -303,6 +330,7 @@ const campaignDefs = Array.from({ length: 6 }, (_, i) => ({
 
 function saveMeta() { localStorage.setItem('aegis-meta', JSON.stringify(state.meta)); }
 function saveCampaign() { localStorage.setItem('aegis-campaign', JSON.stringify(state.campaign)); }
+function saveUnlocks() { localStorage.setItem('aegis-unlocks', JSON.stringify(state.unlocks)); }
 
 function getTowerUnlockLevel(key) {
   return key === 'missile' ? 2 : key === 'cryo' ? 4 : key === 'flame' ? 6 : 1;
@@ -318,6 +346,8 @@ function isAbilityUnlocked(key) {
 
 function unlockAbility(key) {
   state.meta.unlockedAbilities = state.meta.unlockedAbilities || ['freeze'];
+state.meta.savedBuilds = state.meta.savedBuilds || [];
+state.unlocks = state.unlocks || { towerBuilder: false };
   if (!state.meta.unlockedAbilities.includes(key)) state.meta.unlockedAbilities.push(key);
 }
 
@@ -402,11 +432,144 @@ function buildCampaignMenu() {
     return `<div>${towerDefs[k].icon} ${towerDefs[k].name} — ${isTowerUnlocked(k) ? 'Unlocked' : `Locked: Complete Level ${lv}`}</div>`;
   });
   const abilityRows = Object.keys(abilities).map(k => `<div>${abilities[k].icon} ${abilities[k].name} — ${isAbilityUnlocked(k) ? 'Unlocked' : `Locked: Complete Level ${getAbilityUnlockLevel(k)}`}</div>`);
-  ui.unlockList.innerHTML = [...towerRows, ...abilityRows].join('');
+  const builderRow = `<div>🧩 Tower Builder — ${isTowerBuilderUnlocked() ? 'Unlocked' : 'Locked: Complete Campaign Level 1'}</div>`;
+  ui.unlockList.innerHTML = [...towerRows, ...abilityRows, builderRow].join('');
+}
+
+
+function sortedSignature(mods) {
+  return [...mods].sort().join('+');
+}
+
+function countMap(mods) {
+  return mods.reduce((acc, m) => (acc[m] = (acc[m] || 0) + 1, acc), {});
+}
+
+function generateBuildName(mods) {
+  const map = countMap(mods);
+  const parts = Object.entries(map).sort((a, b) => b[1] - a[1]).map(([k, c]) => `${builderModules[k].name}${c > 1 ? ' x' + c : ''}`);
+  return parts.join(' / ') + ' Array';
+}
+
+function buildConfigFromModules(mods) {
+  const map = countMap(mods);
+  const count = mods.length;
+  const base = { damage: 12, range: 5.4, rate: 0.72, slow: 0, freezeChance: 0, burn: 0, chain: 0, chainRange: 0, aoe: 0, pierce: 0, knockback: 0, pulse: 0, shatter: 0, shock: 0 };
+  mods.forEach(m => {
+    const def = builderModules[m];
+    base.damage *= def.dmg;
+    base.range += def.range;
+    base.rate += def.cd;
+  });
+  if (map.cryo) { base.slow = Math.min(0.72, 0.2 + map.cryo * 0.14); base.freezeChance = Math.min(0.75, 0.08 + map.cryo * 0.12); }
+  if (map.arc) { base.chain = map.arc; base.chainRange = 1.5 + map.arc * 0.6; base.shock = 0.2 + map.arc * 0.1; }
+  if (map.explosive) { base.aoe = 1.5 + map.explosive * 0.55; base.knockback = 0.12 + map.explosive * 0.13; }
+  if (map.beam) { base.pierce = map.beam; base.damage += map.beam * 2.5; }
+  if (map.kinetic) base.damage += map.kinetic * 1.8;
+
+  const sig = sortedSignature(mods);
+  const effects = [];
+  if (map.cryo >= 2) effects.push('Deep freeze ramp');
+  if (map.arc >= 2) effects.push('Extra chain links');
+  if (map.explosive >= 2) effects.push('Secondary blast shards');
+  if (map.beam >= 2) effects.push('Armor pierce crit lane');
+  if (sig.includes('arc+cryo')) { base.freezeChance += 0.08; base.shock += 0.1; effects.push('Conductive freeze'); }
+  if (sig.includes('cryo+explosive')) { base.shatter = 0.45; effects.push('Shatter burst vs frozen'); }
+  if (sig.includes('arc+explosive')) { base.chain += 1; effects.push('Electro-burst from blast center'); }
+  if (sig.includes('arc+beam')) { base.pulse = 0.22; effects.push('Beam chain pulse'); }
+  if (sig.includes('beam+cryo')) { base.slow += 0.12; effects.push('Stacking chill beam'); }
+
+  const moduleCost = mods.reduce((a, m) => a + builderModules[m].cost, 0);
+  let duplicatePremium = 0;
+  Object.values(map).forEach(c => { if (c > 1) duplicatePremium += c * c * 7; });
+  const synergyTier = count >= 3 ? 1 + (count - 2) * 0.14 : 1;
+  const synergyPremium = Math.round((effects.length + base.chain + base.pierce) * 6);
+  const cost = Math.round((56 + moduleCost + duplicatePremium + synergyPremium) * synergyTier);
+  return { mods: [...mods], map, count, name: generateBuildName(mods), cost, stats: base, effects, signature: sig };
+}
+
+function isTowerBuilderUnlocked() {
+  return !!state.unlocks.towerBuilder;
+}
+
+function renderBuilderUI() {
+  ui.builderModules.innerHTML = '';
+  moduleKeys.forEach(k => {
+    const m = builderModules[k];
+    const b = document.createElement('button');
+    b.className = 'builderModuleBtn';
+    b.innerHTML = `<strong>${m.icon} ${m.name}</strong><span>${m.effects}</span>`;
+    b.onclick = () => {
+      if (state.builderDraft.length >= 5) return showToast('Max 5 modules', false);
+      state.builderDraft.push(k);
+      updateBuilderPreview();
+    };
+    ui.builderModules.appendChild(b);
+  });
+  renderSavedBuilds();
+  updateBuilderPreview();
+}
+
+function renderSavedBuilds() {
+  ui.savedBuilds.innerHTML = '<strong>Saved Builds (5 slots)</strong>';
+  for (let i = 0; i < 5; i++) {
+    const row = document.createElement('div');
+    row.className = 'savedBuildRow';
+    const entry = state.meta.savedBuilds[i];
+    row.innerHTML = `<span>${entry ? `${entry.name} · ${entry.cost}¢` : `Slot ${i + 1} empty`}</span>`;
+    const load = document.createElement('button');
+    load.textContent = entry ? 'Load' : 'Save';
+    load.onclick = () => {
+      if (entry) state.builderDraft = [...entry.mods];
+      else {
+        if (state.builderDraft.length < 2) return showToast('Need 2+ modules first', false);
+        const cfg = buildConfigFromModules(state.builderDraft);
+        state.meta.savedBuilds[i] = { name: cfg.name, mods: [...cfg.mods], cost: cfg.cost };
+        saveMeta();
+      }
+      updateBuilderPreview();
+      renderSavedBuilds();
+    };
+    row.appendChild(load);
+    ui.savedBuilds.appendChild(row);
+  }
+}
+
+function updateBuilderPreview() {
+  ui.builderSlots.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    const slot = document.createElement('button');
+    slot.className = 'builderSlot' + (state.builderDraft[i] ? ' filled' : '');
+    slot.textContent = state.builderDraft[i] ? builderModules[state.builderDraft[i]].icon : '+';
+    slot.onclick = () => {
+      if (i < state.builderDraft.length) {
+        state.builderDraft.splice(i, 1);
+        updateBuilderPreview();
+      }
+    };
+    ui.builderSlots.appendChild(slot);
+  }
+  if (state.builderDraft.length < 2) {
+    ui.builderPreview.innerHTML = 'Pick 2–5 modules to generate a custom tower. Duplicates are valid and stronger, but cost more.';
+    return;
+  }
+  const cfg = buildConfigFromModules(state.builderDraft);
+  ui.builderPreview.innerHTML = `<strong>${cfg.name}</strong><br>Cost: ${cfg.cost}¢<br>DMG ${cfg.stats.damage.toFixed(1)} | RNG ${cfg.stats.range.toFixed(1)} | CD ${Math.max(0.16, cfg.stats.rate).toFixed(2)}<br>Effects: ${cfg.effects.join(', ') || 'No special synergy'}`;
+}
+
+function openBuilder() {
+  state.builderDraft = state.activeBuild ? [...state.activeBuild.mods] : [];
+  renderBuilderUI();
+  ui.towerBuilderModal.classList.remove('hidden');
+}
+
+function closeBuilder() {
+  ui.towerBuilderModal.classList.add('hidden');
 }
 
 function initDock() {
   ui.towerDock.innerHTML = '';
+  ui.towerBuilderBtn.classList.toggle('hidden', !isTowerBuilderUnlocked());
   Object.entries(towerDefs).forEach(([key, d]) => {
     if (!isTowerUnlocked(key)) return;
     const btn = document.createElement('button');
@@ -423,6 +586,16 @@ function initDock() {
     btn.id = `dock-${key}`;
     ui.towerDock.appendChild(btn);
   });
+  if (isTowerBuilderUnlocked()) {
+    const custom = document.createElement('button');
+    custom.className = 'dockBtn';
+    custom.innerHTML = '🧩';
+    custom.title = state.activeBuild ? `${state.activeBuild.name} · ${state.activeBuild.cost}¢` : 'Create custom build';
+    custom.onclick = () => openBuilder();
+    custom.id = 'dock-custom';
+    ui.towerDock.appendChild(custom);
+  }
+
 }
 
 function updateDock() {
@@ -432,6 +605,11 @@ function updateDock() {
     el.classList.toggle('active', state.selectedTowerType === key && state.buildMode);
     el.classList.toggle('locked', state.money < towerDefs[key].cost || !isTowerUnlocked(key));
   });
+  const custom = document.getElementById('dock-custom');
+  if (custom) {
+    custom.classList.toggle('active', state.selectedTowerType === 'custom' && state.buildMode);
+    custom.classList.toggle('locked', !state.activeBuild || state.money < state.activeBuild.cost);
+  }
 }
 
 function initAbilities() {
@@ -491,9 +669,11 @@ function handleLevelComplete() {
   if (rewards.unlockTower) unlockTower(rewards.unlockTower);
   Object.keys(abilities).forEach(k => { if (state.currentLevel >= getAbilityUnlockLevel(k)) unlockAbility(k); });
   state.campaign.completed[state.currentLevel] = true;
+  if (state.currentLevel >= 1) state.unlocks.towerBuilder = true;
   state.campaign.unlockedLevel = Math.max(state.campaign.unlockedLevel || 1, state.currentLevel + 1);
   saveMeta();
   saveCampaign();
+  saveUnlocks();
   ui.levelCompleteSummary.textContent = `Level ${state.currentLevel} cleared: ${state.levelWaves} / ${state.levelWaves} waves survived.`;
   ui.levelRewards.innerHTML = `<div>+${rewards.credits} credits</div><div>+${rewards.tokens} upgrade points</div>${rewards.unlockTower ? `<div>Unlocked tower: ${towerDefs[rewards.unlockTower].name}</div>` : ''}`;
   ui.levelCompleteModal.classList.remove('hidden');
@@ -502,21 +682,55 @@ function handleLevelComplete() {
   buildMeta();
 }
 
-function makeTower(type, cell) {
-  const d = towerDefs[type];
+function makeTower(type, cell, customCfg = null) {
+  const d = customCfg ? {
+    name: customCfg.name,
+    color: 0xb4dcff,
+    range: customCfg.stats.range,
+    rate: customCfg.stats.rate,
+    damage: customCfg.stats.damage,
+    projectile: customCfg.stats.pierce > 0 ? 'beam' : customCfg.stats.aoe > 0 ? 'shell' : customCfg.stats.chain > 0 ? 'bolt' : 'shell',
+    aoe: customCfg.stats.aoe
+  } : towerDefs[type];
   const g = new THREE.Group();
   const base = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.55, 0.55, 14), new THREE.MeshStandardMaterial({ color: 0x3f4859, roughness: 0.5, metalness: 0.6 }));
-  const core = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.42, 10), new THREE.MeshStandardMaterial({ color: d.color, emissive: d.color, emissiveIntensity: 0.35 }));
+  const coreColor = customCfg ? 0xa6d6ff : d.color;
+  const core = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.42, 10), new THREE.MeshStandardMaterial({ color: coreColor, emissive: coreColor, emissiveIntensity: 0.35 }));
   core.position.y = 0.46;
   const barrelGeo = type === 'laser' ? new THREE.CylinderGeometry(0.08, 0.08, 0.9, 10) : type === 'missile' ? new THREE.ConeGeometry(0.13, 0.9, 10) : type === 'cryo' ? new THREE.BoxGeometry(0.12, 0.3, 0.82) : type === 'flame' ? new THREE.TorusGeometry(0.22, 0.06, 8, 16) : new THREE.BoxGeometry(0.16, 0.16, 0.9);
   const barrel = new THREE.Mesh(barrelGeo, new THREE.MeshStandardMaterial({ color: type === 'flame' ? 0xffbc74 : 0xdce7f8, roughness: 0.3, metalness: 0.7 }));
   barrel.position.set(0, 0.62, 0.22);
   g.add(base, core, barrel);
+
+  if (customCfg) {
+    const accents = [];
+    const addAccent = (geo, color, x, y, z, s = 1) => {
+      const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.25, roughness: 0.4, metalness: 0.55 }));
+      m.position.set(x, y, z);
+      m.scale.setScalar(s);
+      g.add(m);
+      accents.push(m);
+    };
+    const c = customCfg.map;
+    if (c.cryo) addAccent(new THREE.CylinderGeometry(0.07, 0.07, 0.45, 8), 0x8de9ff, -0.25, 0.55, 0, 1 + c.cryo * 0.15);
+    if (c.arc) addAccent(new THREE.ConeGeometry(0.11, 0.34, 6), 0xb388ff, 0.26, 0.62, 0.1, 1 + c.arc * 0.12);
+    if (c.explosive) addAccent(new THREE.TorusGeometry(0.2, 0.05, 8, 16), 0xffa74f, 0, 0.74, 0.25, 1 + c.explosive * 0.14);
+    if (c.beam) addAccent(new THREE.SphereGeometry(0.1, 10, 8), 0xffe5ea, 0, 0.65, 0.5, 1 + c.beam * 0.1);
+    if (c.kinetic) addAccent(new THREE.BoxGeometry(0.35, 0.08, 0.3), 0x9eb1c7, 0, 0.36, -0.1, 1 + c.kinetic * 0.1);
+    const tint = new THREE.Color(0x9eb1c7);
+    if (c.cryo) tint.lerp(new THREE.Color(0x7fdfff), 0.2);
+    if (c.arc) tint.lerp(new THREE.Color(0xa985ff), 0.2);
+    if (c.explosive) tint.lerp(new THREE.Color(0xff9f5a), 0.2);
+    if (c.beam) tint.lerp(new THREE.Color(0xffd8e0), 0.2);
+    core.material.color.copy(tint);
+    core.material.emissive.copy(tint);
+  }
+
   const p = cellToWorld(cell[0], cell[1]);
   g.position.copy(p).setY(p.y + 0.3);
   g.castShadow = true;
   world.add(g);
-  return { type, cell, level: 1, cooldown: 0, mesh: g, barrel, core, branch: state.meta.branchCrit ? 'crit' : state.meta.branchChain ? 'chain' : 'none' };
+  return { type, cell, level: 1, cooldown: 0, mesh: g, barrel, core, branch: state.meta.branchCrit ? 'crit' : state.meta.branchChain ? 'chain' : 'none', custom: customCfg, displayName: customCfg ? customCfg.name : d.name };
 }
 
 function spawnEnemy(boss = false) {
@@ -540,33 +754,47 @@ function getProjectile() {
 }
 
 function fireTower(tower, enemy) {
-  const d = towerDefs[tower.type];
+  const customStats = tower.custom?.stats;
+  const d = customStats ? {
+    projectile: customStats.pierce > 0 ? 'beam' : customStats.aoe > 0 ? 'missile' : customStats.chain > 0 ? 'bolt' : 'shell',
+    color: tower.core.material.color.getHex(),
+    damage: customStats.damage,
+    aoe: customStats.aoe,
+    slow: customStats.slow
+  } : towerDefs[tower.type];
   const p = getProjectile();
   p.alive = true;
   p.kind = d.projectile;
   p.damage = d.damage * tower.level;
   p.aoe = d.aoe || 0;
   p.slow = d.slow || 0;
+  p.custom = customStats || null;
   p.pos = tower.mesh.position.clone().add(new THREE.Vector3(0, 0.6, 0));
   p.target = enemy;
-  p.speed = d.projectile === 'missile' ? 8.5 : d.projectile === 'flame' ? 11 : 14;
+  p.speed = d.projectile === 'missile' ? 8.5 : d.projectile === 'flame' ? 11 : d.projectile === 'beam' ? 22 : 14;
   p.mesh.position.copy(p.pos);
   p.mesh.material.color.setHex(d.color);
   state.projectiles.push(p);
+  if (customStats?.chain > 0) {
+    const linked = state.enemies.filter(e => e !== enemy && e.mesh.position.distanceTo(enemy.mesh.position) < customStats.chainRange).slice(0, customStats.chain);
+    linked.forEach(e => applyHit(e, p.damage * (0.48 + customStats.shock), customStats.slow, 0, customStats));
+  }
   tower.barrel.position.z = -0.08;
   tower.recoil = 0.11;
   state.effects.push({ pos: p.pos.clone(), life: 0.18, color: d.color, radius: 0.8 });
 }
 
-function applyHit(enemy, damage, slow = 0, burn = 0) {
+function applyHit(enemy, damage, slow = 0, burn = 0, customStats = null) {
   if (enemy.shield > 0) {
     enemy.shield -= damage;
     if (enemy.shield < 0) enemy.hp += enemy.shield;
   } else {
     enemy.hp -= damage;
   }
-  enemy.freeze = Math.max(enemy.freeze, slow > 0 ? 0.6 : enemy.freeze);
+  const freezeDur = slow > 0 ? 0.45 + slow : 0;
+  enemy.freeze = Math.max(enemy.freeze, freezeDur);
   enemy.burn = Math.max(enemy.burn || 0, burn || 0);
+  if (customStats?.shatter && enemy.freeze > 0.2) enemy.hp -= damage * customStats.shatter;
   state.effects.push({ pos: enemy.mesh.position.clone(), life: 0.34, color: enemy.boss ? 0xff7d8d : 0xffd6a5 });
   if (ui.shakeToggle.checked) state.shake = Math.min(0.22, state.shake + 0.035);
 }
@@ -582,6 +810,16 @@ function triggerNuke() {
 function placeTowerAt(cell) {
   const key = `${cell[0]},${cell[1]}`;
   if (board.blocked.has(key) || pathCellSet.has(key)) return false;
+  if (state.selectedTowerType === 'custom') {
+    if (!state.activeBuild || state.money < state.activeBuild.cost) return false;
+    state.money -= state.activeBuild.cost;
+    board.blocked.add(key);
+    state.towers.push(makeTower('custom', cell, state.activeBuild));
+    state.buildMode = false;
+    ui.buildPanel.classList.add('hidden');
+    showToast(`${state.activeBuild.name} deployed`);
+    return true;
+  }
   const def = towerDefs[state.selectedTowerType];
   if (!def || state.money < def.cost) return false;
   state.money -= def.cost;
@@ -614,7 +852,7 @@ function updateUI() {
   ui.nextWaveTimer.textContent = state.betweenWaveCountdown > 0 && !state.inWave ? `Next wave in ${Math.ceil(state.betweenWaveCountdown)}…` : '';
 
   if (state.selectedTower) {
-    const d = towerDefs[state.selectedTower.type];
+    const d = state.selectedTower.custom ? { name: state.selectedTower.displayName, damage: state.selectedTower.custom.stats.damage, range: state.selectedTower.custom.stats.range, rate: state.selectedTower.custom.stats.rate } : towerDefs[state.selectedTower.type];
     const lvl = state.selectedTower.level;
     const next = { damage: Math.round(d.damage * (lvl + 1)), rate: Math.max(0.12, d.rate - 0.07 * lvl).toFixed(2) };
     ui.selectionPanel.classList.remove('hidden');
@@ -747,12 +985,14 @@ function animate(now) {
     t.barrel.position.z = 0.22 - t.recoil;
     t.mesh.rotation.y += dt * 0.25;
     t.core.material.emissiveIntensity = 0.3 + Math.sin(now * 0.008) * 0.08 + t.level * 0.05;
-    const range = towerDefs[t.type].range + (t.level - 1) * 0.45;
+    const baseRange = t.custom ? t.custom.stats.range : towerDefs[t.type].range;
+    const range = baseRange + (t.level - 1) * 0.45;
     const target = state.enemies.find(e => e.mesh.position.distanceTo(t.mesh.position) < range);
     const mult = state.buffs.overclock > 0 ? 0.62 : 1;
     if (target && t.cooldown <= 0 && state.inWave) {
       fireTower(t, target);
-      t.cooldown = Math.max(0.12, (towerDefs[t.type].rate - (t.level - 1) * 0.07) * mult);
+      const baseRate = t.custom ? t.custom.stats.rate : towerDefs[t.type].rate;
+      t.cooldown = Math.max(0.12, (baseRate - (t.level - 1) * 0.07) * mult);
     }
   }
 
@@ -767,8 +1007,8 @@ function animate(now) {
     p.pos.add(dirV.normalize().multiplyScalar(step));
     p.mesh.position.copy(p.pos);
     if (step < 0.2) {
-      if (p.aoe) state.enemies.forEach(e => { if (e.mesh.position.distanceTo(p.pos) < p.aoe) applyHit(e, p.damage, p.slow, p.kind === 'flame' ? 1.4 : 0); });
-      else applyHit(p.target, p.damage, p.slow, p.kind === 'flame' ? 1.4 : 0);
+      if (p.aoe) state.enemies.forEach(e => { if (e.mesh.position.distanceTo(p.pos) < p.aoe) applyHit(e, p.damage, p.slow, p.kind === 'flame' ? 1.4 : 0, p.custom); });
+      else applyHit(p.target, p.damage, p.slow, p.kind === 'flame' ? 1.4 : 0, p.custom);
       releaseProjectile(i);
     }
   }
@@ -810,7 +1050,7 @@ function pickCell(clientX, clientY) {
 let touches = new Map();
 canvas.addEventListener('pointerdown', e => {
   canvas.setPointerCapture(e.pointerId);
-  touches.set(e.pointerId, { x: e.clientX, y: e.clientY, t: performance.now() });
+  touches.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now() });
   if (touches.size === 1) {
     const cell = pickCell(e.clientX, e.clientY);
     if (!cell) return;
@@ -877,7 +1117,8 @@ canvas.addEventListener('pointerup', e => {
   touches.delete(e.pointerId);
   if (touches.size < 2) delete touches.gesture;
   const dt = performance.now() - (was?.t || 0);
-  if (dt < 260) {
+  const moved = was ? Math.hypot((was.x||0)-(was.sx||0), (was.y||0)-(was.sy||0)) : 99;
+  if (dt < 260 && moved < 18) {
     const nowTap = performance.now();
     if (nowTap - lastTapAt < 300) {
       unifiedOverview(true);
@@ -892,10 +1133,26 @@ canvas.addEventListener('pointerup', e => {
   }
 });
 
+canvas.addEventListener('pointercancel', e => { touches.delete(e.pointerId); });
 canvas.addEventListener('dblclick', () => unifiedOverview(true));
 canvas.addEventListener('wheel', e => {
   cam.velDist += e.deltaY * 0.004;
 }, { passive: true });
+
+
+ui.towerBuilderBtn.onclick = () => openBuilder();
+ui.builderCancelBtn.onclick = () => closeBuilder();
+ui.builderConfirmBtn.onclick = () => {
+  if (state.builderDraft.length < 2) return showToast('Select at least 2 modules', false);
+  const cfg = buildConfigFromModules(state.builderDraft);
+  state.activeBuild = cfg;
+  state.selectedTowerType = 'custom';
+  state.buildMode = true;
+  ui.buildPanel.classList.remove('hidden');
+  ui.buildTitle.textContent = `🧩 ${cfg.name} (${cfg.cost}¢)`;
+  closeBuilder();
+  updateDock();
+};
 
 ui.cancelBuildBtn.onclick = () => {
   state.buildMode = false;
@@ -926,7 +1183,8 @@ ui.upgradeBtn.onclick = () => {
 ui.sellBtn.onclick = () => {
   const t = state.selectedTower;
   if (!t) return;
-  state.money += Math.round(towerDefs[t.type].cost * 0.65);
+  const baseCost = t.custom ? t.custom.cost : towerDefs[t.type].cost;
+  state.money += Math.round(baseCost * 0.65);
   board.blocked.delete(`${t.cell[0]},${t.cell[1]}`);
   world.remove(t.mesh);
   state.towers = state.towers.filter(x => x !== t);
