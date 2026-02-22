@@ -7,7 +7,6 @@ const ui = {
   money: document.getElementById('money'),
   lives: document.getElementById('lives'),
   wave: document.getElementById('wave'),
-  mode: document.getElementById('mode'),
   phaseBadge: document.getElementById('phaseBadge'),
   startWaveBtn: document.getElementById('startWaveBtn'),
   towerDock: document.getElementById('towerDock'),
@@ -36,9 +35,10 @@ const ui = {
   shakeToggle: document.getElementById('shakeToggle'),
   perfToggle: document.getElementById('perfToggle'),
   updateBtn: document.getElementById('updateBtn'),
-  fitMapBtn: document.getElementById('fitMapBtn'),
   overviewBtn: document.getElementById('overviewBtn'),
-  resetCameraBtn: document.getElementById('resetCameraBtn'),
+  speedBtn: document.getElementById('speedBtn'),
+  speedLabel: document.getElementById('speedLabel'),
+  nextWaveTimer: document.getElementById('nextWaveTimer'),
   campaignLevelSelect: document.getElementById('campaignLevelSelect'),
   unlockList: document.getElementById('unlockList'),
   upgradePointsLabel: document.getElementById('upgradePointsLabel'),
@@ -58,7 +58,8 @@ const towerDefs = {
   cannon: { icon: '💥', name: 'Bastion', cost: 65, damage: 18, range: 5.2, rate: 0.85, color: 0x74b9ff, projectile: 'shell', aoe: 1.9 },
   laser: { icon: '🔷', name: 'Arc Prism', cost: 85, damage: 9, range: 6.4, rate: 0.25, color: 0x6fffe9, projectile: 'bolt' },
   missile: { icon: '🚀', name: 'Skyhammer', cost: 120, damage: 28, range: 7.1, rate: 1.2, color: 0xffd166, projectile: 'missile', aoe: 2.6 },
-  cryo: { icon: '❄️', name: 'Frost Coil', cost: 90, damage: 6, range: 5.8, rate: 0.55, color: 0x9bf6ff, projectile: 'ice', slow: 0.45 }
+  cryo: { icon: '❄️', name: 'Frost Coil', cost: 90, damage: 6, range: 5.8, rate: 0.55, color: 0x9bf6ff, projectile: 'ice', slow: 0.45 },
+  flame: { icon: '🔥', name: 'Pyre', cost: 105, damage: 4, range: 4.4, rate: 0.12, color: 0xff8c42, projectile: 'flame', burn: 1.4 }
 };
 
 const enemyArchetypes = {
@@ -112,6 +113,8 @@ const state = {
   abilityCooldowns: { freeze: 0, nuke: 0, overclock: 0, repair: 0 },
   buffs: { overclock: 0 },
   paused: false,
+  gameSpeed: 1,
+  betweenWaveCountdown: 0,
   gameStarted: false,
   shake: 0,
   meta: JSON.parse(localStorage.getItem('aegis-meta') || '{"upgradePoints":5,"unlockedTowers":["cannon","laser"]}'),
@@ -123,10 +126,12 @@ const state = {
 };
 
 state.meta.unlockedTowers = state.meta.unlockedTowers || ['cannon', 'laser'];
+state.meta.unlockedAbilities = state.meta.unlockedAbilities || ['freeze'];
 state.campaign = state.campaign || {};
 state.campaign.completed = state.campaign.completed || {};
 state.campaign.unlockedLevel = state.campaign.unlockedLevel || 1;
 state.campaign.selectedLevel = state.campaign.selectedLevel || 1;
+syncProgressUnlocks();
 
 const board = { w: 16, h: 16, tile: 1.12, blocked: new Set(), path: pathCells };
 const pathCellSet = new Set(board.path.map(([x, z]) => `${x},${z}`));
@@ -293,14 +298,36 @@ const campaignDefs = Array.from({ length: 6 }, (_, i) => ({
   waves: 10,
   rewardCredits: 140 + i * 35,
   rewardTokens: 2 + (i > 1 ? 1 : 0),
-  unlockTower: i === 1 ? 'missile' : i === 3 ? 'cryo' : null
+  unlockTower: i === 1 ? 'missile' : i === 3 ? 'cryo' : i === 5 ? 'flame' : null
 }));
 
 function saveMeta() { localStorage.setItem('aegis-meta', JSON.stringify(state.meta)); }
 function saveCampaign() { localStorage.setItem('aegis-campaign', JSON.stringify(state.campaign)); }
 
 function getTowerUnlockLevel(key) {
-  return key === 'missile' ? 2 : key === 'cryo' ? 4 : 1;
+  return key === 'missile' ? 2 : key === 'cryo' ? 4 : key === 'flame' ? 6 : 1;
+}
+
+function getAbilityUnlockLevel(key) {
+  return key === 'freeze' ? 1 : key === 'overclock' ? 2 : key === 'repair' ? 3 : 5;
+}
+
+function isAbilityUnlocked(key) {
+  return (state.meta.unlockedAbilities || ['freeze']).includes(key);
+}
+
+function unlockAbility(key) {
+  state.meta.unlockedAbilities = state.meta.unlockedAbilities || ['freeze'];
+  if (!state.meta.unlockedAbilities.includes(key)) state.meta.unlockedAbilities.push(key);
+}
+
+function syncProgressUnlocks() {
+  Object.keys(towerDefs).forEach(k => {
+    if ((state.campaign.unlockedLevel || 1) >= getTowerUnlockLevel(k)) unlockTower(k);
+  });
+  Object.keys(abilities).forEach(k => {
+    if ((state.campaign.unlockedLevel || 1) >= getAbilityUnlockLevel(k)) unlockAbility(k);
+  });
 }
 
 function isTowerUnlocked(key) {
@@ -320,20 +347,14 @@ function tweenCamera(target, ms = 700) {
   };
 }
 
-function fitMapCamera(animated = true) {
+function unifiedOverview(animated = true) {
   const target = { yaw: 0.58, pitch: 1.27, dist: 39, tx: 0, tz: board.h * board.tile * 0.52 };
   if (animated) tweenCamera(target, 650);
   else { cam.yaw = target.yaw; cam.pitch = target.pitch; cam.dist = target.dist; cam.target.set(target.tx, 0, target.tz); }
 }
 
-function resetCamera(animated = true) {
-  const target = { yaw: 0.6, pitch: 0.98, dist: 24, tx: 0, tz: 8.2 };
-  if (animated) tweenCamera(target, 500);
-  else { cam.yaw = target.yaw; cam.pitch = target.pitch; cam.dist = target.dist; cam.target.set(target.tx, 0, target.tz); }
-}
-
 function buildMeta() {
-  if (!state.meta || typeof state.meta !== 'object') state.meta = { upgradePoints: 5, unlockedTowers: ['cannon', 'laser'] };
+  if (!state.meta || typeof state.meta !== 'object') state.meta = { upgradePoints: 5, unlockedTowers: ['cannon', 'laser'], unlockedAbilities: ['freeze'] };
   state.meta.upgradePoints = state.meta.upgradePoints || 0;
   state.meta.unlockedTowers = state.meta.unlockedTowers || ['cannon', 'laser'];
   ui.upgradePointsLabel.textContent = `Upgrade Points: ${state.meta.upgradePoints}`;
@@ -368,28 +389,35 @@ function buildCampaignMenu() {
     btn.className = 'levelBtn';
     btn.disabled = !unlocked;
     btn.innerHTML = `Level ${def.level}<br><small>${completed ? 'Completed' : unlocked ? 'Unlocked' : `Locked · Complete Level ${def.level - 1}`}</small>`;
-    btn.onclick = () => { state.campaign.selectedLevel = def.level; saveCampaign(); buildCampaignMenu(); };
+    btn.onclick = () => {
+      state.campaign.selectedLevel = def.level;
+      saveCampaign();
+      if (unlocked) start('campaign');
+    };
     if (state.campaign.selectedLevel === def.level) btn.classList.add('active');
     ui.campaignLevelSelect.appendChild(btn);
   });
-  ui.unlockList.innerHTML = Object.keys(towerDefs).map(k => {
+  const towerRows = Object.keys(towerDefs).map(k => {
     const lv = getTowerUnlockLevel(k);
     return `<div>${towerDefs[k].icon} ${towerDefs[k].name} — ${isTowerUnlocked(k) ? 'Unlocked' : `Locked: Complete Level ${lv}`}</div>`;
-  }).join('');
+  });
+  const abilityRows = Object.keys(abilities).map(k => `<div>${abilities[k].icon} ${abilities[k].name} — ${isAbilityUnlocked(k) ? 'Unlocked' : `Locked: Complete Level ${getAbilityUnlockLevel(k)}`}</div>`);
+  ui.unlockList.innerHTML = [...towerRows, ...abilityRows].join('');
 }
 
 function initDock() {
   ui.towerDock.innerHTML = '';
   Object.entries(towerDefs).forEach(([key, d]) => {
+    if (!isTowerUnlocked(key)) return;
     const btn = document.createElement('button');
     btn.className = 'dockBtn';
-    btn.innerHTML = `${d.icon}<small>${d.name}<br>${d.cost}¢</small>`;
+    btn.innerHTML = `${d.icon}`;
+    btn.title = `${d.name} · ${d.cost}¢`;
     btn.onclick = () => {
-      if (!isTowerUnlocked(key)) return showToast(`Locked: Complete Level ${getTowerUnlockLevel(key)}`, false);
       state.selectedTowerType = key;
       state.buildMode = true;
       ui.buildPanel.classList.remove('hidden');
-      ui.buildTitle.textContent = `${d.name} (${d.cost}¢)`;
+      ui.buildTitle.textContent = `${d.icon} ${d.name} (${d.cost}¢)`;
       updateDock();
     };
     btn.id = `dock-${key}`;
@@ -409,10 +437,12 @@ function updateDock() {
 function initAbilities() {
   ui.abilityBar.innerHTML = '';
   Object.entries(abilities).forEach(([k, a]) => {
+    if (!isAbilityUnlocked(k)) return;
     const btn = document.createElement('button');
     btn.className = 'abilityBtn';
     btn.id = `ability-${k}`;
-    btn.innerHTML = `${a.icon}<small>${a.name}<br>Ready</small>`;
+    btn.innerHTML = `${a.icon}`;
+    btn.title = a.name;
     btn.onclick = () => {
       if (state.abilityCooldowns[k] > 0 || state.buildPhase || !state.inWave) return;
       a.use();
@@ -436,15 +466,19 @@ function spawnWave() {
   state.inWave = true;
   state.buildPhase = false;
   if (state.wave % 5 === 0) ui.bossWarning.classList.remove('hidden');
+  syncProgressUnlocks();
+  initDock();
+  initAbilities();
   refreshWavePreview();
-  resetCamera(false);
+  unifiedOverview(false);
 }
 
 function beginBuildPhase() {
   state.buildPhase = true;
   state.inWave = false;
   ui.bossWarning.classList.add('hidden');
-  if (state.mode === 'campaign' && state.wave >= state.levelWaves) handleLevelComplete();
+  if (state.mode === 'campaign' && state.wave >= state.levelWaves) { handleLevelComplete(); return; }
+  state.betweenWaveCountdown = 5;
 }
 
 
@@ -455,6 +489,7 @@ function handleLevelComplete() {
   state.money += rewards.credits;
   state.meta.upgradePoints += rewards.tokens;
   if (rewards.unlockTower) unlockTower(rewards.unlockTower);
+  Object.keys(abilities).forEach(k => { if (state.currentLevel >= getAbilityUnlockLevel(k)) unlockAbility(k); });
   state.campaign.completed[state.currentLevel] = true;
   state.campaign.unlockedLevel = Math.max(state.campaign.unlockedLevel || 1, state.currentLevel + 1);
   saveMeta();
@@ -473,7 +508,8 @@ function makeTower(type, cell) {
   const base = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.55, 0.55, 14), new THREE.MeshStandardMaterial({ color: 0x3f4859, roughness: 0.5, metalness: 0.6 }));
   const core = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.42, 10), new THREE.MeshStandardMaterial({ color: d.color, emissive: d.color, emissiveIntensity: 0.35 }));
   core.position.y = 0.46;
-  const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 0.9), new THREE.MeshStandardMaterial({ color: 0xdce7f8, roughness: 0.3, metalness: 0.7 }));
+  const barrelGeo = type === 'laser' ? new THREE.CylinderGeometry(0.08, 0.08, 0.9, 10) : type === 'missile' ? new THREE.ConeGeometry(0.13, 0.9, 10) : type === 'cryo' ? new THREE.BoxGeometry(0.12, 0.3, 0.82) : type === 'flame' ? new THREE.TorusGeometry(0.22, 0.06, 8, 16) : new THREE.BoxGeometry(0.16, 0.16, 0.9);
+  const barrel = new THREE.Mesh(barrelGeo, new THREE.MeshStandardMaterial({ color: type === 'flame' ? 0xffbc74 : 0xdce7f8, roughness: 0.3, metalness: 0.7 }));
   barrel.position.set(0, 0.62, 0.22);
   g.add(base, core, barrel);
   const p = cellToWorld(cell[0], cell[1]);
@@ -513,7 +549,7 @@ function fireTower(tower, enemy) {
   p.slow = d.slow || 0;
   p.pos = tower.mesh.position.clone().add(new THREE.Vector3(0, 0.6, 0));
   p.target = enemy;
-  p.speed = d.projectile === 'missile' ? 8.5 : 14;
+  p.speed = d.projectile === 'missile' ? 8.5 : d.projectile === 'flame' ? 11 : 14;
   p.mesh.position.copy(p.pos);
   p.mesh.material.color.setHex(d.color);
   state.projectiles.push(p);
@@ -522,7 +558,7 @@ function fireTower(tower, enemy) {
   state.effects.push({ pos: p.pos.clone(), life: 0.18, color: d.color, radius: 0.8 });
 }
 
-function applyHit(enemy, damage, slow = 0) {
+function applyHit(enemy, damage, slow = 0, burn = 0) {
   if (enemy.shield > 0) {
     enemy.shield -= damage;
     if (enemy.shield < 0) enemy.hp += enemy.shield;
@@ -530,6 +566,7 @@ function applyHit(enemy, damage, slow = 0) {
     enemy.hp -= damage;
   }
   enemy.freeze = Math.max(enemy.freeze, slow > 0 ? 0.6 : enemy.freeze);
+  enemy.burn = Math.max(enemy.burn || 0, burn || 0);
   state.effects.push({ pos: enemy.mesh.position.clone(), life: 0.34, color: enemy.boss ? 0xff7d8d : 0xffd6a5 });
   if (ui.shakeToggle.checked) state.shake = Math.min(0.22, state.shake + 0.035);
 }
@@ -559,19 +596,22 @@ function placeTowerAt(cell) {
 function updateUI() {
   ui.money.textContent = Math.floor(state.money);
   ui.lives.textContent = state.lives;
-  ui.wave.textContent = state.wave;
-  ui.mode.textContent = state.mode[0].toUpperCase() + state.mode.slice(1);
-  ui.phaseBadge.textContent = state.buildPhase ? 'Build Phase' : 'Wave Running';
+  ui.wave.textContent = state.mode === 'campaign' ? `${state.wave}/${state.levelWaves}` : `${state.wave}`;
+  ui.phaseBadge.textContent = state.buildPhase ? 'Build' : 'Wave';
   ui.phaseBadge.classList.toggle('build', state.buildPhase);
   ui.phaseBadge.classList.toggle('wave', !state.buildPhase);
   ui.startWaveBtn.disabled = !state.buildPhase;
 
   Object.entries(abilities).forEach(([k, a]) => {
-    const cd = state.abilityCooldowns[k];
     const el = document.getElementById(`ability-${k}`);
+    if (!el) return;
+    const cd = state.abilityCooldowns[k];
     el.classList.toggle('disabled', cd > 0 || state.buildPhase);
-    el.innerHTML = `${a.icon}<small>${a.name}<br>${cd > 0 ? `${cd.toFixed(1)}s` : state.buildPhase ? 'Build only' : 'Ready'}</small>`;
+    el.textContent = cd > 0 ? `${Math.ceil(cd)}` : a.icon;
   });
+  ui.speedLabel.textContent = `x${state.gameSpeed}`;
+  ui.nextWaveTimer.classList.toggle('hidden', state.betweenWaveCountdown <= 0 || state.inWave);
+  ui.nextWaveTimer.textContent = state.betweenWaveCountdown > 0 && !state.inWave ? `Next wave in ${Math.ceil(state.betweenWaveCountdown)}…` : '';
 
   if (state.selectedTower) {
     const d = towerDefs[state.selectedTower.type];
@@ -641,11 +681,17 @@ function animate(now) {
     return;
   }
 
-  for (const k of Object.keys(state.abilityCooldowns)) state.abilityCooldowns[k] = Math.max(0, state.abilityCooldowns[k] - dt);
-  state.buffs.overclock = Math.max(0, state.buffs.overclock - dt);
+  const simDt = dt * state.gameSpeed;
+  for (const k of Object.keys(state.abilityCooldowns)) state.abilityCooldowns[k] = Math.max(0, state.abilityCooldowns[k] - simDt);
+  state.buffs.overclock = Math.max(0, state.buffs.overclock - simDt);
+
+  if (!state.inWave && state.betweenWaveCountdown > 0 && !state.paused) {
+    state.betweenWaveCountdown = Math.max(0, state.betweenWaveCountdown - dt);
+    if (state.betweenWaveCountdown <= 0) spawnWave();
+  }
 
   if (state.inWave) {
-    state.spawnTimer -= dt;
+    state.spawnTimer -= simDt;
     if (state.spawnTimer <= 0 && state.remainingInWave > 0) {
       const boss = state.wave % 5 === 0 && state.remainingInWave === 1;
       state.enemies.push(spawnEnemy(boss));
@@ -668,8 +714,9 @@ function animate(now) {
     }
 
     const speed = e.freeze > 0 ? 0 : e.speed * (state.mode === 'challenge' ? 1.15 : 1);
-    e.freeze = Math.max(0, e.freeze - dt);
-    e.t += dt * speed / (board.path.length * 0.58);
+    e.freeze = Math.max(0, e.freeze - simDt);
+    if (e.burn > 0) { e.hp -= simDt * (2.2 * e.burn); e.burn = Math.max(0, e.burn - simDt); }
+    e.t += simDt * speed / (board.path.length * 0.58);
     const idx = Math.floor(e.t * (board.path.length - 1));
     if (idx >= board.path.length - 1) {
       state.lives -= e.boss ? 4 : 1;
@@ -695,8 +742,8 @@ function animate(now) {
   }
 
   for (const t of state.towers) {
-    t.cooldown -= dt;
-    t.recoil = Math.max(0, (t.recoil || 0) - dt * 1.8);
+    t.cooldown -= simDt;
+    t.recoil = Math.max(0, (t.recoil || 0) - simDt * 1.8);
     t.barrel.position.z = 0.22 - t.recoil;
     t.mesh.rotation.y += dt * 0.25;
     t.core.material.emissiveIntensity = 0.3 + Math.sin(now * 0.008) * 0.08 + t.level * 0.05;
@@ -716,19 +763,19 @@ function animate(now) {
       continue;
     }
     const dirV = p.target.mesh.position.clone().sub(p.pos);
-    const step = Math.min(dirV.length(), p.speed * dt);
+    const step = Math.min(dirV.length(), p.speed * simDt);
     p.pos.add(dirV.normalize().multiplyScalar(step));
     p.mesh.position.copy(p.pos);
     if (step < 0.2) {
-      if (p.aoe) state.enemies.forEach(e => { if (e.mesh.position.distanceTo(p.pos) < p.aoe) applyHit(e, p.damage, p.slow); });
-      else applyHit(p.target, p.damage, p.slow);
+      if (p.aoe) state.enemies.forEach(e => { if (e.mesh.position.distanceTo(p.pos) < p.aoe) applyHit(e, p.damage, p.slow, p.kind === 'flame' ? 1.4 : 0); });
+      else applyHit(p.target, p.damage, p.slow, p.kind === 'flame' ? 1.4 : 0);
       releaseProjectile(i);
     }
   }
 
   for (let i = state.effects.length - 1; i >= 0; i--) {
     const fx = state.effects[i];
-    fx.life -= dt;
+    fx.life -= simDt;
     if (!fx.mesh) {
       fx.mesh = state.pools.effects.pop() || new THREE.Mesh(new THREE.RingGeometry(0.2, 0.26, 24), new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }));
       fx.mesh.rotation.x = -Math.PI / 2;
@@ -831,6 +878,13 @@ canvas.addEventListener('pointerup', e => {
   if (touches.size < 2) delete touches.gesture;
   const dt = performance.now() - (was?.t || 0);
   if (dt < 260) {
+    const nowTap = performance.now();
+    if (nowTap - lastTapAt < 300) {
+      unifiedOverview(true);
+      lastTapAt = 0;
+      return;
+    }
+    lastTapAt = nowTap;
     const cell = pickCell(e.clientX, e.clientY);
     if (!cell) return;
     if (state.buildMode && state.selectedTowerType) placeTowerAt(cell);
@@ -838,7 +892,7 @@ canvas.addEventListener('pointerup', e => {
   }
 });
 
-canvas.addEventListener('dblclick', () => resetCamera(true));
+canvas.addEventListener('dblclick', () => unifiedOverview(true));
 canvas.addEventListener('wheel', e => {
   cam.velDist += e.deltaY * 0.004;
 }, { passive: true });
@@ -899,11 +953,16 @@ function start(mode) {
   state.effects = [];
   board.blocked.clear();
   state.paused = false;
+  state.gameSpeed = 1;
+  state.betweenWaveCountdown = 0;
   state.gameStarted = true;
   ui.mainMenu.classList.add('hidden');
   ui.bossWarning.classList.add('hidden');
+  syncProgressUnlocks();
+  initDock();
+  initAbilities();
   refreshWavePreview();
-  resetCamera(false);
+  unifiedOverview(false);
 }
 
 ui.playCampaign.onclick = () => {
@@ -913,9 +972,8 @@ ui.playCampaign.onclick = () => {
 };
 ui.playEndless.onclick = () => start('endless');
 ui.playChallenge.onclick = () => start('challenge');
-ui.fitMapBtn.onclick = () => fitMapCamera(true);
-ui.overviewBtn.onclick = () => tweenCamera({ yaw: 0.6, pitch: 1.32, dist: 34, tx: 0, tz: board.h * board.tile * 0.5 }, 600);
-ui.resetCameraBtn.onclick = () => resetCamera(true);
+ui.overviewBtn.onclick = () => unifiedOverview(true);
+ui.speedBtn.onclick = () => { state.gameSpeed = state.gameSpeed >= 4 ? 1 : state.gameSpeed + 1; };
 ui.continueBtn.onclick = () => {
   ui.levelCompleteModal.classList.add('hidden');
   ui.mainMenu.classList.remove('hidden');
@@ -950,5 +1008,5 @@ buildCampaignMenu();
 initDock();
 initAbilities();
 refreshWavePreview();
-showToast('Build first, then tap Start Wave. 1 finger rotate, 2 fingers pan/zoom. Use Show Whole Field anytime.');
+showToast('Build first, then tap ▶️. Double-tap field for overview.');
 requestAnimationFrame(animate);

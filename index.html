@@ -12,36 +12,35 @@
   <div id="app">
     <canvas id="gameCanvas"></canvas>
 
-    <header id="hud" class="glass">
-      <div>💰 <span id="money">0</span></div>
-      <div>❤️ <span id="lives">0</span></div>
+    <header id="hud">
       <div>🌊 <span id="wave">0</span></div>
-      <div>🎖️ <span id="mode">Campaign</span></div>
-      <div id="phaseBadge" class="phase build">Build Phase</div>
-      <button id="startWaveBtn" class="smallBtn">Start Wave</button>
-      <button id="pauseBtn" class="smallBtn">Pause</button>
+      <div>❤️ <span id="lives">0</span></div>
+      <div>💰 <span id="money">0</span></div>
+      <div id="phaseBadge" class="phase build">Build</div>
+      <div id="nextWaveTimer" class="hidden"></div>
     </header>
 
-    <section id="cameraControls" class="glass">
-      <button id="fitMapBtn" class="smallBtn">Show Whole Field</button>
-      <button id="overviewBtn" class="smallBtn">Overview</button>
-      <button id="resetCameraBtn" class="smallBtn">Reset Camera</button>
+    <section id="controlBar">
+      <button id="startWaveBtn" class="iconBtn" aria-label="Start wave">▶️</button>
+      <button id="pauseBtn" class="iconBtn" aria-label="Pause">⏸️</button>
+      <button id="speedBtn" class="iconBtn" aria-label="Change speed">⏩</button>
+      <span id="speedLabel">x1</span>
     </section>
 
-    <section id="wavePreview" class="glass"></section>
-    <section id="bossWarning" class="glass hidden">⚠️ BOSS INCOMING</section>
+    <button id="overviewBtn" class="sideCamBtn" aria-label="Overview">🧭</button>
 
-    <section id="abilityBar" class="glass"></section>
+    <section id="wavePreview"></section>
+    <section id="bossWarning" class="hidden">⚠️ BOSS INCOMING</section>
 
-    <section id="towerDock" class="glass"></section>
+    <section id="abilityBar"></section>
+    <section id="towerDock"></section>
 
-    <section id="buildPanel" class="glass hidden">
+    <section id="buildPanel" class="hidden">
       <div id="buildTitle">Build Mode</div>
-      <div id="buildHint">Tap highlighted tile to place tower</div>
-      <button id="cancelBuildBtn">Cancel</button>
+      <button id="cancelBuildBtn" class="iconBtn">✖️</button>
     </section>
 
-    <section id="selectionPanel" class="glass hidden">
+    <section id="selectionPanel" class="hidden">
       <h3 id="selectedName"></h3>
       <div id="selectedStats"></div>
       <div id="upgradeDiff"></div>
