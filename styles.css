@@ -18,7 +18,7 @@ body { margin: 0; background: #05070d; overflow: hidden; }
 #hud {
   left: 8px; right: 8px; top: calc(8px + env(safe-area-inset-top));
   padding: 10px;
-  display: grid; grid-template-columns: repeat(5, minmax(0,1fr));
+  display: grid; grid-template-columns: repeat(7, minmax(0,1fr));
   gap: 8px; text-align: center; font-weight: 700; font-size: 15px;
 }
 .smallBtn { padding: 6px 8px; font-size: 13px; }
@@ -56,3 +56,8 @@ button {
 #toast.show { opacity: 1; }
 #updateBtn { position: absolute; left: 12px; right: 12px; top: calc(140px + env(safe-area-inset-top)); z-index: 20; }
 .hidden { display: none !important; }
+
+.phase { padding: 6px 8px; border-radius: 10px; font-size: 12px; align-self: center; }
+.phase.build { background: rgba(66, 128, 88, 0.45); border: 1px solid rgba(120, 211, 156, 0.7); }
+.phase.wave { background: rgba(129, 72, 82, 0.45); border: 1px solid rgba(238, 133, 152, 0.7); }
+#startWaveBtn:disabled { opacity: 0.55; }
