@@ -1079,9 +1079,20 @@ function refreshWavePreview() {
   ui.wavePreview.textContent = `Nächste Welle: ${txt}${levelText}`;
 }
 
+function getDifficultyRamp() {
+  const levelProgress = Math.max(0, (Math.min(state.currentLevel || 1, FINAL_BOSS_LEVEL) - 1) / (FINAL_BOSS_LEVEL - 1));
+  const waveProgress = Math.min(1.2, Math.max(0, state.wave) / 12);
+  return {
+    count: 2 * (1 + levelProgress * 0.65 + waveProgress * 0.22),
+    hp: 2 * (1 + levelProgress * 0.82 + waveProgress * 0.28)
+  };
+}
+
 function spawnWave() {
   state.wave += 1;
-  const count = 8 + Math.floor(state.wave * 1.6);
+  const ramp = getDifficultyRamp();
+  const baseCount = 8 + Math.floor(state.wave * 1.6);
+  const count = Math.ceil(baseCount * ramp.count);
   state.remainingInWave = count;
   state.spawnTimer = 0.2;
   state.inWave = true;
@@ -1189,7 +1200,8 @@ function spawnEnemy(boss = false) {
   const healthBar = getHealthBar();
   const isFinalBoss = state.mode === 'boss' && boss;
   const hpMult = worldId === 4 ? 1.42 : worldId === 3 ? 1.25 : worldId === 2 ? 1.12 : 1;
-  const hp = ((isFinalBoss ? 4800 : boss ? 680 : def.hp + state.wave * 9) * hpMult) * (modeRules[state.mode]?.scale || 1.2);
+  const ramp = getDifficultyRamp();
+  const hp = ((isFinalBoss ? 4800 : boss ? 680 : def.hp + state.wave * 9) * hpMult) * (modeRules[state.mode]?.scale || 1.2) * ramp.hp;
   const spd = (isFinalBoss ? 0.4 : boss ? 0.62 : def.speed) + state.wave * 0.012 + (worldId===3 ? 0.08 : 0);
   const frostResist = worldId === 3 ? 0.55 : 0;
   const armor = worldId === 4 ? 0.2 + Math.min(0.4, state.wave * 0.02) : 0;
@@ -1205,8 +1217,8 @@ function spawnEnemy(boss = false) {
     archetype,
     boss,
     isFinalBoss,
-    shield: isFinalBoss ? 700 : boss ? 160 : (def.shield || 0) + (worldId>=3?20:0),
-    maxShield: isFinalBoss ? 700 : boss ? 160 : (def.shield || 0) + (worldId>=3?20:0),
+    shield: (isFinalBoss ? 700 : boss ? 160 : (def.shield || 0) + (worldId>=3?20:0)) * ramp.hp,
+    maxShield: (isFinalBoss ? 700 : boss ? 160 : (def.shield || 0) + (worldId>=3?20:0)) * ramp.hp,
     flying: !!def.flying,
     bob: Math.random() * 5,
     world: worldId,
