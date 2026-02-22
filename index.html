@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
@@ -16,28 +16,28 @@
       <div>🌊 <span id="wave">0</span></div>
       <div>❤️ <span id="lives">0</span></div>
       <div>💰 <span id="money">0</span></div>
-      <div id="phaseBadge" class="phase build">Build</div>
+      <div id="phaseBadge" class="phase build">Bauen</div>
       <div id="nextWaveTimer" class="hidden"></div>
     </header>
 
     <section id="controlBar">
-      <button id="startWaveBtn" class="iconBtn" aria-label="Start wave">▶️</button>
+      <button id="startWaveBtn" class="iconBtn" aria-label="Welle starten">▶️</button>
       <button id="pauseBtn" class="iconBtn" aria-label="Pause">⏸️</button>
-      <button id="speedBtn" class="iconBtn" aria-label="Change speed">⏩</button>
-      <button id="towerBuilderBtn" class="iconBtn hidden" aria-label="Tower Builder">🧩</button>
+      <button id="speedBtn" class="iconBtn" aria-label="Geschwindigkeit ändern">⏩</button>
+      <button id="towerBuilderBtn" class="iconBtn hidden" aria-label="Turm-Editor">🧩</button>
       <span id="speedLabel">x1</span>
     </section>
 
-    <button id="overviewBtn" class="sideCamBtn" aria-label="Overview">🧭</button>
+    <button id="overviewBtn" class="sideCamBtn" aria-label="Übersicht">🧭</button>
 
     <section id="wavePreview"></section>
-    <section id="bossWarning" class="hidden">⚠️ BOSS INCOMING</section>
+    <section id="bossWarning" class="hidden">⚠️ BOSS NÄHERT SICH</section>
 
     <section id="abilityBar"></section>
     <section id="towerDock"></section>
 
     <section id="buildPanel" class="hidden">
-      <div id="buildTitle">Build Mode</div>
+      <div id="buildTitle">Bau-Modus</div>
       <button id="cancelBuildBtn" class="iconBtn">✖️</button>
     </section>
 
@@ -46,69 +46,69 @@
       <div id="selectedStats"></div>
       <div id="upgradeDiff"></div>
       <div class="row">
-        <button id="upgradeBtn">Upgrade</button>
-        <button id="sellBtn">Sell</button>
+        <button id="upgradeBtn">Aufwerten</button>
+        <button id="sellBtn">Verkaufen</button>
       </div>
     </section>
 
     <main id="mainMenu" class="modal">
       <div class="sheet">
         <h1>Aegis Frontier TD</h1>
-        <p>Premium portrait 3D defense.</p>
+        <p>Premium-3D-Tower-Defense im Hochformat.</p>
         <div class="row">
-          <button id="playCampaign">Campaign</button>
-          <button id="playEndless">Endless</button>
-          <button id="playChallenge">Challenge</button>
+          <button id="playCampaign">Kampagne</button>
+          <button id="playEndless">Endlos</button>
+          <button id="playChallenge">Herausforderung</button>
         </div>
-        <h3>Campaign Levels</h3>
+        <h3>Kampagnenlevel</h3>
         <div id="campaignLevelSelect"></div>
-        <h3>Command Center Upgrades</h3>
+        <h3>Kommandozentrale-Upgrades</h3>
         <div id="upgradePointsLabel"></div>
         <div id="metaTree"></div>
-        <h3>Tower Unlocks</h3>
+        <h3>Turm-Freischaltungen</h3>
         <div id="unlockList"></div>
-        <h3>Settings</h3>
+        <h3>Einstellungen</h3>
         <div class="settings">
           <label><input type="checkbox" id="audioToggle" checked /> Audio</label>
-          <label><input type="checkbox" id="shakeToggle" checked /> Camera shake</label>
-          <label><input type="checkbox" id="perfToggle" /> Performance mode</label>
+          <label><input type="checkbox" id="shakeToggle" checked /> Kameraerschütterung</label>
+          <label><input type="checkbox" id="perfToggle" /> Leistungsmodus</label>
         </div>
       </div>
     </main>
 
     <section id="levelCompleteModal" class="modal hidden">
       <div class="sheet">
-        <h2>Level Complete</h2>
+        <h2>Level abgeschlossen</h2>
         <p id="levelCompleteSummary"></p>
         <div id="levelRewards"></div>
-        <button id="continueBtn">Continue</button>
+        <button id="continueBtn">Weiter</button>
       </div>
     </section>
 
     <section id="pauseMenu" class="modal hidden">
       <div class="sheet">
-        <h2>Paused</h2>
-        <button id="resumeBtn">Resume</button>
-        <button id="menuBtn">Main Menu</button>
+        <h2>Pausiert</h2>
+        <button id="resumeBtn">Fortsetzen</button>
+        <button id="menuBtn">Hauptmenü</button>
       </div>
     </section>
 
     <section id="towerBuilderModal" class="modal hidden">
       <div class="sheet builderSheet">
-        <h2>Tower Builder</h2>
-        <p class="tiny">Order does not matter. Mix 2-5 modules.</p>
+        <h2>Turm-Editor</h2>
+        <p class="tiny">Reihenfolge ist egal. Kombiniere 2-5 Module.</p>
         <div id="builderModules" class="builderModules"></div>
         <div id="builderSlots" class="builderSlots"></div>
         <div id="builderPreview" class="builderPreview"></div>
         <div id="savedBuilds" class="savedBuilds"></div>
         <div class="row">
-          <button id="builderConfirmBtn">Arm Placement</button>
-          <button id="builderCancelBtn">Cancel</button>
+          <button id="builderConfirmBtn">Platzierung aktivieren</button>
+          <button id="builderCancelBtn">Abbrechen</button>
         </div>
       </div>
     </section>
 
-    <button id="updateBtn" class="hidden">Update available · Tap to refresh</button>
+    <button id="updateBtn" class="hidden">Update verfügbar · Tippen zum Aktualisieren</button>
     <div id="toast"></div>
   </div>
 
