@@ -103,3 +103,10 @@ button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; co
   #bossWarning { top: calc(167px + env(safe-area-inset-top)); }
   .builderModules { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
+
+#obstaclePanel {
+  position: absolute; left: 8px; right: 8px; bottom: calc(170px + env(safe-area-inset-bottom));
+  background: rgba(18, 15, 12, 0.78); border: 1px solid rgba(236, 170, 120, 0.6); border-radius: 10px; padding: 8px;
+  display: flex; justify-content: space-between; align-items: center; z-index: 7;
+}
+#clearObstacleBtn { padding: 8px 10px; border-radius: 9px; }
