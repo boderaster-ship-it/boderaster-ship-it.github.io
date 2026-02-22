@@ -57,9 +57,9 @@ const ui = {
 };
 
 const modeRules = {
-  campaign: { scale: 1, mod: 'Standard operation' },
-  endless: { scale: 1.16, mod: 'Scaling armor every wave' },
-  challenge: { scale: 1.34, mod: 'Aggressive hostiles' }
+  campaign: { scale: 1, mod: 'Standardbetrieb' },
+  endless: { scale: 1.16, mod: 'Skalierende Panzerung pro Welle' },
+  challenge: { scale: 1.34, mod: 'Aggressive Feinde' }
 };
 
 const towerDefs = {
@@ -72,11 +72,11 @@ const towerDefs = {
 
 
 const builderModules = {
-  kinetic: { icon: '🔩', name: 'Kinetic', cost: 34, dmg: 1.2, range: 0.2, cd: -0.02, effects: 'Reinforced plating + ballistic recoil. Boosts baseline damage.' },
-  cryo: { icon: '🧊', name: 'Cryo', cost: 40, dmg: 0.82, range: 0.15, cd: 0.02, effects: 'Applies chill stacks and freeze chance.' },
-  arc: { icon: '⚡', name: 'Arc', cost: 46, dmg: 0.88, range: 0.25, cd: 0.01, effects: 'Adds chain arcs and shock amplification.' },
-  explosive: { icon: '💣', name: 'Explosive', cost: 52, dmg: 1.05, range: -0.05, cd: 0.08, effects: 'Adds splash blasts, knockback pulse and area denial.' },
-  beam: { icon: '🎯', name: 'Beam', cost: 58, dmg: 1.26, range: 0.3, cd: 0.14, effects: 'Focus lens for precision damage and armor pierce.' }
+  kinetic: { icon: '🔩', name: 'Kinetik', cost: 34, dmg: 1.2, range: 0.2, cd: -0.02, effects: 'Verstärkte Panzerung + ballistischer Rückstoß. Erhöht den Grundschaden.' },
+  cryo: { icon: '🧊', name: 'Kryo', cost: 40, dmg: 0.82, range: 0.15, cd: 0.02, effects: 'Verursacht Kältestapel und eine Chance auf Einfrieren.' },
+  arc: { icon: '⚡', name: 'Lichtbogen', cost: 46, dmg: 0.88, range: 0.25, cd: 0.01, effects: 'Fügt Kettenblitze und Schockverstärkung hinzu.' },
+  explosive: { icon: '💣', name: 'Explosiv', cost: 52, dmg: 1.05, range: -0.05, cd: 0.08, effects: 'Fügt Flächentreffer, Rückstoßimpuls und Flächenkontrolle hinzu.' },
+  beam: { icon: '🎯', name: 'Strahl', cost: 58, dmg: 1.26, range: 0.3, cd: 0.14, effects: 'Fokuslinse für Präzisionsschaden und Panzerungsdurchdringung.' }
 };
 
 const moduleKeys = Object.keys(builderModules);
@@ -89,17 +89,17 @@ const enemyArchetypes = {
 };
 
 const abilities = {
-  freeze: { name: 'Freeze', icon: '🧊', cd: 22, text: 'Stop enemies 2.5s', use: () => state.enemies.forEach(e => e.freeze = Math.max(e.freeze, 2.5)) },
-  nuke: { name: 'Nuke', icon: '☢️', cd: 35, text: 'Huge AoE blast', use: () => triggerNuke() },
-  overclock: { name: 'Overclock', icon: '⚡', cd: 26, text: '+40% fire rate 7s', use: () => state.buffs.overclock = 7 },
-  repair: { name: 'Repair', icon: '🛠️', cd: 28, text: '+3 lives', use: () => state.lives = Math.min(30, state.lives + 3) }
+  freeze: { name: 'Einfrieren', icon: '🧊', cd: 22, text: 'Stoppt Feinde für 2,5 s', use: () => state.enemies.forEach(e => e.freeze = Math.max(e.freeze, 2.5)) },
+  nuke: { name: 'Nuklear', icon: '☢️', cd: 35, text: 'Gewaltige Flächenexplosion', use: () => triggerNuke() },
+  overclock: { name: 'Übertakten', icon: '⚡', cd: 26, text: '+40% Feuerrate für 7 s', use: () => state.buffs.overclock = 7 },
+  repair: { name: 'Reparatur', icon: '🛠️', cd: 28, text: '+3 Leben', use: () => state.lives = Math.min(30, state.lives + 3) }
 };
 
 const metaDefs = [
-  { key: 'branchCrit', name: 'Precision Core', affects: 'Bastion critical chance', desc: 'Adds critical strikes for Bastion towers.', max: 1, unit: '%' },
-  { key: 'branchChain', name: 'Relay Core', affects: 'Arc Prism chaining', desc: 'Arc Prism bolts can chain to extra targets.', max: 1, unit: 'targets' },
-  { key: 'dot', name: 'Burning Payloads', affects: 'Damage-over-time strength', desc: 'Projectiles apply stronger burn after impact.', max: 3, unit: 'stacks' },
-  { key: 'econ', name: 'Supply Cache', affects: 'Starting credits', desc: 'Begin each level with extra credits.', max: 3, unit: 'credits' }
+  { key: 'branchCrit', name: 'Präzisionskern', affects: 'Bastion-Kritchance', desc: 'Fügt Bastion-Türmen kritische Treffer hinzu.', max: 1, unit: '%' },
+  { key: 'branchChain', name: 'Relaiskern', affects: 'Arc-Prisma-Kettenangriff', desc: 'Arc-Prisma-Projektile können auf zusätzliche Ziele überspringen.', max: 1, unit: 'Ziele' },
+  { key: 'dot', name: 'Brennende Ladungen', affects: 'Stärke von Schaden über Zeit', desc: 'Projektile verursachen nach dem Treffer stärkeren Brand.', max: 3, unit: 'Stapel' },
+  { key: 'econ', name: 'Versorgungslager', affects: 'Startguthaben', desc: 'Beginne jedes Level mit zusätzlichem Guthaben.', max: 3, unit: 'Credits' }
 ];
 
 const pathCells = [
@@ -445,17 +445,17 @@ function buildMeta() {
   if (!state.meta || typeof state.meta !== 'object') state.meta = { upgradePoints: 5, unlockedTowers: ['cannon', 'laser'], unlockedAbilities: ['freeze'] };
   state.meta.upgradePoints = state.meta.upgradePoints || 0;
   state.meta.unlockedTowers = state.meta.unlockedTowers || ['cannon', 'laser'];
-  ui.upgradePointsLabel.textContent = `Upgrade Points: ${state.meta.upgradePoints}`;
+  ui.upgradePointsLabel.textContent = `Upgrade-Punkte: ${state.meta.upgradePoints}`;
   ui.metaTree.innerHTML = '';
   for (const m of metaDefs) {
     const lvl = state.meta[m.key] || 0;
     const cost = 2 + lvl;
-    const reqText = m.key === 'branchChain' ? 'Unlock: Complete Level 2' : m.key === 'dot' ? 'Unlock: Complete Level 3' : 'Unlock: Complete Level 1';
-    const valueCur = m.key === 'econ' ? `${lvl * 45} credits` : `${lvl} ${m.unit}`;
+    const reqText = m.key === 'branchChain' ? 'Freischaltung: Level 2 abschließen' : m.key === 'dot' ? 'Freischaltung: Level 3 abschließen' : 'Freischaltung: Level 1 abschließen';
+    const valueCur = m.key === 'econ' ? `${lvl * 45} Credits` : `${lvl} ${m.unit}`;
     const valueNextRaw = Math.min(m.max, lvl + 1);
-    const valueNext = m.key === 'econ' ? `${valueNextRaw * 45} credits` : `${valueNextRaw} ${m.unit}`;
+    const valueNext = m.key === 'econ' ? `${valueNextRaw * 45} Credits` : `${valueNextRaw} ${m.unit}`;
     const btn = document.createElement('button');
-    btn.innerHTML = `<strong>${m.name}</strong><br><small>${m.affects}</small><br><small>${valueCur} → ${valueNext} · Cost ${cost}</small><br><small>${reqText}</small>`;
+    btn.innerHTML = `<strong>${m.name}</strong><br><small>${m.affects}</small><br><small>${valueCur} → ${valueNext} · Kosten ${cost}</small><br><small>${reqText}</small>`;
     btn.disabled = lvl >= m.max || state.meta.upgradePoints < cost;
     btn.onclick = () => {
       if ((state.meta.upgradePoints || 0) < cost || lvl >= m.max) return;
@@ -476,7 +476,7 @@ function buildCampaignMenu() {
     const unlocked = def.level <= state.campaign.unlockedLevel;
     btn.className = 'levelBtn';
     btn.disabled = !unlocked;
-    btn.innerHTML = `Level ${def.level}<br><small>${completed ? 'Completed' : unlocked ? 'Unlocked' : `Locked · Complete Level ${def.level - 1}`}</small>`;
+    btn.innerHTML = `Level ${def.level}<br><small>${completed ? 'Abgeschlossen' : unlocked ? 'Freigeschaltet' : `Gesperrt · Schließe Level ${def.level - 1} ab`}</small>`;
     btn.onclick = () => {
       state.campaign.selectedLevel = def.level;
       saveCampaign();
@@ -487,10 +487,10 @@ function buildCampaignMenu() {
   });
   const towerRows = Object.keys(towerDefs).map(k => {
     const lv = getTowerUnlockLevel(k);
-    return `<div>${towerDefs[k].icon} ${towerDefs[k].name} — ${isTowerUnlocked(k) ? 'Unlocked' : `Locked: Complete Level ${lv}`}</div>`;
+    return `<div>${towerDefs[k].icon} ${towerDefs[k].name} — ${isTowerUnlocked(k) ? 'Freigeschaltet' : `Gesperrt: Schließe Level ${lv} ab`}</div>`;
   });
-  const abilityRows = Object.keys(abilities).map(k => `<div>${abilities[k].icon} ${abilities[k].name} — ${isAbilityUnlocked(k) ? 'Unlocked' : `Locked: Complete Level ${getAbilityUnlockLevel(k)}`}</div>`);
-  const builderRow = `<div>🧩 Tower Builder — ${isTowerBuilderUnlocked() ? 'Unlocked' : 'Locked: Complete Campaign Level 1'}</div>`;
+  const abilityRows = Object.keys(abilities).map(k => `<div>${abilities[k].icon} ${abilities[k].name} — ${isAbilityUnlocked(k) ? 'Freigeschaltet' : `Gesperrt: Schließe Level ${getAbilityUnlockLevel(k)} ab`}</div>`);
+  const builderRow = `<div>🧩 Turm-Editor — ${isTowerBuilderUnlocked() ? 'Freigeschaltet' : 'Gesperrt: Schließe Kampagnenlevel 1 ab'}</div>`;
   ui.unlockList.innerHTML = [...towerRows, ...abilityRows, builderRow].join('');
 }
 
@@ -506,7 +506,7 @@ function countMap(mods) {
 function generateBuildName(mods) {
   const map = countMap(mods);
   const parts = Object.entries(map).sort((a, b) => b[1] - a[1]).map(([k, c]) => `${builderModules[k].name}${c > 1 ? ' x' + c : ''}`);
-  return parts.join(' / ') + ' Array';
+  return parts.join(' / ') + '-Array';
 }
 
 function buildConfigFromModules(mods) {
@@ -527,15 +527,15 @@ function buildConfigFromModules(mods) {
 
   const sig = sortedSignature(mods);
   const effects = [];
-  if (map.cryo >= 2) effects.push('Deep freeze ramp');
-  if (map.arc >= 2) effects.push('Extra chain links');
-  if (map.explosive >= 2) effects.push('Secondary blast shards');
-  if (map.beam >= 2) effects.push('Armor pierce crit lane');
-  if (sig.includes('arc+cryo')) { base.freezeChance += 0.08; base.shock += 0.1; effects.push('Conductive freeze'); }
-  if (sig.includes('cryo+explosive')) { base.shatter = 0.45; effects.push('Shatter burst vs frozen'); }
-  if (sig.includes('arc+explosive')) { base.chain += 1; effects.push('Electro-burst from blast center'); }
-  if (sig.includes('arc+beam')) { base.pulse = 0.22; effects.push('Beam chain pulse'); }
-  if (sig.includes('beam+cryo')) { base.slow += 0.12; effects.push('Stacking chill beam'); }
+  if (map.cryo >= 2) effects.push('Tieffrost-Aufbau');
+  if (map.arc >= 2) effects.push('Zusätzliche Kettenverbindungen');
+  if (map.explosive >= 2) effects.push('Sekundäre Explosionssplitter');
+  if (map.beam >= 2) effects.push('Panzerungsdurchschlag-Kritspur');
+  if (sig.includes('arc+cryo')) { base.freezeChance += 0.08; base.shock += 0.1; effects.push('Leitfähige Vereisung'); }
+  if (sig.includes('cryo+explosive')) { base.shatter = 0.45; effects.push('Splitterexplosion gegen Gefrorene'); }
+  if (sig.includes('arc+explosive')) { base.chain += 1; effects.push('Elektroausbruch aus dem Explosionszentrum'); }
+  if (sig.includes('arc+beam')) { base.pulse = 0.22; effects.push('Strahl-Kettenimpuls'); }
+  if (sig.includes('beam+cryo')) { base.slow += 0.12; effects.push('Stapelnder Kältestrahl'); }
 
   const moduleCost = mods.reduce((a, m) => a + builderModules[m].cost, 0);
   let duplicatePremium = 0;
@@ -558,7 +558,7 @@ function renderBuilderUI() {
     b.className = 'builderModuleBtn';
     b.innerHTML = `<strong>${m.icon} ${m.name}</strong><span>${m.effects}</span>`;
     b.onclick = () => {
-      if (state.builderDraft.length >= 5) return showToast('Max 5 modules', false);
+      if (state.builderDraft.length >= 5) return showToast('Maximal 5 Module', false);
       state.builderDraft.push(k);
       updateBuilderPreview();
     };
@@ -569,18 +569,18 @@ function renderBuilderUI() {
 }
 
 function renderSavedBuilds() {
-  ui.savedBuilds.innerHTML = '<strong>Saved Builds (5 slots)</strong>';
+  ui.savedBuilds.innerHTML = '<strong>Gespeicherte Builds (5 Plätze)</strong>';
   for (let i = 0; i < 5; i++) {
     const row = document.createElement('div');
     row.className = 'savedBuildRow';
     const entry = state.meta.savedBuilds[i];
-    row.innerHTML = `<span>${entry ? `${entry.name} · ${entry.cost}¢` : `Slot ${i + 1} empty`}</span>`;
+    row.innerHTML = `<span>${entry ? `${entry.name} · ${entry.cost}¢` : `Platz ${i + 1} leer`}</span>`;
     const load = document.createElement('button');
-    load.textContent = entry ? 'Load' : 'Save';
+    load.textContent = entry ? 'Laden' : 'Speichern';
     load.onclick = () => {
       if (entry) state.builderDraft = [...entry.mods];
       else {
-        if (state.builderDraft.length < 2) return showToast('Need 2+ modules first', false);
+        if (state.builderDraft.length < 2) return showToast('Zuerst mindestens 2 Module wählen', false);
         const cfg = buildConfigFromModules(state.builderDraft);
         state.meta.savedBuilds[i] = { name: cfg.name, mods: [...cfg.mods], cost: cfg.cost };
         saveMeta();
@@ -608,11 +608,11 @@ function updateBuilderPreview() {
     ui.builderSlots.appendChild(slot);
   }
   if (state.builderDraft.length < 2) {
-    ui.builderPreview.innerHTML = 'Pick 2–5 modules to generate a custom tower. Duplicates are valid and stronger, but cost more.';
+    ui.builderPreview.innerHTML = 'Wähle 2–5 Module, um einen benutzerdefinierten Turm zu erzeugen. Duplikate sind erlaubt und stärker, kosten aber mehr.';
     return;
   }
   const cfg = buildConfigFromModules(state.builderDraft);
-  ui.builderPreview.innerHTML = `<strong>${cfg.name}</strong><br>Cost: ${cfg.cost}¢<br>DMG ${cfg.stats.damage.toFixed(1)} | RNG ${cfg.stats.range.toFixed(1)} | CD ${Math.max(0.16, cfg.stats.rate).toFixed(2)}<br>Effects: ${cfg.effects.join(', ') || 'No special synergy'}`;
+  ui.builderPreview.innerHTML = `<strong>${cfg.name}</strong><br>Kosten: ${cfg.cost}¢<br>DMG ${cfg.stats.damage.toFixed(1)} | RNG ${cfg.stats.range.toFixed(1)} | CD ${Math.max(0.16, cfg.stats.rate).toFixed(2)}<br>Effekte: ${cfg.effects.join(', ') || 'Keine besondere Synergie'}`;
 }
 
 function openBuilder() {
@@ -648,7 +648,7 @@ function initDock() {
     const custom = document.createElement('button');
     custom.className = 'dockBtn';
     custom.innerHTML = '🧩';
-    custom.title = state.activeBuild ? `${state.activeBuild.name} · ${state.activeBuild.cost}¢` : 'Create custom build';
+    custom.title = state.activeBuild ? `${state.activeBuild.name} · ${state.activeBuild.cost}¢` : 'Eigenes Build erstellen';
     custom.onclick = () => openBuilder();
     custom.id = 'dock-custom';
     ui.towerDock.appendChild(custom);
@@ -689,9 +689,9 @@ function initAbilities() {
 }
 
 function refreshWavePreview() {
-  const txt = state.wave % 5 === 4 ? '👹 Boss + mixed escorts' : 'Fast + tank + shield mix';
-  const levelText = state.mode === 'campaign' ? ` · Level ${state.currentLevel} Wave ${Math.min(state.wave + 1, state.levelWaves)}/${state.levelWaves}` : '';
-  ui.wavePreview.textContent = `Next Wave: ${txt} · ${modeRules[state.mode].mod}${levelText}`;
+  const txt = state.wave % 5 === 4 ? '👹 Boss + gemischte Eskorte' : 'Schnelle + Panzer + Schild-Mix';
+  const levelText = state.mode === 'campaign' ? ` · Level ${state.currentLevel} Welle ${Math.min(state.wave + 1, state.levelWaves)}/${state.levelWaves}` : '';
+  ui.wavePreview.textContent = `Nächste Welle: ${txt} · ${modeRules[state.mode].mod}${levelText}`;
 }
 
 function spawnWave() {
@@ -732,8 +732,8 @@ function handleLevelComplete() {
   saveMeta();
   saveCampaign();
   saveUnlocks();
-  ui.levelCompleteSummary.textContent = `Level ${state.currentLevel} cleared: ${state.levelWaves} / ${state.levelWaves} waves survived.`;
-  ui.levelRewards.innerHTML = `<div>+${rewards.credits} credits</div><div>+${rewards.tokens} upgrade points</div>${rewards.unlockTower ? `<div>Unlocked tower: ${towerDefs[rewards.unlockTower].name}</div>` : ''}`;
+  ui.levelCompleteSummary.textContent = `Level ${state.currentLevel} abgeschlossen: ${state.levelWaves} / ${state.levelWaves} Wellen überlebt.`;
+  ui.levelRewards.innerHTML = `<div>+${rewards.credits} Credits</div><div>+${rewards.tokens} Upgrade-Punkte</div>${rewards.unlockTower ? `<div>Freigeschalteter Turm: ${towerDefs[rewards.unlockTower].name}</div>` : ''}`;
   ui.levelCompleteModal.classList.remove('hidden');
   state.paused = true;
   buildCampaignMenu();
@@ -879,7 +879,7 @@ function placeTowerAt(cell) {
     blockedCross.visible = false;
     syncBuildPads();
     ui.buildPanel.classList.add('hidden');
-    showToast(`${state.activeBuild.name} deployed`);
+    showToast(`${state.activeBuild.name} platziert`);
     return true;
   }
   const def = towerDefs[state.selectedTowerType];
@@ -893,7 +893,7 @@ function placeTowerAt(cell) {
   blockedCross.visible = false;
   syncBuildPads();
   ui.buildPanel.classList.add('hidden');
-  showToast(`${def.name} deployed`);
+  showToast(`${def.name} platziert`);
   return true;
 }
 
@@ -901,7 +901,7 @@ function updateUI() {
   ui.money.textContent = Math.floor(state.money);
   ui.lives.textContent = state.lives;
   ui.wave.textContent = state.mode === 'campaign' ? `${state.wave}/${state.levelWaves}` : `${state.wave}`;
-  ui.phaseBadge.textContent = state.buildPhase ? 'Build' : 'Wave';
+  ui.phaseBadge.textContent = state.buildPhase ? 'Bauen' : 'Welle';
   ui.phaseBadge.classList.toggle('build', state.buildPhase);
   ui.phaseBadge.classList.toggle('wave', !state.buildPhase);
   ui.startWaveBtn.disabled = !state.buildPhase;
@@ -915,7 +915,7 @@ function updateUI() {
   });
   ui.speedLabel.textContent = `x${state.gameSpeed}`;
   ui.nextWaveTimer.classList.toggle('hidden', state.betweenWaveCountdown <= 0 || state.inWave);
-  ui.nextWaveTimer.textContent = state.betweenWaveCountdown > 0 && !state.inWave ? `Next wave in ${Math.ceil(state.betweenWaveCountdown)}…` : '';
+  ui.nextWaveTimer.textContent = state.betweenWaveCountdown > 0 && !state.inWave ? `Nächste Welle in ${Math.ceil(state.betweenWaveCountdown)}…` : '';
 
   if (state.selectedTower) {
     const d = state.selectedTower.custom ? { name: state.selectedTower.displayName, damage: state.selectedTower.custom.stats.damage, range: state.selectedTower.custom.stats.range, rate: state.selectedTower.custom.stats.rate } : towerDefs[state.selectedTower.type];
@@ -924,7 +924,7 @@ function updateUI() {
     ui.selectionPanel.classList.remove('hidden');
     ui.selectedName.textContent = `${d.name} Lv.${lvl} [${state.selectedTower.branch}]`;
     ui.selectedStats.textContent = `DMG ${Math.round(d.damage * lvl)} | RNG ${(d.range + 0.45 * (lvl - 1)).toFixed(1)} | CD ${Math.max(0.12, d.rate - 0.07 * (lvl - 1)).toFixed(2)}`;
-    ui.upgradeDiff.innerHTML = `<span class="deltaUp">+${next.damage - Math.round(d.damage * lvl)} damage</span> · <span class="deltaUp">visual tier +</span> · <span class="deltaDown">-${(Math.max(0.12, d.rate - 0.07 * (lvl - 1)) - next.rate).toFixed(2)}s cooldown</span>`;
+    ui.upgradeDiff.innerHTML = `<span class="deltaUp">+${next.damage - Math.round(d.damage * lvl)} Schaden</span> · <span class="deltaUp">Visueller Rang +</span> · <span class="deltaDown">-${(Math.max(0.12, d.rate - 0.07 * (lvl - 1)) - next.rate).toFixed(2)}s Abklingzeit</span>`;
   } else {
     ui.selectionPanel.classList.add('hidden');
   }
@@ -1030,7 +1030,7 @@ function animate(now) {
       if (state.lives <= 0) {
         state.paused = true;
         ui.mainMenu.classList.remove('hidden');
-        showToast('Defeat. Restarting...', false);
+        showToast('Niederlage. Neustart...', false);
       }
       continue;
     }
@@ -1267,7 +1267,7 @@ canvas.addEventListener('wheel', e => {
 ui.towerBuilderBtn.onclick = () => openBuilder();
 ui.builderCancelBtn.onclick = () => closeBuilder();
 ui.builderConfirmBtn.onclick = () => {
-  if (state.builderDraft.length < 2) return showToast('Select at least 2 modules', false);
+  if (state.builderDraft.length < 2) return showToast('Wähle mindestens 2 Module', false);
   const cfg = buildConfigFromModules(state.builderDraft);
   state.activeBuild = cfg;
   state.selectedTowerType = 'custom';
@@ -1289,7 +1289,7 @@ ui.startWaveBtn.onclick = () => {
   if (!state.buildPhase) return;
   if (state.mode === 'campaign' && state.wave >= state.levelWaves) return;
   if (state.towers.length === 0) {
-    showToast('Place at least one tower first.', false);
+    showToast('Platziere zuerst mindestens einen Turm.', false);
     return;
   }
   spawnWave();
@@ -1298,12 +1298,12 @@ ui.upgradeBtn.onclick = () => {
   const t = state.selectedTower;
   if (!t || t.level >= 4) return;
   const cost = 45 * t.level;
-  if (state.money < cost) return showToast('Need more credits', false);
+  if (state.money < cost) return showToast('Mehr Credits benötigt', false);
   state.money -= cost;
   t.level += 1;
   t.core.scale.setScalar(1 + t.level * 0.08);
   t.barrel.scale.z = 1 + t.level * 0.16;
-  showToast('Upgraded');
+  showToast('Aufgewertet');
 };
 ui.sellBtn.onclick = () => {
   const t = state.selectedTower;
@@ -1352,7 +1352,7 @@ function start(mode) {
 
 ui.playCampaign.onclick = () => {
   const sel = state.campaign.selectedLevel || 1;
-  if (sel > (state.campaign.unlockedLevel || 1)) return showToast('This level is locked.', false);
+  if (sel > (state.campaign.unlockedLevel || 1)) return showToast('Dieses Level ist gesperrt.', false);
   start('campaign');
 };
 ui.playEndless.onclick = () => start('endless');
@@ -1393,5 +1393,5 @@ buildCampaignMenu();
 initDock();
 initAbilities();
 refreshWavePreview();
-showToast('Build first, then tap ▶️. Double-tap field for overview.');
+showToast('Baue zuerst, dann tippe auf ▶️. Doppeltippen für Übersicht.');
 requestAnimationFrame(animate);
