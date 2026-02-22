@@ -3,6 +3,36 @@ import * as THREE from 'https://unpkg.com/three@0.164.1/build/three.module.js';
 const canvas = document.getElementById('gameCanvas');
 const toastEl = document.getElementById('toast');
 
+function safeJSONParse(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (err) {
+    console.error(`[MenuBootstrap] Failed to parse ${key}; resetting save data.`, err);
+    return fallback;
+  }
+}
+
+function showMenuFallback(message, err = null) {
+  console.error('[MenuBootstrap] ' + message, err || '');
+  const menu = document.getElementById('mainMenu');
+  if (!menu) return;
+  menu.classList.remove('hidden');
+  menu.innerHTML = `<div class="sheet"><h2>Menu failed to load</h2><p>${message}</p><button id="menuReloadBtn">Tap to reload</button></div>`;
+  const reloadBtn = document.getElementById('menuReloadBtn');
+  reloadBtn?.addEventListener('click', async () => {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+    window.location.reload();
+  });
+}
+
 const ui = {
   money: document.getElementById('money'),
   lives: document.getElementById('lives'),
@@ -148,6 +178,7 @@ const campaignDefs = Array.from({ length: 24 }, (_, i) => {
 });
 
 const FINAL_BOSS_LEVEL = 25;
+const WORLD_MENU_LABELS = { 1: 'World 1 = Forest', 2: 'World 2 = Ice', 3: 'World 3 = Lava', 4: 'World 4 = Endboss (combined)' };
 
 
 const state = {
@@ -174,17 +205,17 @@ const state = {
   betweenWaveCountdown: 0,
   gameStarted: false,
   shake: 0,
-  meta: JSON.parse(localStorage.getItem('aegis-meta') || '{"upgradePoints":5,"unlockedTowers":["cannon","laser"]}'),
+  meta: safeJSONParse('aegis-meta', { upgradePoints: 5, unlockedTowers: ['cannon', 'laser'] }),
   pools: { enemies: [], projectiles: [], effects: [], healthBars: [], fragments: [], particles: [], shockwaves: [] },
   particlesFrame: 0,
   maxParticlesFrame: 70,
-  campaign: JSON.parse(localStorage.getItem('aegis-campaign') || '{"selectedLevel":1,"completed":{},"unlockedLevel":1}'),
+  campaign: safeJSONParse('aegis-campaign', { selectedLevel: 1, selectedWorld: 1, completed: {}, unlockedLevel: 1, clearedObstacles: {} }),
   currentLevel: 1,
   levelWaves: 10,
   pendingLevelRewards: null,
   activeBuild: null,
   builderDraft: [],
-  unlocks: JSON.parse(localStorage.getItem('aegis-unlocks') || '{"towerBuilder":false}'),
+  unlocks: safeJSONParse('aegis-unlocks', { towerBuilder: false }),
   lastPointerTap: 0,
   obstacleTap: { key: null, expires: 0 }
 };
@@ -247,7 +278,6 @@ scene.add(world);
 const terrain = buildTerrain();
 world.add(terrain);
 buildPath();
-buildEnvironmentProps();
 createMarker(board.path[0], 0x4ef5ad);
 createMarker(board.path[board.path.length - 1], 0xff7d8d);
 
@@ -289,6 +319,7 @@ const PINCH_MULT = 0.0038;
 let hoverVisualState = { valid: true, pulse: 0 };
 
 buildBuildZonePads();
+buildEnvironmentProps();
 
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
@@ -731,6 +762,29 @@ function buildMeta() {
   }
 }
 
+function validateCampaignDefinitions() {
+  if (!Array.isArray(campaignDefs) || campaignDefs.length !== 24) throw new Error(`campaignDefs invalid count: ${campaignDefs?.length || 0}`);
+  for (let world = 1; world <= 4; world++) {
+    const defs = campaignDefs.filter(d => d.world === world);
+    if (defs.length !== 6) throw new Error(`World ${world} expected 6 levels, got ${defs.length}`);
+    defs.forEach((def, idx) => {
+      const expectedLevel = (world - 1) * 6 + idx + 1;
+      if (!def || def.level !== expectedLevel || def.levelInWorld !== idx + 1 || !def.recommendedTowers) {
+        throw new Error(`World ${world} has invalid level metadata at slot ${idx + 1}`);
+      }
+    });
+  }
+}
+
+function sanitizeCampaignState() {
+  if (!state.campaign || typeof state.campaign !== 'object') state.campaign = {};
+  if (!state.campaign.completed || typeof state.campaign.completed !== 'object') state.campaign.completed = {};
+  if (!state.campaign.clearedObstacles || typeof state.campaign.clearedObstacles !== 'object') state.campaign.clearedObstacles = {};
+  state.campaign.selectedWorld = Math.max(1, Math.min(4, Number(state.campaign.selectedWorld) || 1));
+  state.campaign.selectedLevel = Math.max(1, Math.min(6, Number(state.campaign.selectedLevel) || 1));
+  state.campaign.unlockedLevel = Math.max(1, Math.min(24, Number(state.campaign.unlockedLevel) || 1));
+}
+
 function buildCampaignMenu() {
   const selWorld = state.campaign.selectedWorld || 1;
   ui.campaignWorldSelect.innerHTML = '';
@@ -738,7 +792,7 @@ function buildCampaignMenu() {
     const unlocked = world === 1 || !!state.campaign.completed[(world - 1) * 6];
     const b = document.createElement('button');
     b.disabled = !unlocked;
-    b.textContent = unlocked ? worldThemes[world].name : `World ${world} (Gesperrt · Schließe World ${world-1} ab)`;
+    b.textContent = unlocked ? WORLD_MENU_LABELS[world] : `World ${world} (Gesperrt · Schließe World ${world-1} ab)`;
     b.className = 'levelBtn' + (world === selWorld ? ' active' : '');
     b.onclick = () => { state.campaign.selectedWorld = world; state.campaign.selectedLevel = 1; saveCampaign(); buildCampaignMenu(); };
     ui.campaignWorldSelect.appendChild(b);
@@ -1821,13 +1875,41 @@ if ('serviceWorker' in navigator) {
       });
     });
   });
-  ui.updateBtn.onclick = () => window.location.reload();
+  ui.updateBtn.onclick = async () => {
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      reg?.waiting?.postMessage('SKIP_WAITING');
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    } catch (err) {
+      console.warn('Update refresh fallback', err);
+    }
+    window.location.reload();
+  };
 }
 
-buildMeta();
-buildCampaignMenu();
-initDock();
-initAbilities();
-refreshWavePreview();
-showToast('Baue zuerst, dann tippe auf ▶️. Doppeltippen für Übersicht.');
-requestAnimationFrame(animate);
+function assertRequiredDomNodes() {
+  const required = ['mainMenu','campaignWorldSelect','campaignLevelSelect','playCampaign','playEndless','playChallenge','metaTree','unlockList','upgradePointsLabel','finalBossUnlock','playFinalBoss'];
+  const missing = required.filter(key => !ui[key]);
+  if (missing.length) throw new Error(`Missing required DOM nodes: ${missing.join(', ')}`);
+}
+
+function bootstrapMenu() {
+  try {
+    assertRequiredDomNodes();
+    sanitizeCampaignState();
+    validateCampaignDefinitions();
+    buildMeta();
+    buildCampaignMenu();
+    initDock();
+    initAbilities();
+    refreshWavePreview();
+    showToast('Baue zuerst, dann tippe auf ▶️. Doppeltippen für Übersicht.');
+    requestAnimationFrame(animate);
+  } catch (err) {
+    showMenuFallback('Menu failed to load. Tap to reload.', err);
+  }
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootstrapMenu, { once: true });
+else bootstrapMenu();
