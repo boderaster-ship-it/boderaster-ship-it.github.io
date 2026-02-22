@@ -1,8 +1,33 @@
-const CACHE='aegis-td-v1';
-const ASSETS=['./','./index.html','./styles.css','./js/main.js','./manifest.webmanifest','./assets/icon.svg'];
-self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS))));
-self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
-self.addEventListener('fetch',e=>{
-  if(e.request.method!=='GET') return;
-  e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{ const copy=res.clone(); caches.open(CACHE).then(c=>c.put(e.request,copy)); return res; }).catch(()=>caches.match('./index.html'))));
+const VERSION = 'aegis-td-v3';
+const CORE = ['./', './index.html', './styles.css', './js/main.js', './manifest.webmanifest', './assets/icon.svg'];
+
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(VERSION).then(cache => cache.addAll(CORE)).then(() => self.skipWaiting()));
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k)));
+    await self.clients.claim();
+  })());
+});
+
+self.addEventListener('message', event => {
+  if (event.data === 'SKIP_WAITING') self.skipWaiting();
+});
+
+self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
+  event.respondWith((async () => {
+    const cache = await caches.open(VERSION);
+    const cached = await cache.match(event.request);
+    try {
+      const fresh = await fetch(event.request);
+      if (event.request.url.startsWith(self.location.origin)) cache.put(event.request, fresh.clone());
+      return fresh;
+    } catch {
+      return cached || cache.match('./index.html');
+    }
+  })());
 });
