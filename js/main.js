@@ -368,10 +368,51 @@ function saveClearedObstacleCell(cellKey) {
 }
 
 function hpGradientColor(ratio) {
-  const r = clamp(ratio, 0, 1);
+  const r = clamp(Number.isFinite(ratio) ? ratio : 1, 0, 1);
   const c = new THREE.Color();
-  c.lerpColors(new THREE.Color(0x2d7a45), new THREE.Color(0x67ff95), r);
+  if (r <= 0.5) {
+    c.lerpColors(new THREE.Color(0xff4040), new THREE.Color(0xffd447), r / 0.5);
+  } else {
+    c.lerpColors(new THREE.Color(0xffd447), new THREE.Color(0x4ee56f), (r - 0.5) / 0.5);
+  }
   return c.getHex();
+}
+
+function getSafeHpRatio(hp, maxHp) {
+  const hpValue = Number(hp);
+  const maxValue = Number(maxHp);
+  if (!Number.isFinite(maxValue) || maxValue <= 0) return 1;
+  const rawRatio = hpValue / maxValue;
+  if (!Number.isFinite(rawRatio)) return 1;
+  return clamp(rawRatio, 0, 1);
+}
+
+function updateBarFill(fillMesh, ratio, width) {
+  fillMesh.scale.x = Math.max(0.001, ratio);
+  fillMesh.position.x = -width * 0.5;
+}
+
+function updateEnemyHealthBarVisual(enemy, force = false) {
+  if (!enemy?.healthBar) return;
+  const hpRatio = getSafeHpRatio(enemy.hp, enemy.maxHp);
+  const shieldRatio = enemy.maxShield > 0 ? getSafeHpRatio(enemy.shield, enemy.maxShield) : 0;
+  const visual = enemy.healthBar.userData;
+  const hpChanged = force || Math.abs((visual.lastHpRatio ?? -1) - hpRatio) > 0.0005;
+  const shieldChanged = force || Math.abs((visual.lastShieldRatio ?? -1) - shieldRatio) > 0.0005;
+  if (hpChanged) {
+    updateBarFill(visual.fill, hpRatio, visual.fillWidth);
+    visual.fill.material.color.setHex(hpGradientColor(hpRatio));
+    visual.lastHpRatio = hpRatio;
+  }
+  if (enemy.maxShield > 0) {
+    visual.shield.visible = shieldRatio > 0;
+    if (shieldChanged) {
+      updateBarFill(visual.shield, shieldRatio, visual.fillWidth);
+      visual.lastShieldRatio = shieldRatio;
+    }
+  } else {
+    visual.shield.visible = false;
+  }
 }
 
 function emitParticleBurst(base, cfg = {}) {
@@ -614,17 +655,33 @@ function createEnemyMesh(def, boss = false) {
 
 function getHealthBar() {
   const bar = state.pools.healthBars.pop() || (() => {
+    const barWidth = 0.9;
+    const fillWidth = 0.84;
+    const fillHeight = 0.072;
     const root = new THREE.Group();
-    const bg = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.12), new THREE.MeshBasicMaterial({ color: 0x0d1014, transparent: true, opacity: 0.9, depthWrite: false }));
-    const fill = new THREE.Mesh(new THREE.PlaneGeometry(0.84, 0.072), new THREE.MeshBasicMaterial({ color: 0x67ff95, depthWrite: false }));
-    fill.position.z = 0.001;
-    const shield = new THREE.Mesh(new THREE.PlaneGeometry(0.84, 0.035), new THREE.MeshBasicMaterial({ color: 0x7d8dff, transparent: true, opacity: 0.95, depthWrite: false }));
+    const bgMat = new THREE.MeshBasicMaterial({ color: 0x0d1014, transparent: true, opacity: 0.9, depthTest: false, depthWrite: false, toneMapped: false });
+    const fillMat = new THREE.MeshBasicMaterial({ color: 0x4ee56f, depthTest: false, depthWrite: false, toneMapped: false });
+    const shieldMat = new THREE.MeshBasicMaterial({ color: 0x7d8dff, transparent: true, opacity: 0.95, depthTest: false, depthWrite: false, toneMapped: false });
+    const bg = new THREE.Mesh(new THREE.PlaneGeometry(barWidth, 0.12), bgMat);
+    const fillGeo = new THREE.PlaneGeometry(fillWidth, fillHeight);
+    fillGeo.translate(fillWidth * 0.5, 0, 0);
+    const fill = new THREE.Mesh(fillGeo, fillMat);
+    fill.position.z = 0.015;
+    const shieldGeo = new THREE.PlaneGeometry(fillWidth, 0.035);
+    shieldGeo.translate(fillWidth * 0.5, 0, 0);
+    const shield = new THREE.Mesh(shieldGeo, shieldMat);
     shield.position.y = 0.07;
-    shield.position.z = 0.002;
+    shield.position.z = 0.03;
+    bg.renderOrder = 120;
+    fill.renderOrder = 121;
+    shield.renderOrder = 122;
     root.add(bg, fill, shield);
-    root.userData = { fill, shield };
+    root.renderOrder = 120;
+    root.userData = { fill, shield, fillWidth, lastHpRatio: null, lastShieldRatio: null };
     return root;
   })();
+  bar.userData.lastHpRatio = null;
+  bar.userData.lastShieldRatio = null;
   bar.visible = true;
   if (!bar.parent) world.add(bar);
   return bar;
@@ -1133,7 +1190,7 @@ function spawnEnemy(boss = false) {
   const spd = (isFinalBoss ? 0.4 : boss ? 0.62 : def.speed) + state.wave * 0.012 + (worldId===3 ? 0.08 : 0);
   const frostResist = worldId === 3 ? 0.55 : 0;
   const armor = worldId === 4 ? 0.2 + Math.min(0.4, state.wave * 0.02) : 0;
-  return {
+  const enemy = {
     mesh,
     healthBar,
     def,
@@ -1156,6 +1213,8 @@ function spawnEnemy(boss = false) {
     hitFlash: 0,
     deathScale: boss ? 1.4 : 1
   };
+  updateEnemyHealthBarVisual(enemy, true);
+  return enemy;
 }
 
 
@@ -1212,6 +1271,7 @@ function applyHit(enemy, damage, slow = 0, burn = 0, customStats = null, damageT
   enemy.burn = Math.max(enemy.burn || 0, burn || 0);
   if (customStats?.shatter && enemy.freeze > 0.2) enemy.hp -= damage * customStats.shatter;
   enemy.hitFlash = 0.16;
+  updateEnemyHealthBarVisual(enemy, true);
   spawnImpactFx(enemy.mesh.position.clone(), damageType);
   if (ui.shakeToggle.checked) state.shake = Math.min(0.22, state.shake + 0.035);
 }
@@ -1423,23 +1483,9 @@ function animate(now) {
     });
 
     if (e.healthBar) {
-      const hpRatio = Math.max(0, e.hp / e.maxHp);
-      const hpColor = hpGradientColor(hpRatio);
       e.healthBar.position.lerp(e.mesh.position.clone().add(new THREE.Vector3(0, e.boss ? 1.72 : 1.28, 0)), 0.55);
       e.healthBar.quaternion.copy(camera.quaternion);
-      const fill = e.healthBar.userData.fill;
-      fill.scale.x = Math.max(0.001, hpRatio);
-      fill.position.x = -(0.8 * (1 - hpRatio)) * 0.5;
-      fill.material.color.setHex(hpColor);
-      const shield = e.healthBar.userData.shield;
-      if (e.maxShield > 0) {
-        const shieldRatio = Math.max(0, e.shield / e.maxShield);
-        shield.visible = shieldRatio > 0;
-        shield.scale.x = Math.max(0.001, shieldRatio);
-        shield.position.x = -(0.8 * (1 - shieldRatio)) * 0.5;
-      } else {
-        shield.visible = false;
-      }
+      updateEnemyHealthBarVisual(e);
     }
   }
 
