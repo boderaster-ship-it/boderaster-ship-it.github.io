@@ -1251,10 +1251,91 @@ function spawnEnemy(boss = false) {
 
 
 function getProjectile() {
-  const p = state.pools.projectiles.pop() || { mesh: new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), new THREE.MeshBasicMaterial({ color: 0xfff3a5 })), alive: false };
+  const p = state.pools.projectiles.pop() || { mesh: new THREE.Group(), alive: false, kind: null };
   p.mesh.visible = true;
   if (!p.mesh.parent) world.add(p.mesh);
   return p;
+}
+
+const projectileAssetCache = {
+  shellGeo: new THREE.SphereGeometry(0.11, 12, 10),
+  shellShineGeo: new THREE.SphereGeometry(0.065, 10, 8),
+  arrowShaftGeo: new THREE.CylinderGeometry(0.02, 0.02, 0.4, 8),
+  arrowHeadGeo: new THREE.ConeGeometry(0.055, 0.15, 8),
+  arrowFletchGeo: new THREE.BoxGeometry(0.13, 0.02, 0.08),
+  rocketBodyGeo: new THREE.CylinderGeometry(0.045, 0.055, 0.44, 10),
+  rocketNoseGeo: new THREE.ConeGeometry(0.055, 0.15, 10),
+  rocketFinGeo: new THREE.BoxGeometry(0.03, 0.08, 0.1),
+  crystalGeo: new THREE.OctahedronGeometry(0.115, 0),
+  flameGeo: new THREE.ConeGeometry(0.09, 0.24, 9),
+  coreMat: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.32, metalness: 0.68, emissive: 0x111111, emissiveIntensity: 0.35 }),
+  accentMat: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.24, metalness: 0.45 }),
+  softGlowMat: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.42 }),
+  iceMat: new THREE.MeshStandardMaterial({ color: 0x9feeff, roughness: 0.14, metalness: 0.08, transparent: true, opacity: 0.94, emissive: 0x76cbff, emissiveIntensity: 0.4 }),
+  flameCoreMat: new THREE.MeshStandardMaterial({ color: 0xffe3ab, roughness: 0.8, metalness: 0.02, emissive: 0xff9b2f, emissiveIntensity: 1.15 }),
+  flameOuterMat: new THREE.MeshBasicMaterial({ color: 0xff651f, transparent: true, opacity: 0.62 })
+};
+
+function addProjectilePart(group, mesh, name, kind) {
+  mesh.name = name;
+  mesh.userData.projectileKind = kind;
+  group.add(mesh);
+}
+
+function configureProjectileMesh(p, kind, colorHex) {
+  if (p.kind !== kind) {
+    p.mesh.clear();
+    if (kind === 'shell') {
+      addProjectilePart(p.mesh, new THREE.Mesh(projectileAssetCache.shellGeo, projectileAssetCache.coreMat.clone()), 'proj-main', kind);
+      addProjectilePart(p.mesh, new THREE.Mesh(projectileAssetCache.shellShineGeo, projectileAssetCache.softGlowMat.clone()), 'proj-highlight', kind);
+    } else if (kind === 'bolt') {
+      const shaft = new THREE.Mesh(projectileAssetCache.arrowShaftGeo, projectileAssetCache.accentMat.clone());
+      shaft.rotation.x = Math.PI / 2;
+      addProjectilePart(p.mesh, shaft, 'proj-main', kind);
+      const head = new THREE.Mesh(projectileAssetCache.arrowHeadGeo, projectileAssetCache.coreMat.clone());
+      head.position.z = 0.24;
+      head.rotation.x = Math.PI / 2;
+      addProjectilePart(p.mesh, head, 'proj-head', kind);
+      const fletch = new THREE.Mesh(projectileAssetCache.arrowFletchGeo, projectileAssetCache.accentMat.clone());
+      fletch.position.z = -0.18;
+      addProjectilePart(p.mesh, fletch, 'proj-fletch', kind);
+    } else if (kind === 'missile') {
+      const body = new THREE.Mesh(projectileAssetCache.rocketBodyGeo, projectileAssetCache.coreMat.clone());
+      body.rotation.x = Math.PI / 2;
+      addProjectilePart(p.mesh, body, 'proj-main', kind);
+      const nose = new THREE.Mesh(projectileAssetCache.rocketNoseGeo, projectileAssetCache.accentMat.clone());
+      nose.rotation.x = Math.PI / 2;
+      nose.position.z = 0.29;
+      addProjectilePart(p.mesh, nose, 'proj-head', kind);
+      for (const side of [-1, 1]) {
+        const fin = new THREE.Mesh(projectileAssetCache.rocketFinGeo, projectileAssetCache.accentMat.clone());
+        fin.position.set(0.055 * side, -0.01, -0.12);
+        fin.rotation.z = side * 0.34;
+        addProjectilePart(p.mesh, fin, `proj-fin-${side}`, kind);
+      }
+    } else if (kind === 'ice') {
+      addProjectilePart(p.mesh, new THREE.Mesh(projectileAssetCache.crystalGeo, projectileAssetCache.iceMat.clone()), 'proj-main', kind);
+    } else if (kind === 'flame') {
+      const core = new THREE.Mesh(projectileAssetCache.flameGeo, projectileAssetCache.flameCoreMat.clone());
+      core.rotation.x = Math.PI / 2;
+      core.position.z = 0.03;
+      addProjectilePart(p.mesh, core, 'proj-main', kind);
+      const outer = new THREE.Mesh(projectileAssetCache.flameGeo, projectileAssetCache.flameOuterMat.clone());
+      outer.rotation.x = Math.PI / 2;
+      outer.scale.set(1.2, 1.05, 1.2);
+      outer.position.z = -0.02;
+      addProjectilePart(p.mesh, outer, 'proj-aura', kind);
+    } else {
+      addProjectilePart(p.mesh, new THREE.Mesh(projectileAssetCache.shellGeo, projectileAssetCache.coreMat.clone()), 'proj-main', kind);
+    }
+    p.kind = kind;
+  }
+
+  p.mesh.traverse(part => {
+    if (!part.isMesh) return;
+    if (part.material?.color) part.material.color.setHex(colorHex);
+    if (part.material?.emissive) part.material.emissive.setHex(colorHex);
+  });
 }
 
 function getTowerMetaDamageBonus(type) {
@@ -1291,7 +1372,8 @@ function fireTower(tower, enemy) {
   p.target = enemy;
   p.speed = d.projectile === 'missile' ? 8.5 : d.projectile === 'flame' ? 11 : d.projectile === 'beam' ? 22 : 14;
   p.mesh.position.copy(p.pos);
-  p.mesh.material.color.setHex(d.color);
+  configureProjectileMesh(p, p.kind, d.color);
+  p.spin = Math.random() * Math.PI * 2;
   state.projectiles.push(p);
   p.damageType = p.kind === 'ice' ? 'ice' : p.kind === 'bolt' ? 'arc' : p.kind === 'missile' ? 'explosive' : p.kind === 'beam' ? 'beam' : p.kind === 'flame' ? 'explosive' : 'kinetic';
   if (customStats?.chain > 0) {
@@ -1436,6 +1518,7 @@ function updateCamera() {
 
 function releaseProjectile(i) {
   const p = state.projectiles[i];
+  p.alive = false;
   p.mesh.visible = false;
   state.pools.projectiles.push(p);
   state.projectiles.splice(i, 1);
@@ -1558,8 +1641,22 @@ function animate(now) {
     }
     const dirV = p.target.mesh.position.clone().sub(p.pos);
     const step = Math.min(dirV.length(), p.speed * simDt);
-    p.pos.add(dirV.normalize().multiplyScalar(step));
+    const moveDir = dirV.normalize();
+    p.pos.add(moveDir.multiplyScalar(step));
     p.mesh.position.copy(p.pos);
+    if (p.kind === 'shell') {
+      p.spin += simDt * 12;
+      p.mesh.rotation.set(p.spin, p.spin * 0.7, 0);
+    } else if (p.kind === 'ice') {
+      p.mesh.rotation.x += simDt * 4;
+      p.mesh.rotation.y += simDt * 3.2;
+    } else if (p.kind === 'flame') {
+      p.mesh.rotation.y += simDt * 6.5;
+      const flicker = 0.92 + Math.sin(now * 0.024 + p.spin) * 0.14;
+      p.mesh.scale.setScalar(flicker);
+    } else {
+      p.mesh.lookAt(p.pos.clone().add(moveDir));
+    }
     if (step < 0.2) {
       if (p.aoe) state.enemies.forEach(e => { if (e.mesh.position.distanceTo(p.pos) < p.aoe) applyHit(e, p.damage, p.slow, p.kind === 'flame' ? 1.4 : 0, p.custom, p.damageType); });
       else applyHit(p.target, p.damage, p.slow, p.kind === 'flame' ? 1.4 : 0, p.custom, p.damageType);
