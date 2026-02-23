@@ -1368,7 +1368,6 @@ function fireTower(tower, enemy) {
   } : towerDefs[tower.type];
   const p = getProjectile();
   p.alive = true;
-  p.kind = d.projectile;
   p.damage = d.damage * tower.level * getTowerMetaDamageBonus(tower.type);
   p.aoe = d.aoe || 0;
   p.slow = d.slow || 0;
@@ -1377,7 +1376,7 @@ function fireTower(tower, enemy) {
   p.target = enemy;
   p.speed = d.projectile === 'missile' ? 8.5 : d.projectile === 'flame' ? 11 : d.projectile === 'beam' ? 22 : 14;
   p.mesh.position.copy(p.pos);
-  configureProjectileMesh(p, p.kind, d.color);
+  configureProjectileMesh(p, d.projectile, d.color);
   p.spin = Math.random() * Math.PI * 2;
   state.projectiles.push(p);
   p.damageType = p.kind === 'ice' ? 'ice' : p.kind === 'bolt' ? 'arc' : p.kind === 'missile' ? 'explosive' : p.kind === 'beam' ? 'beam' : p.kind === 'flame' ? 'explosive' : 'kinetic';
