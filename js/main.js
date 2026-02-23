@@ -1587,7 +1587,7 @@ function updateUI() {
   });
   ui.speedLabel.textContent = `x${state.gameSpeed}`;
   ui.nextWaveTimer.classList.toggle('hidden', state.betweenWaveCountdown <= 0 || state.inWave);
-  ui.nextWaveTimer.textContent = state.betweenWaveCountdown > 0 && !state.inWave ? `Nächste Welle in ${Math.ceil(state.betweenWaveCountdown)}…` : '';
+  ui.nextWaveTimer.textContent = state.betweenWaveCountdown > 0 && !state.inWave ? `${Math.ceil(state.betweenWaveCountdown)}` : '';
 
   if (state.selectedTower) {
     const d = state.selectedTower.custom ? { name: state.selectedTower.displayName, damage: state.selectedTower.custom.stats.damage, range: state.selectedTower.custom.stats.range, rate: state.selectedTower.custom.stats.rate } : towerDefs[state.selectedTower.type];
