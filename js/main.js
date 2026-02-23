@@ -1081,18 +1081,33 @@ function refreshWavePreview() {
 
 function getDifficultyRamp() {
   const levelProgress = Math.max(0, (Math.min(state.currentLevel || 1, FINAL_BOSS_LEVEL) - 1) / (FINAL_BOSS_LEVEL - 1));
-  const waveProgress = Math.min(1.2, Math.max(0, state.wave) / 12);
+  const baseWaveProgress = Math.max(0, state.wave) / 12;
+  const boostedWaveProgress = baseWaveProgress + Math.min(10, Math.max(0, state.wave)) / 12;
+  const waveProgress = Math.min(2.1, boostedWaveProgress);
   return {
     count: 2 * (1 + levelProgress * 0.65 + waveProgress * 0.22),
     hp: 2 * (1 + levelProgress * 0.82 + waveProgress * 0.28)
   };
 }
 
+function getActiveWorldId() {
+  if (state.mode === 'boss') return 4;
+  if (state.mode === 'campaign') {
+    const cdef = campaignDefs[Math.min(state.currentLevel,24)-1];
+    return cdef?.world || 1;
+  }
+  return 1;
+}
+
+function getWorldDifficultyBoost() {
+  return getActiveWorldId() >= 2 ? 2 : 1;
+}
+
 function spawnWave() {
   state.wave += 1;
   const ramp = getDifficultyRamp();
   const baseCount = 8 + Math.floor(state.wave * 1.6);
-  const count = Math.ceil(baseCount * ramp.count);
+  const count = Math.ceil(baseCount * ramp.count * getWorldDifficultyBoost());
   state.remainingInWave = count;
   state.spawnTimer = 0.2;
   state.inWave = true;
@@ -1189,8 +1204,7 @@ function makeTower(type, cell, customCfg = null) {
 }
 
 function spawnEnemy(boss = false) {
-  const cdef = state.mode === 'campaign' ? campaignDefs[Math.min(state.currentLevel,24)-1] : null;
-  const worldId = cdef?.world || 1;
+  const worldId = getActiveWorldId();
   const keys = Object.keys(enemyArchetypes);
   const archetype = boss ? 'tank' : keys[Math.floor(Math.random() * keys.length)];
   const def = enemyArchetypes[archetype];
@@ -1200,8 +1214,9 @@ function spawnEnemy(boss = false) {
   const healthBar = getHealthBar();
   const isFinalBoss = state.mode === 'boss' && boss;
   const hpMult = worldId === 4 ? 1.42 : worldId === 3 ? 1.25 : worldId === 2 ? 1.12 : 1;
+  const worldBoost = getWorldDifficultyBoost();
   const ramp = getDifficultyRamp();
-  const hp = ((isFinalBoss ? 4800 : boss ? 680 : def.hp + state.wave * 9) * hpMult) * (modeRules[state.mode]?.scale || 1.2) * ramp.hp;
+  const hp = ((isFinalBoss ? 4800 : boss ? 680 : def.hp + state.wave * 9) * hpMult) * (modeRules[state.mode]?.scale || 1.2) * ramp.hp * worldBoost;
   const spd = (isFinalBoss ? 0.4 : boss ? 0.62 : def.speed) + state.wave * 0.012 + (worldId===3 ? 0.08 : 0);
   const frostResist = worldId === 3 ? 0.55 : 0;
   const armor = worldId === 4 ? 0.2 + Math.min(0.4, state.wave * 0.02) : 0;
@@ -1217,8 +1232,8 @@ function spawnEnemy(boss = false) {
     archetype,
     boss,
     isFinalBoss,
-    shield: (isFinalBoss ? 700 : boss ? 160 : (def.shield || 0) + (worldId>=3?20:0)) * ramp.hp,
-    maxShield: (isFinalBoss ? 700 : boss ? 160 : (def.shield || 0) + (worldId>=3?20:0)) * ramp.hp,
+    shield: (isFinalBoss ? 700 : boss ? 160 : (def.shield || 0) + (worldId>=3?20:0)) * ramp.hp * worldBoost,
+    maxShield: (isFinalBoss ? 700 : boss ? 160 : (def.shield || 0) + (worldId>=3?20:0)) * ramp.hp * worldBoost,
     flying: !!def.flying,
     bob: Math.random() * 5,
     world: worldId,
