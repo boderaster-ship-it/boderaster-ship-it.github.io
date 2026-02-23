@@ -131,8 +131,11 @@ const abilities = {
     cd: 22,
     text: 'Stoppt Feinde für 2,5 s',
     use: () => {
-      launchAbilityStorm('freeze', 0x9ce9ff);
-      state.enemies.forEach(e => e.freeze = Math.max(e.freeze, 2.5));
+      launchAbilityStorm('freeze', 0x9ce9ff, {
+        onTouch: enemy => {
+          enemy.freeze = Math.max(enemy.freeze, 2.5);
+        }
+      });
     }
   },
   nuke: {
@@ -141,8 +144,11 @@ const abilities = {
     cd: 35,
     text: 'Gewaltige Flächenexplosion',
     use: () => {
-      launchAbilityStorm('nuke', 0xff7b66);
-      triggerNuke();
+      launchAbilityStorm('nuke', 0xff7b66, {
+        onTouch: enemy => {
+          applyHit(enemy, 130, 0, 0, null, 'explosive');
+        }
+      });
     }
   },
   overclock: {
@@ -151,8 +157,12 @@ const abilities = {
     cd: 26,
     text: '+40% Feuerrate für 7 s',
     use: () => {
-      launchAbilityStorm('overclock', 0xffdd73);
-      state.buffs.overclock = 7;
+      launchAbilityStorm('overclock', 0xffdd73, {
+        consumeOnTouch: true,
+        onTouch: () => {
+          state.buffs.overclock = 7;
+        }
+      });
     }
   },
   repair: {
@@ -161,8 +171,12 @@ const abilities = {
     cd: 28,
     text: '+3 Leben',
     use: () => {
-      launchAbilityStorm('repair', 0x8dffa1);
-      state.lives = Math.min(30, state.lives + 3);
+      launchAbilityStorm('repair', 0x8dffa1, {
+        consumeOnTouch: true,
+        onTouch: () => {
+          state.lives = Math.min(30, state.lives + 3);
+        }
+      });
     }
   }
 };
@@ -1471,14 +1485,24 @@ function applyHit(enemy, damage, slow = 0, burn = 0, customStats = null, damageT
 }
 
 
-function launchAbilityStorm(kind, color) {
+function getPathPosition(path, progress) {
+  if (!path?.length) return null;
+  if (path.length === 1) return cellToWorld(path[0][0], path[0][1]).clone();
+  const clamped = Math.min(1, Math.max(0, progress));
+  const scaled = clamped * (path.length - 1);
+  const idx = Math.min(path.length - 2, Math.floor(scaled));
+  const frac = scaled - idx;
+  const a = cellToWorld(path[idx][0], path[idx][1]);
+  const b = cellToWorld(path[idx + 1][0], path[idx + 1][1]);
+  return a.lerp(b, frac);
+}
+
+function launchAbilityStorm(kind, color, config = {}) {
   if (!board.path?.length) return;
-  const sourceCell = board.path[board.path.length - 1];
-  const targetCell = board.path[0];
-  const source = cellToWorld(sourceCell[0], sourceCell[1]).clone();
-  const target = cellToWorld(targetCell[0], targetCell[1]).clone();
-  const dir = target.clone().sub(source);
-  const dist = Math.max(0.001, dir.length());
+  const stormPath = [...board.path].reverse();
+  const source = getPathPosition(stormPath, 0);
+  const target = getPathPosition(stormPath, 1);
+  const firstDir = target.clone().sub(source).normalize();
   const travelTime = 0.8;
   state.effects.push({
     kind: 'abilityStorm',
@@ -1486,19 +1510,18 @@ function launchAbilityStorm(kind, color) {
     color,
     source,
     target,
-    dir: dir.normalize(),
-    dist,
+    dir: firstDir,
+    path: stormPath,
+    progress: 0,
+    speed: 1 / travelTime,
+    radius: 0.5,
+    affected: new WeakSet(),
+    onTouch: config.onTouch || null,
+    consumeOnTouch: !!config.consumeOnTouch,
     duration: travelTime,
     life: travelTime,
     head: null,
     trail: []
-  });
-}
-
-function triggerNuke() {
-  const center = cellToWorld(Math.floor(board.w / 2), Math.floor(board.h / 2));
-  state.enemies.forEach(e => {
-    if (e.mesh.position.distanceTo(center) < 8.2) applyHit(e, 130, 0, 0, null, 'explosive');
   });
 }
 
@@ -1790,8 +1813,34 @@ function animate(now) {
     }
     if (fx.kind === 'abilityStorm') {
       fx.life -= simDt;
-      const progress = Math.min(1, Math.max(0, 1 - (fx.life / fx.duration)));
-      const headPos = fx.source.clone().lerp(fx.target, progress);
+      fx.progress = Math.min(1, fx.progress + fx.speed * simDt);
+      const progress = fx.progress;
+      const headPos = getPathPosition(fx.path, progress);
+      const prevPos = getPathPosition(fx.path, Math.max(0, progress - 0.01));
+      const nextPos = getPathPosition(fx.path, Math.min(1, progress + 0.01));
+      if (nextPos && prevPos) {
+        const tangent = nextPos.clone().sub(prevPos);
+        if (tangent.lengthSq() > 0.00001) fx.dir.copy(tangent.normalize());
+      }
+
+      let consumed = false;
+      if (headPos && fx.onTouch) {
+        for (const enemy of state.enemies) {
+          if (!enemy?.mesh?.parent || fx.affected.has(enemy)) continue;
+          const enemyPos = enemy.mesh.position;
+          const verticalDistance = Math.abs((enemyPos.y + (enemy.size || 0.3)) - (headPos.y + 0.34));
+          if (verticalDistance > 0.9) continue;
+          const flatDistance = Math.hypot(enemyPos.x - headPos.x, enemyPos.z - headPos.z);
+          if (flatDistance <= fx.radius + (enemy.size || 0.3)) {
+            fx.affected.add(enemy);
+            fx.onTouch(enemy);
+            if (fx.consumeOnTouch) {
+              consumed = true;
+              break;
+            }
+          }
+        }
+      }
 
       if (!fx.head) {
         fx.head = state.pools.stormHeads.pop() || new THREE.Mesh(
@@ -1812,14 +1861,14 @@ function animate(now) {
       const trailSteps = 11;
       for (let t = 0; t < trailSteps; t++) {
         const ratio = t / (trailSteps - 1);
-        const lag = ratio * 1.8;
-        const tProg = Math.max(0, progress - (lag / Math.max(0.001, fx.dist)));
-        const trailPos = fx.source.clone().lerp(fx.target, tProg);
+        const lag = ratio * 0.1;
+        const tProg = Math.max(0, progress - lag);
+        const trailPos = getPathPosition(fx.path, tProg) || fx.source;
         const swirl = new THREE.Vector3(-fx.dir.z, 0, fx.dir.x).multiplyScalar((Math.sin(now * 0.01 + t) * 0.18) * (1 - ratio));
         emitParticleBurst(trailPos.add(swirl), { color: fx.color, count: 1, spread: 0.26 + ratio * 0.4, life: 0.2 + (1 - ratio) * 0.16, y: 0.24 });
       }
 
-      if (fx.life <= 0) {
+      if (consumed || fx.life <= 0 || progress >= 1) {
         if (fx.head) {
           fx.head.visible = false;
           if (fx.head.parent) fx.head.parent.remove(fx.head);
