@@ -1202,7 +1202,7 @@ function makeTower(type, cell, customCfg = null) {
     range: customCfg.stats.range,
     rate: customCfg.stats.rate,
     damage: customCfg.stats.damage,
-    projectile: customCfg.stats.pierce > 0 ? 'beam' : customCfg.stats.aoe > 0 ? 'shell' : customCfg.stats.chain > 0 ? 'bolt' : 'shell',
+    projectile: resolveCustomProjectileType(customCfg.stats),
     aoe: customCfg.stats.aoe
   } : towerDefs[type];
   const g = new THREE.Group();
@@ -1293,9 +1293,17 @@ function spawnEnemy(boss = false) {
 
 function getProjectile() {
   const p = state.pools.projectiles.pop() || { mesh: new THREE.Group(), alive: false, kind: null };
+  p.mesh.frustumCulled = false;
   p.mesh.visible = true;
   if (!p.mesh.parent) world.add(p.mesh);
   return p;
+}
+
+function resolveCustomProjectileType(stats) {
+  if (stats.pierce > 0) return 'beam';
+  if (stats.aoe > 0) return 'missile';
+  if (stats.chain > 0) return 'bolt';
+  return 'shell';
 }
 
 const projectileAssetCache = {
@@ -1322,6 +1330,7 @@ const projectileAssetCache = {
 function addProjectilePart(group, mesh, name, kind) {
   mesh.name = name;
   mesh.userData.projectileKind = kind;
+  mesh.frustumCulled = false;
   group.add(mesh);
 }
 
@@ -1382,9 +1391,15 @@ function configureProjectileMesh(p, kind, colorHex) {
 
   p.mesh.traverse(part => {
     if (!part.isMesh) return;
-    part.renderOrder = 6;
+    part.frustumCulled = false;
+    part.renderOrder = (kind === 'missile' || kind === 'flame') ? 12 : 6;
     if (part.material?.color) part.material.color.setHex(colorHex);
     if (part.material?.emissive) part.material.emissive.setHex(colorHex);
+    if ((kind === 'missile' || kind === 'flame') && part.material?.transparent) {
+      part.material.depthWrite = false;
+      part.material.depthTest = false;
+      part.material.needsUpdate = true;
+    }
   });
 }
 
@@ -1405,7 +1420,7 @@ function getTowerMetaDamageBonus(type) {
 function fireTower(tower, enemy) {
   const customStats = tower.custom?.stats;
   const d = customStats ? {
-    projectile: customStats.pierce > 0 ? 'beam' : customStats.aoe > 0 ? 'missile' : customStats.chain > 0 ? 'bolt' : 'shell',
+    projectile: resolveCustomProjectileType(customStats),
     color: tower.core.material.color.getHex(),
     damage: customStats.damage,
     aoe: customStats.aoe,
