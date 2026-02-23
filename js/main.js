@@ -152,15 +152,14 @@ const abilities = {
     }
   },
   overclock: {
-    name: 'Übertakten',
+    name: 'Blitzangriff',
     icon: '⚡',
     cd: 26,
-    text: '+40% Feuerrate für 7 s',
+    text: 'Durchdringt Gegner und fügt Blitzschaden zu',
     use: () => {
       launchAbilityStorm('overclock', 0xffdd73, {
-        consumeOnTouch: true,
-        onTouch: () => {
-          state.buffs.overclock = 7;
+        onTouch: enemy => {
+          applyHit(enemy, 36, 0, 0, null, 'arc');
         }
       });
     }
@@ -253,7 +252,6 @@ const state = {
   buildMode: false,
   hoverCell: null,
   abilityCooldowns: { freeze: 0, nuke: 0, overclock: 0, poison: 0 },
-  buffs: { overclock: 0 },
   paused: false,
   gameSpeed: 1,
   betweenWaveCountdown: 0,
@@ -1663,7 +1661,6 @@ function animate(now) {
   const simDt = dt * state.gameSpeed;
   state.particlesFrame = 0;
   for (const k of Object.keys(state.abilityCooldowns)) state.abilityCooldowns[k] = Math.max(0, state.abilityCooldowns[k] - simDt);
-  state.buffs.overclock = Math.max(0, state.buffs.overclock - simDt);
 
   if (!state.inWave && state.betweenWaveCountdown > 0 && !state.paused) {
     state.betweenWaveCountdown = Math.max(0, state.betweenWaveCountdown - dt);
@@ -1753,11 +1750,10 @@ function animate(now) {
     const baseRange = t.custom ? t.custom.stats.range : towerDefs[t.type].range;
     const range = baseRange + (t.level - 1) * 0.45;
     const target = state.enemies.find(e => e.mesh.position.distanceTo(t.mesh.position) < range);
-    const mult = state.buffs.overclock > 0 ? 0.62 : 1;
     if (target && t.cooldown <= 0 && state.inWave) {
       fireTower(t, target);
       const baseRate = t.custom ? t.custom.stats.rate : towerDefs[t.type].rate;
-      t.cooldown = Math.max(0.12, (baseRate - (t.level - 1) * 0.07) * mult);
+      t.cooldown = Math.max(0.12, baseRate - (t.level - 1) * 0.07);
     }
   }
 
