@@ -1273,6 +1273,7 @@ const projectileAssetCache = {
   rocketFinGeo: new THREE.BoxGeometry(0.03, 0.08, 0.1),
   crystalGeo: new THREE.OctahedronGeometry(0.115, 0),
   flameGeo: new THREE.ConeGeometry(0.09, 0.24, 9),
+  glowGeo: new THREE.SphereGeometry(0.1, 10, 8),
   // MeshBasicMaterial keeps projectile visibility stable on iOS WebKit/PWA rendering paths.
   coreMat: new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }),
   accentMat: new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }),
@@ -1319,6 +1320,9 @@ function configureProjectileMesh(p, kind, colorHex) {
         fin.rotation.z = side * 0.34;
         addProjectilePart(p.mesh, fin, `proj-fin-${side}`, kind);
       }
+      const glow = new THREE.Mesh(projectileAssetCache.glowGeo, projectileAssetCache.softGlowMat.clone());
+      glow.scale.setScalar(1.7);
+      addProjectilePart(p.mesh, glow, 'proj-glow', kind);
     } else if (kind === 'ice') {
       addProjectilePart(p.mesh, new THREE.Mesh(projectileAssetCache.crystalGeo, projectileAssetCache.iceMat.clone()), 'proj-main', kind);
     } else if (kind === 'flame') {
@@ -1331,6 +1335,9 @@ function configureProjectileMesh(p, kind, colorHex) {
       outer.scale.set(1.2, 1.05, 1.2);
       outer.position.z = -0.02;
       addProjectilePart(p.mesh, outer, 'proj-aura', kind);
+      const glow = new THREE.Mesh(projectileAssetCache.glowGeo, projectileAssetCache.softGlowMat.clone());
+      glow.scale.setScalar(1.85);
+      addProjectilePart(p.mesh, glow, 'proj-glow', kind);
     } else {
       addProjectilePart(p.mesh, new THREE.Mesh(projectileAssetCache.shellGeo, projectileAssetCache.coreMat.clone()), 'proj-main', kind);
     }
@@ -1374,11 +1381,13 @@ function fireTower(tower, enemy) {
   p.aoe = d.aoe || 0;
   p.slow = d.slow || 0;
   p.custom = customStats || null;
-  p.pos = tower.mesh.position.clone().add(new THREE.Vector3(0, 0.6, 0));
+  const yOffset = d.projectile === 'missile' ? 0.78 : d.projectile === 'flame' ? 0.72 : 0.6;
+  p.pos = tower.mesh.position.clone().add(new THREE.Vector3(0, yOffset, 0));
   p.target = enemy;
   p.speed = d.projectile === 'missile' ? 8.5 : d.projectile === 'flame' ? 11 : d.projectile === 'beam' ? 22 : 14;
   p.mesh.position.copy(p.pos);
   configureProjectileMesh(p, d.projectile, d.color);
+  p.mesh.scale.setScalar(1);
   p.spin = Math.random() * Math.PI * 2;
   state.projectiles.push(p);
   p.damageType = p.kind === 'ice' ? 'ice' : p.kind === 'bolt' ? 'arc' : p.kind === 'missile' ? 'explosive' : p.kind === 'beam' ? 'beam' : p.kind === 'flame' ? 'explosive' : 'kinetic';
