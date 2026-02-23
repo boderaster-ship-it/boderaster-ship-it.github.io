@@ -70,7 +70,6 @@ const ui = {
   updateBtn: document.getElementById('updateBtn'),
   overviewBtn: document.getElementById('overviewBtn'),
   speedBtn: document.getElementById('speedBtn'),
-  towerBuilderBtn: document.getElementById('towerBuilderBtn'),
   speedLabel: document.getElementById('speedLabel'),
   nextWaveTimer: document.getElementById('nextWaveTimer'),
   towerBuilderModal: document.getElementById('towerBuilderModal'),
@@ -1079,7 +1078,6 @@ function closeBuilder() {
 
 function initDock() {
   ui.towerDock.innerHTML = '';
-  ui.towerBuilderBtn.classList.toggle('hidden', !isTowerBuilderUnlocked());
   Object.entries(towerDefs).forEach(([key, d]) => {
     if (!isTowerUnlocked(key)) return;
     const btn = document.createElement('button');
@@ -2132,7 +2130,6 @@ canvas.addEventListener('wheel', e => {
 }, { passive: true });
 
 
-ui.towerBuilderBtn.onclick = () => openBuilder();
 ui.builderCancelBtn.onclick = () => closeBuilder();
 ui.builderConfirmBtn.onclick = () => {
   if (state.builderDraft.length < 2) return showToast('Wähle mindestens 2 Module', false);
