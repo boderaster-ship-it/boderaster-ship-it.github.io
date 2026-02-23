@@ -116,6 +116,7 @@ const builderModules = {
 };
 
 const moduleKeys = Object.keys(builderModules);
+const PROJECTILE_FIRE_DEBUG = new URLSearchParams(window.location.search).has('projectileDebug');
 
 const enemyArchetypes = {
   runner: { color: 0x67d98a, speed: 1.2, hp: 50, size: 0.28, accents: 0x294c33, type: 'runner' },
@@ -1320,6 +1321,12 @@ function resolveCustomProjectileType(stats) {
   return 'shell';
 }
 
+function logProjectileFire(p, kind) {
+  if (!PROJECTILE_FIRE_DEBUG) return;
+  const pos = p.mesh.position;
+  console.log(`[Projectile] kind=${kind} visible=${p.mesh.visible} parentOK=${p.mesh.parent === world} children=${p.mesh.children.length} pos=(${pos.x.toFixed(2)},${pos.y.toFixed(2)},${pos.z.toFixed(2)})`);
+}
+
 const projectileAssetCache = {
   shellGeo: new THREE.SphereGeometry(0.11, 12, 10),
   shellShineGeo: new THREE.SphereGeometry(0.065, 10, 8),
@@ -1403,17 +1410,15 @@ function configureProjectileMesh(p, kind, colorHex) {
     p.kind = kind;
   }
 
+  p.mesh.frustumCulled = false;
+
   p.mesh.traverse(part => {
     if (!part.isMesh) return;
     part.frustumCulled = false;
-    part.renderOrder = (kind === 'missile' || kind === 'flame') ? 12 : 6;
+    part.renderOrder = 999;
+    part.material.depthWrite = false;
     if (part.material?.color) part.material.color.setHex(colorHex);
     if (part.material?.emissive) part.material.emissive.setHex(colorHex);
-    if ((kind === 'missile' || kind === 'flame') && part.material?.transparent) {
-      part.material.depthWrite = false;
-      part.material.depthTest = false;
-      part.material.needsUpdate = true;
-    }
   });
 }
 
@@ -1454,6 +1459,7 @@ function fireTower(tower, enemy) {
   configureProjectileMesh(p, d.projectile, d.color);
   p.mesh.scale.setScalar(1);
   p.spin = Math.random() * Math.PI * 2;
+  logProjectileFire(p, d.projectile);
   state.projectiles.push(p);
   p.damageType = p.kind === 'ice' ? 'ice' : p.kind === 'bolt' ? 'arc' : p.kind === 'missile' ? 'explosive' : p.kind === 'beam' ? 'beam' : p.kind === 'flame' ? 'explosive' : 'kinetic';
   if (customStats?.chain > 0) {
