@@ -166,16 +166,15 @@ const abilities = {
       });
     }
   },
-  repair: {
-    name: 'Reparatur',
-    icon: '🛠️',
+  poison: {
+    name: 'Gift',
+    icon: '☠️',
     cd: 28,
-    text: '+3 Leben',
+    text: 'Vergiftet Feinde für 5 s',
     use: () => {
-      launchAbilityStorm('repair', 0x8dffa1, {
-        consumeOnTouch: true,
-        onTouch: () => {
-          state.lives = Math.min(30, state.lives + 3);
+      launchAbilityStorm('poison', 0x89ff62, {
+        onTouch: enemy => {
+          enemy.poison = Math.max(enemy.poison || 0, 5);
         }
       });
     }
@@ -183,7 +182,7 @@ const abilities = {
 };
 
 const towerUnlockOrder = ['laser', 'missile', 'cryo', 'flame'];
-const abilityUnlockOrder = ['overclock', 'repair', 'nuke'];
+const abilityUnlockOrder = ['overclock', 'poison', 'nuke'];
 
 const metaDefs = [
   { key: 'upCannon', icon: towerDefs.cannon.icon, name: 'Bastion-Upgrade', tower: 'cannon', affects: 'Bastion-Schaden', desc: 'Erhöht den Schaden der Bastion.', unit: '%', perLevel: 10 },
@@ -254,7 +253,7 @@ const state = {
   selectedTower: null,
   buildMode: false,
   hoverCell: null,
-  abilityCooldowns: { freeze: 0, nuke: 0, overclock: 0, repair: 0 },
+  abilityCooldowns: { freeze: 0, nuke: 0, overclock: 0, poison: 0 },
   buffs: { overclock: 0 },
   paused: false,
   gameSpeed: 1,
@@ -277,6 +276,9 @@ const state = {
 
 state.meta.unlockedTowers = state.meta.unlockedTowers || ['cannon'];
 state.meta.unlockedAbilities = state.meta.unlockedAbilities || ['freeze'];
+if (state.meta.unlockedAbilities.includes('repair')) {
+  state.meta.unlockedAbilities = state.meta.unlockedAbilities.map(key => key === 'repair' ? 'poison' : key);
+}
 state.meta.savedBuilds = state.meta.savedBuilds || [];
 state.unlocks = state.unlocks || { towerBuilder: false };
 state.campaign = state.campaign || {};
@@ -1293,6 +1295,7 @@ function spawnEnemy(boss = false) {
     hp,
     maxHp: hp,
     freeze: 0,
+    poison: 0,
     archetype,
     boss,
     isFinalBoss,
@@ -1697,6 +1700,7 @@ function animate(now) {
     e.freeze = Math.max(0, e.freeze - simDt);
     e.hitFlash = Math.max(0, (e.hitFlash || 0) - simDt);
     if (e.burn > 0) { e.hp -= simDt * (2.2 * e.burn); e.burn = Math.max(0, e.burn - simDt); }
+    if (e.poison > 0) { e.hp -= simDt * 6.5; e.poison = Math.max(0, e.poison - simDt); }
     e.t += simDt * speed / (board.path.length * 0.58);
     const idx = Math.floor(e.t * (board.path.length - 1));
     if (idx >= board.path.length - 1) {
@@ -1724,7 +1728,7 @@ function animate(now) {
     e.mesh.scale.setScalar((e.boss ? 1.45 : 1) * pulse * hitScale);
     e.mesh.traverse(part => {
       if (part.material?.emissive) {
-        const em = e.hitFlash > 0 ? 0xffd8b1 : (e.freeze > 0 ? 0x8edbff : (e.shield > 0 ? 0x7f8cff : 0x18232d));
+        const em = e.hitFlash > 0 ? 0xffd8b1 : (e.poison > 0 ? 0x88ff55 : (e.freeze > 0 ? 0x8edbff : (e.shield > 0 ? 0x7f8cff : 0x18232d)));
         part.material.emissive.setHex(em);
         part.material.emissiveIntensity = e.hitFlash > 0 ? 0.55 : (e.flying ? 0.25 : 0.18);
       }
