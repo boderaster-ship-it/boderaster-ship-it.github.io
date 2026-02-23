@@ -1273,12 +1273,13 @@ const projectileAssetCache = {
   rocketFinGeo: new THREE.BoxGeometry(0.03, 0.08, 0.1),
   crystalGeo: new THREE.OctahedronGeometry(0.115, 0),
   flameGeo: new THREE.ConeGeometry(0.09, 0.24, 9),
-  coreMat: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.32, metalness: 0.68, emissive: 0x111111, emissiveIntensity: 0.35 }),
-  accentMat: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.24, metalness: 0.45 }),
-  softGlowMat: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.42 }),
+  // MeshBasicMaterial keeps projectile visibility stable on iOS WebKit/PWA rendering paths.
+  coreMat: new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }),
+  accentMat: new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }),
+  softGlowMat: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.42, depthWrite: false, toneMapped: false }),
   iceMat: new THREE.MeshStandardMaterial({ color: 0x9feeff, roughness: 0.14, metalness: 0.08, transparent: true, opacity: 0.94, emissive: 0x76cbff, emissiveIntensity: 0.4 }),
-  flameCoreMat: new THREE.MeshStandardMaterial({ color: 0xffe3ab, roughness: 0.8, metalness: 0.02, emissive: 0xff9b2f, emissiveIntensity: 1.15 }),
-  flameOuterMat: new THREE.MeshBasicMaterial({ color: 0xff651f, transparent: true, opacity: 0.62 })
+  flameCoreMat: new THREE.MeshBasicMaterial({ color: 0xffe3ab, toneMapped: false }),
+  flameOuterMat: new THREE.MeshBasicMaterial({ color: 0xff651f, transparent: true, opacity: 0.62, depthWrite: false, toneMapped: false })
 };
 
 function addProjectilePart(group, mesh, name, kind) {
@@ -1289,7 +1290,7 @@ function addProjectilePart(group, mesh, name, kind) {
 
 function configureProjectileMesh(p, kind, colorHex) {
   if (p.kind !== kind) {
-    p.mesh.clear();
+    while (p.mesh.children.length) p.mesh.remove(p.mesh.children[0]);
     if (kind === 'shell') {
       addProjectilePart(p.mesh, new THREE.Mesh(projectileAssetCache.shellGeo, projectileAssetCache.coreMat.clone()), 'proj-main', kind);
       addProjectilePart(p.mesh, new THREE.Mesh(projectileAssetCache.shellShineGeo, projectileAssetCache.softGlowMat.clone()), 'proj-highlight', kind);
@@ -1338,6 +1339,7 @@ function configureProjectileMesh(p, kind, colorHex) {
 
   p.mesh.traverse(part => {
     if (!part.isMesh) return;
+    part.renderOrder = 6;
     if (part.material?.color) part.material.color.setHex(colorHex);
     if (part.material?.emissive) part.material.emissive.setHex(colorHex);
   });
