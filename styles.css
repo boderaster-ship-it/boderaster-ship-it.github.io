@@ -45,7 +45,7 @@ body { margin: 0; background: linear-gradient(#a9d7ff, #d8efff 38%, #eff7ff); ov
   font-weight: 600;
   text-shadow: 0 2px 4px rgba(0,0,0,.65);
 }
-#bossWarning { position: absolute; left: 24%; right: 24%; top: calc(274px + env(safe-area-inset-top)); text-align: center; color: #ff879f; font-weight: 900; }
+#bossWarning { position: absolute; left: 24%; right: 24%; top: calc(220px + env(safe-area-inset-top)); text-align: center; color: #ff879f; font-weight: 900; }
 
 #abilityBar, #towerDock {
   position: absolute;
@@ -61,8 +61,8 @@ body { margin: 0; background: linear-gradient(#a9d7ff, #d8efff 38%, #eff7ff); ov
   padding: 2px 0;
   scrollbar-width: thin;
 }
-#abilityBar { top: calc(182px + env(safe-area-inset-top)); }
-#towerDock { top: calc(236px + env(safe-area-inset-top)); }
+#abilityBar { top: calc(104px + env(safe-area-inset-top)); }
+#towerDock { top: calc(158px + env(safe-area-inset-top)); }
 .dockBtn, .abilityBtn { width: 44px; height: 44px; min-width: 44px; padding: 0; font-size: 21px; display: grid; place-items: center; }
 .dockBtn.active { outline: 2px solid #69ffbf; }
 .dockBtn.locked, .abilityBtn.disabled { opacity: .45; }
@@ -86,6 +86,13 @@ button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; co
 #toast.show { opacity: 1; }
 #updateBtn { position: absolute; left: 12px; right: 12px; top: calc(140px + env(safe-area-inset-top)); z-index: 20; }
 .hidden { display: none !important; }
+
+#waveInfo,
+#wavePreview,
+#nextWaveTimer {
+  display: none !important;
+}
+
 .phase { font-size: 12px; font-weight: 800; }
 .phase.build { color: #b9ffd7; }
 .phase.wave { color: #ffd0d9; }
@@ -111,9 +118,9 @@ button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; co
 @media (max-width: 420px) {
   #controlBar { top: calc(8px + env(safe-area-inset-top)); }
   #wavePreview { top: calc(145px + env(safe-area-inset-top)); }
-  #abilityBar { top: calc(171px + env(safe-area-inset-top)); }
-  #towerDock { top: calc(225px + env(safe-area-inset-top)); }
-  #bossWarning { top: calc(263px + env(safe-area-inset-top)); }
+  #abilityBar { top: calc(100px + env(safe-area-inset-top)); }
+  #towerDock { top: calc(154px + env(safe-area-inset-top)); }
+  #bossWarning { top: calc(214px + env(safe-area-inset-top)); }
   .builderModules { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
 
