@@ -131,6 +131,9 @@ const abilities = {
   repair: { name: 'Reparatur', icon: '🛠️', cd: 28, text: '+3 Leben', use: () => state.lives = Math.min(30, state.lives + 3) }
 };
 
+const towerUnlockOrder = ['laser', 'missile', 'cryo', 'flame'];
+const abilityUnlockOrder = ['overclock', 'repair', 'nuke'];
+
 const metaDefs = [
   { key: 'upCannon', icon: towerDefs.cannon.icon, name: 'Bastion-Upgrade', tower: 'cannon', affects: 'Bastion-Schaden', desc: 'Erhöht den Schaden der Bastion.', unit: '%', perLevel: 10 },
   { key: 'upLaser', icon: towerDefs.laser.icon, name: 'Arc-Prisma-Upgrade', tower: 'laser', affects: 'Arc-Prisma-Schaden', desc: 'Erhöht den Schaden des Arc Prism.', unit: '%', perLevel: 10 },
@@ -172,7 +175,7 @@ const campaignDefs = Array.from({ length: 24 }, (_, i) => {
     level, world, levelInWorld, waves: 10 + (world >= 3 ? 1 : 0), difficulty,
     rewardCredits: 170 + i * 32,
     rewardTokens: 2 + Math.floor(i / 4),
-    unlockTower: level === 2 ? 'missile' : level === 4 ? 'cryo' : level === 6 ? 'flame' : null,
+    unlockTower: level % 3 === 0 ? towerUnlockOrder[Math.floor(level / 3) - 1] || null : null,
     waveTheme: world === 4 ? 'Elite / Tank / Rage' : world === 3 ? 'Frost rush / Shield wall' : world === 2 ? 'Rush / Ökonomie-Druck' : 'Basis-Mix',
     recommendedTowers,
     intro: worldThemes[world].intro
@@ -207,7 +210,7 @@ const state = {
   betweenWaveCountdown: 0,
   gameStarted: false,
   shake: 0,
-  meta: safeJSONParse('aegis-meta', { upgradePoints: 5, unlockedTowers: ['cannon', 'laser'] }),
+  meta: safeJSONParse('aegis-meta', { upgradePoints: 5, unlockedTowers: ['cannon'] }),
   pools: { projectiles: [], effects: [], healthBars: [], fragments: [], particles: [], shockwaves: [] },
   particlesFrame: 0,
   maxParticlesFrame: 70,
@@ -221,7 +224,7 @@ const state = {
   obstacleTap: { key: null, expires: 0 }
 };
 
-state.meta.unlockedTowers = state.meta.unlockedTowers || ['cannon', 'laser'];
+state.meta.unlockedTowers = state.meta.unlockedTowers || ['cannon'];
 state.meta.unlockedAbilities = state.meta.unlockedAbilities || ['freeze'];
 state.meta.savedBuilds = state.meta.savedBuilds || [];
 state.unlocks = state.unlocks || { towerBuilder: false };
@@ -746,11 +749,13 @@ function saveCampaign() { localStorage.setItem('aegis-campaign', JSON.stringify(
 function saveUnlocks() { localStorage.setItem('aegis-unlocks', JSON.stringify(state.unlocks)); }
 
 function getTowerUnlockLevel(key) {
-  return key === 'missile' ? 2 : key === 'cryo' ? 4 : key === 'flame' ? 6 : 1;
+  const idx = towerUnlockOrder.indexOf(key);
+  return idx >= 0 ? (idx + 1) * 3 : 1;
 }
 
 function getAbilityUnlockLevel(key) {
-  return key === 'freeze' ? 1 : key === 'overclock' ? 2 : key === 'repair' ? 3 : 5;
+  const idx = abilityUnlockOrder.indexOf(key);
+  return idx >= 0 ? (idx + 1) * 6 : 1;
 }
 
 function isAbilityUnlocked(key) {
@@ -778,7 +783,7 @@ function isTowerUnlocked(key) {
 }
 
 function unlockTower(key) {
-  state.meta.unlockedTowers = state.meta.unlockedTowers || ['cannon', 'laser'];
+  state.meta.unlockedTowers = state.meta.unlockedTowers || ['cannon'];
   if (!state.meta.unlockedTowers.includes(key)) state.meta.unlockedTowers.push(key);
 }
 
@@ -797,9 +802,9 @@ function unifiedOverview(animated = true) {
 }
 
 function buildMeta() {
-  if (!state.meta || typeof state.meta !== 'object') state.meta = { upgradePoints: 5, unlockedTowers: ['cannon', 'laser'], unlockedAbilities: ['freeze'] };
+  if (!state.meta || typeof state.meta !== 'object') state.meta = { upgradePoints: 5, unlockedTowers: ['cannon'], unlockedAbilities: ['freeze'] };
   state.meta.upgradePoints = state.meta.upgradePoints || 0;
-  state.meta.unlockedTowers = state.meta.unlockedTowers || ['cannon', 'laser'];
+  state.meta.unlockedTowers = state.meta.unlockedTowers || ['cannon'];
   ui.upgradePointsLabel.textContent = `Upgrade-Punkte: ${state.meta.upgradePoints}`;
   ui.metaTree.innerHTML = '';
   for (const m of metaDefs) {
