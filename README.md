@@ -1,4 +1,4 @@
-# Aegis Grid TD (PWA)
+# Aegis Frontier TD (PWA)
 
 A touch-first 3D-styled tower defense game designed for mobile Safari / iPhone home-screen installs.
 
@@ -25,7 +25,7 @@ Then open `http://localhost:8080`.
 
 ## Deployment options
 - Static hosts: Cloudflare Pages, Netlify, Vercel static export, S3 + CloudFront.
-- Ensure `service-worker` and `manifest.webmanifest` are served with correct MIME types.
+- Ensure `sw.js` and `manifest.webmanifest` are served with correct MIME types.
 
 ## Balance tuning
 All economy and combat values are data-driven in `js/main.js`:
@@ -34,5 +34,5 @@ All economy and combat values are data-driven in `js/main.js`:
 
 ## Updating future versions
 1. Edit gameplay values in `js/main.js`.
-2. Bump `CACHE` key in `sw.js` to invalidate old offline caches.
+2. Bump the `VERSION` key in `sw.js` to invalidate old offline caches.
 3. Redeploy static bundle.
