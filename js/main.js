@@ -125,10 +125,46 @@ const enemyArchetypes = {
 };
 
 const abilities = {
-  freeze: { name: 'Einfrieren', icon: '🧊', cd: 22, text: 'Stoppt Feinde für 2,5 s', use: () => state.enemies.forEach(e => e.freeze = Math.max(e.freeze, 2.5)) },
-  nuke: { name: 'Nuklear', icon: '☢️', cd: 35, text: 'Gewaltige Flächenexplosion', use: () => triggerNuke() },
-  overclock: { name: 'Übertakten', icon: '⚡', cd: 26, text: '+40% Feuerrate für 7 s', use: () => state.buffs.overclock = 7 },
-  repair: { name: 'Reparatur', icon: '🛠️', cd: 28, text: '+3 Leben', use: () => state.lives = Math.min(30, state.lives + 3) }
+  freeze: {
+    name: 'Einfrieren',
+    icon: '🧊',
+    cd: 22,
+    text: 'Stoppt Feinde für 2,5 s',
+    use: () => {
+      launchAbilityStorm('freeze', 0x9ce9ff);
+      state.enemies.forEach(e => e.freeze = Math.max(e.freeze, 2.5));
+    }
+  },
+  nuke: {
+    name: 'Nuklear',
+    icon: '☢️',
+    cd: 35,
+    text: 'Gewaltige Flächenexplosion',
+    use: () => {
+      launchAbilityStorm('nuke', 0xff7b66);
+      triggerNuke();
+    }
+  },
+  overclock: {
+    name: 'Übertakten',
+    icon: '⚡',
+    cd: 26,
+    text: '+40% Feuerrate für 7 s',
+    use: () => {
+      launchAbilityStorm('overclock', 0xffdd73);
+      state.buffs.overclock = 7;
+    }
+  },
+  repair: {
+    name: 'Reparatur',
+    icon: '🛠️',
+    cd: 28,
+    text: '+3 Leben',
+    use: () => {
+      launchAbilityStorm('repair', 0x8dffa1);
+      state.lives = Math.min(30, state.lives + 3);
+    }
+  }
 };
 
 const towerUnlockOrder = ['laser', 'missile', 'cryo', 'flame'];
@@ -211,7 +247,7 @@ const state = {
   gameStarted: false,
   shake: 0,
   meta: safeJSONParse('aegis-meta', { upgradePoints: 5, unlockedTowers: ['cannon'] }),
-  pools: { projectiles: [], effects: [], healthBars: [], fragments: [], particles: [], shockwaves: [] },
+  pools: { projectiles: [], effects: [], healthBars: [], fragments: [], particles: [], shockwaves: [], stormHeads: [] },
   particlesFrame: 0,
   maxParticlesFrame: 70,
   campaign: safeJSONParse('aegis-campaign', { selectedLevel: 1, selectedWorld: 1, completed: {}, unlockedLevel: 1, clearedObstacles: {} }),
@@ -1419,9 +1455,33 @@ function applyHit(enemy, damage, slow = 0, burn = 0, customStats = null, damageT
   if (ui.shakeToggle.checked) state.shake = Math.min(0.22, state.shake + 0.035);
 }
 
+
+function launchAbilityStorm(kind, color) {
+  if (!board.path?.length) return;
+  const sourceCell = board.path[board.path.length - 1];
+  const targetCell = board.path[0];
+  const source = cellToWorld(sourceCell[0], sourceCell[1]).clone();
+  const target = cellToWorld(targetCell[0], targetCell[1]).clone();
+  const dir = target.clone().sub(source);
+  const dist = Math.max(0.001, dir.length());
+  const travelTime = 0.8;
+  state.effects.push({
+    kind: 'abilityStorm',
+    ability: kind,
+    color,
+    source,
+    target,
+    dir: dir.normalize(),
+    dist,
+    duration: travelTime,
+    life: travelTime,
+    head: null,
+    trail: []
+  });
+}
+
 function triggerNuke() {
   const center = cellToWorld(Math.floor(board.w / 2), Math.floor(board.h / 2));
-  state.effects.push({ pos: center.clone(), life: 0.95, color: 0xff6b6b, radius: 8.2 });
   state.enemies.forEach(e => {
     if (e.mesh.position.distanceTo(center) < 8.2) applyHit(e, 130, 0, 0, null, 'explosive');
   });
@@ -1713,6 +1773,50 @@ function animate(now) {
       }
       continue;
     }
+    if (fx.kind === 'abilityStorm') {
+      fx.life -= simDt;
+      const progress = Math.min(1, Math.max(0, 1 - (fx.life / fx.duration)));
+      const headPos = fx.source.clone().lerp(fx.target, progress);
+
+      if (!fx.head) {
+        fx.head = state.pools.stormHeads.pop() || new THREE.Mesh(
+          new THREE.SphereGeometry(0.18, 12, 10),
+          new THREE.MeshBasicMaterial({ transparent: true })
+        );
+        world.add(fx.head);
+      }
+
+      fx.head.visible = true;
+      fx.head.position.copy(headPos).setY(headPos.y + 0.34);
+      const headScale = 1 + Math.sin(now * 0.018 + progress * 9) * 0.18;
+      fx.head.scale.setScalar(headScale);
+      fx.head.material.color.setHex(fx.color || 0xffffff);
+      fx.head.material.opacity = 0.88;
+
+      if (!fx.trail) fx.trail = [];
+      const trailSteps = 11;
+      for (let t = 0; t < trailSteps; t++) {
+        const ratio = t / (trailSteps - 1);
+        const lag = ratio * 1.8;
+        const tProg = Math.max(0, progress - (lag / Math.max(0.001, fx.dist)));
+        const trailPos = fx.source.clone().lerp(fx.target, tProg);
+        const swirl = new THREE.Vector3(-fx.dir.z, 0, fx.dir.x).multiplyScalar((Math.sin(now * 0.01 + t) * 0.18) * (1 - ratio));
+        emitParticleBurst(trailPos.add(swirl), { color: fx.color, count: 1, spread: 0.26 + ratio * 0.4, life: 0.2 + (1 - ratio) * 0.16, y: 0.24 });
+      }
+
+      if (fx.life <= 0) {
+        if (fx.head) {
+          fx.head.visible = false;
+          if (fx.head.parent) fx.head.parent.remove(fx.head);
+          state.pools.stormHeads.push(fx.head);
+          fx.head = null;
+        }
+        emitParticleBurst(fx.target.clone(), { color: fx.color, count: 12, spread: 1.2, life: 0.32, y: 0.34 });
+        state.effects.splice(i, 1);
+      }
+      continue;
+    }
+
     if (fx.kind === 'shockwave') {
       fx.life -= simDt;
       const prog = 1 - (fx.life / fx.maxLife);
