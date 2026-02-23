@@ -132,10 +132,12 @@ const abilities = {
 };
 
 const metaDefs = [
-  { key: 'branchCrit', name: 'Präzisionskern', affects: 'Bastion-Kritchance', desc: 'Fügt Bastion-Türmen kritische Treffer hinzu.', unit: '%' },
-  { key: 'branchChain', name: 'Relaiskern', affects: 'Arc-Prisma-Kettenangriff', desc: 'Arc-Prisma-Projektile können auf zusätzliche Ziele überspringen.', unit: 'Ziele' },
-  { key: 'dot', name: 'Brennende Ladungen', affects: 'Stärke von Schaden über Zeit', desc: 'Projektile verursachen nach dem Treffer stärkeren Brand.', unit: 'Stapel' },
-  { key: 'econ', name: 'Versorgungslager', affects: 'Startguthaben', desc: 'Beginne jedes Level mit zusätzlichem Guthaben.', unit: 'Credits' }
+  { key: 'upCannon', icon: towerDefs.cannon.icon, name: 'Bastion-Upgrade', tower: 'cannon', affects: 'Bastion-Schaden', desc: 'Erhöht den Schaden der Bastion.', unit: '%', perLevel: 10 },
+  { key: 'upLaser', icon: towerDefs.laser.icon, name: 'Arc-Prisma-Upgrade', tower: 'laser', affects: 'Arc-Prisma-Schaden', desc: 'Erhöht den Schaden des Arc Prism.', unit: '%', perLevel: 10 },
+  { key: 'upMissile', icon: towerDefs.missile.icon, name: 'Skyhammer-Upgrade', tower: 'missile', affects: 'Skyhammer-Schaden', desc: 'Erhöht den Schaden des Skyhammer.', unit: '%', perLevel: 10 },
+  { key: 'upCryo', icon: towerDefs.cryo.icon, name: 'Frost-Coil-Upgrade', tower: 'cryo', affects: 'Frost-Coil-Schaden', desc: 'Erhöht den Schaden der Frost Coil.', unit: '%', perLevel: 10 },
+  { key: 'upFlame', icon: towerDefs.flame.icon, name: 'Pyre-Upgrade', tower: 'flame', affects: 'Pyre-Schaden', desc: 'Erhöht den Schaden der Pyre.', unit: '%', perLevel: 10 },
+  { key: 'econ', icon: '💰', name: 'Versorgungslager', affects: 'Startguthaben', desc: 'Beginne jedes Level mit zusätzlichem Guthaben.', unit: 'Credits', perLevel: 45 }
 ];
 
 const worldPaths = {
@@ -803,12 +805,12 @@ function buildMeta() {
   for (const m of metaDefs) {
     const lvl = state.meta[m.key] || 0;
     const cost = 2 + lvl;
-    const reqText = m.key === 'branchChain' ? 'Freischaltung: Level 2 abschließen' : m.key === 'dot' ? 'Freischaltung: Level 3 abschließen' : 'Freischaltung: Level 1 abschließen';
-    const valueCur = m.key === 'econ' ? `${lvl * 45} Credits` : `${lvl} ${m.unit}`;
+    const valueCur = m.key === 'econ' ? `${lvl * m.perLevel} Credits` : `+${lvl * m.perLevel}${m.unit}`;
     const valueNextRaw = lvl + 1;
-    const valueNext = m.key === 'econ' ? `${valueNextRaw * 45} Credits` : `${valueNextRaw} ${m.unit}`;
+    const valueNext = m.key === 'econ' ? `${valueNextRaw * m.perLevel} Credits` : `+${valueNextRaw * m.perLevel}${m.unit}`;
+    const reqText = m.key === 'econ' ? 'Freischaltung: Level 1 abschließen' : `Freischaltung: Level ${getTowerUnlockLevel(m.tower)} abschließen`;
     const btn = document.createElement('button');
-    btn.innerHTML = `<strong>${m.name}</strong><br><small>${m.affects}</small><br><small>${valueCur} → ${valueNext} · Kosten ${cost}</small><br><small>${reqText}</small>`;
+    btn.innerHTML = `<strong>${m.icon} ${m.name}</strong><br><small>${m.affects}</small><br><small>${valueCur} → ${valueNext} · Kosten ${cost}</small><br><small>${reqText}</small>`;
     btn.disabled = state.meta.upgradePoints < cost;
     btn.onclick = () => {
       if ((state.meta.upgradePoints || 0) < cost) return;
@@ -1200,7 +1202,7 @@ function makeTower(type, cell, customCfg = null) {
   g.position.copy(p).setY(p.y + 0.3);
   g.castShadow = true;
   world.add(g);
-  return { type, cell, level: 1, cooldown: 0, mesh: g, barrel, core, branch: state.meta.branchCrit ? 'crit' : state.meta.branchChain ? 'chain' : 'none', custom: customCfg, displayName: customCfg ? customCfg.name : d.name };
+  return { type, cell, level: 1, cooldown: 0, mesh: g, barrel, core, branch: 'none', custom: customCfg, displayName: customCfg ? customCfg.name : d.name };
 }
 
 function spawnEnemy(boss = false) {
@@ -1255,6 +1257,20 @@ function getProjectile() {
   return p;
 }
 
+function getTowerMetaDamageBonus(type) {
+  const map = {
+    cannon: 'upCannon',
+    laser: 'upLaser',
+    missile: 'upMissile',
+    cryo: 'upCryo',
+    flame: 'upFlame'
+  };
+  const key = map[type];
+  if (!key) return 1;
+  const lvl = state.meta?.[key] || 0;
+  return 1 + lvl * 0.1;
+}
+
 function fireTower(tower, enemy) {
   const customStats = tower.custom?.stats;
   const d = customStats ? {
@@ -1267,7 +1283,7 @@ function fireTower(tower, enemy) {
   const p = getProjectile();
   p.alive = true;
   p.kind = d.projectile;
-  p.damage = d.damage * tower.level;
+  p.damage = d.damage * tower.level * getTowerMetaDamageBonus(tower.type);
   p.aoe = d.aoe || 0;
   p.slow = d.slow || 0;
   p.custom = customStats || null;
