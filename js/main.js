@@ -370,8 +370,8 @@ const BUILD_PAD_COLORS = {
 };
 const BUILD_TAP_MOVE_PX = Math.min(34, Math.max(28, Math.round((window.devicePixelRatio || 1) * 16)));
 const TAP_MAX_MS = 320;
-const PAN_MULT = 0.0031;
-const PINCH_MULT = 0.0038;
+const PAN_MULT = 0.00465;
+const PINCH_MULT = 0.0057;
 let hoverVisualState = { valid: true, pulse: 0 };
 
 buildBuildZonePads();
@@ -1183,7 +1183,6 @@ function spawnWave() {
   initDock();
   initAbilities();
   refreshWavePreview();
-  unifiedOverview(false);
 }
 
 function beginBuildPhase() {
@@ -2060,8 +2059,8 @@ canvas.addEventListener('pointermove', e => {
 
   if (touches.size === 1) {
     if (!(state.buildMode && state.selectedTowerType)) {
-      cam.velYaw += -e.movementX * 0.0014;
-      cam.velPitch += e.movementY * 0.0011;
+      cam.velYaw += -e.movementX * 0.0021;
+      cam.velPitch += e.movementY * 0.00165;
     }
     const cell = pickCell(e.clientX, e.clientY);
     updateHoverVisual(cell);
@@ -2126,7 +2125,7 @@ canvas.addEventListener('pointercancel', e => {
 });
 canvas.addEventListener('dblclick', () => unifiedOverview(true));
 canvas.addEventListener('wheel', e => {
-  cam.velDist += e.deltaY * 0.004;
+  cam.velDist += e.deltaY * 0.006;
 }, { passive: true });
 
 
