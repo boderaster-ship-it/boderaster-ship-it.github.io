@@ -765,9 +765,11 @@ function spawnDeathFx(enemy) {
   const pieces = enemy.boss ? 18 : 11;
   const base = enemy.mesh.position.clone();
   for (let i = 0; i < pieces; i++) {
-    const frag = state.pools.fragments.pop() || { mesh: new THREE.Mesh(new THREE.DodecahedronGeometry(0.08 + Math.random() * 0.09, 0), new THREE.MeshStandardMaterial({ color: 0xa8b0bc, roughness: 0.8 })), vel: new THREE.Vector3(), life: 0 };
+    const frag = state.pools.fragments.pop() || { mesh: new THREE.Mesh(new THREE.TetrahedronGeometry(0.11, 0), new THREE.MeshStandardMaterial({ color: 0xa8b0bc, roughness: 0.8 })), vel: new THREE.Vector3(), life: 0 };
     frag.mesh.visible = true;
     if (!frag.mesh.parent) world.add(frag.mesh);
+    const sizeJitter = enemy.boss ? (0.8 + Math.random() * 1.3) : (0.65 + Math.random() * 1.05);
+    frag.mesh.scale.setScalar(sizeJitter);
     frag.mesh.position.copy(base).add(new THREE.Vector3((Math.random() - 0.5) * 0.35, 0.2 + Math.random() * 0.35, (Math.random() - 0.5) * 0.35));
     frag.vel.set((Math.random() - 0.5) * 3.7, 2.2 + Math.random() * 2.6, (Math.random() - 0.5) * 3.7);
     frag.life = 0.85 + Math.random() * 0.5;
@@ -789,7 +791,7 @@ function spawnDeathFx(enemy) {
   shock.rotation.x = -Math.PI / 2;
   shock.position.copy(base).setY(GROUND_Y + 0.06);
   if (!shock.parent) world.add(shock);
-  state.effects.push({ kind: 'shockwave', mesh: shock, life: 0.42, maxLife: 0.42 });
+  state.effects.push({ kind: 'shockwave', mesh: shock, life: 0.42, maxLife: 0.42, radiusScale: 11.25 });
 }
 
 
@@ -1903,7 +1905,7 @@ function animate(now) {
     if (fx.kind === 'shockwave') {
       fx.life -= simDt;
       const prog = 1 - (fx.life / fx.maxLife);
-      fx.mesh.scale.setScalar(1 + prog * 7.5);
+      fx.mesh.scale.setScalar(1 + prog * (fx.radiusScale || 7.5));
       fx.mesh.material.opacity = Math.max(0, (1 - prog) * 0.7);
       if (fx.life <= 0) {
         fx.mesh.visible = false;
