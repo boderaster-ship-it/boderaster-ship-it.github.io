@@ -1496,6 +1496,18 @@ function applyHit(enemy, damage, slow = 0, burn = 0, customStats = null, damageT
   if (ui.shakeToggle.checked) state.shake = Math.min(0.22, state.shake + 0.035);
 }
 
+function getFrontmostEnemyInRange(tower, range) {
+  let frontmost = null;
+  for (const enemy of state.enemies) {
+    if (!enemy?.mesh?.parent) continue;
+    if (enemy.mesh.position.distanceTo(tower.mesh.position) >= range) continue;
+    if (!frontmost || enemy.t > frontmost.t) {
+      frontmost = enemy;
+    }
+  }
+  return frontmost;
+}
+
 
 function getPathPosition(path, progress) {
   if (!path?.length) return null;
@@ -1749,7 +1761,7 @@ function animate(now) {
     t.core.material.emissiveIntensity = 0.3 + Math.sin(now * 0.008) * 0.08 + t.level * 0.05;
     const baseRange = t.custom ? t.custom.stats.range : towerDefs[t.type].range;
     const range = baseRange + (t.level - 1) * 0.45;
-    const target = state.enemies.find(e => e.mesh.position.distanceTo(t.mesh.position) < range);
+    const target = getFrontmostEnemyInRange(t, range);
     if (target && t.cooldown <= 0 && state.inWave) {
       fireTower(t, target);
       const baseRate = t.custom ? t.custom.stats.rate : towerDefs[t.type].rate;
