@@ -801,53 +801,112 @@ function createMarker(cell, color) {
   marker.position.copy(p).setY(p.y + 0.25);
   world.add(marker);
 }
+
+function makeEnemyMaterial(color, opts = {}) {
+  const mat = new THREE.MeshStandardMaterial({
+    color,
+    roughness: opts.roughness ?? 0.48,
+    metalness: opts.metalness ?? 0.42,
+    emissive: opts.emissive ?? 0x121820,
+    emissiveIntensity: opts.emissiveIntensity ?? 0.16,
+    transparent: !!opts.transparent,
+    opacity: opts.opacity ?? 1
+  });
+  mat.flatShading = true;
+  return mat;
+}
+
 function createEnemyMesh(def, boss = false) {
   const g = new THREE.Group();
-  const bodyScale = boss ? 1.3 : 1;
-  const body = new THREE.Mesh(new THREE.SphereGeometry(def.size * 0.95 * bodyScale, 14, 12), new THREE.MeshStandardMaterial({ color: def.color, roughness: 0.58, metalness: 0.12, emissive: 0x101720, emissiveIntensity: 0.1 }));
-  body.castShadow = true;
-  g.add(body);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(def.size * 0.58 * bodyScale, 12, 10), new THREE.MeshStandardMaterial({ color: def.accents || 0xffffff, emissive: def.accents || def.color, emissiveIntensity: 0.16, roughness: 0.5, metalness: 0.08 }));
-  head.position.set(0, def.size * 0.62 * bodyScale, def.size * 0.68 * bodyScale);
-  head.castShadow = true;
-  g.add(head);
-  const limbMat = new THREE.MeshStandardMaterial({ color: 0x2f2631, roughness: 0.74, metalness: 0.06 });
-  if (def.flying) {
-    for (let i = -1; i <= 1; i += 2) {
-      const wing = new THREE.Mesh(new THREE.ConeGeometry(def.size * 0.42 * bodyScale, def.size * 1.2 * bodyScale, 3), new THREE.MeshStandardMaterial({ color: def.accents || 0xc9f2ff, transparent: true, opacity: 0.85, emissive: def.accents || 0x9fe9ff, emissiveIntensity: 0.28 }));
-      wing.rotation.z = i * Math.PI * 0.42;
-      wing.rotation.x = Math.PI * 0.5;
-      wing.position.set(i * def.size * 0.72 * bodyScale, def.size * 0.28 * bodyScale, 0);
-      g.add(wing);
-    }
-  } else {
-    for (let i = 0; i < 4; i++) {
-      const signX = i < 2 ? -1 : 1;
-      const back = i % 2 === 0 ? -1 : 1;
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(def.size * 0.1 * bodyScale, def.size * 0.13 * bodyScale, def.size * 0.72 * bodyScale, 7), limbMat);
-      leg.position.set(signX * def.size * 0.52 * bodyScale, -def.size * 0.18 * bodyScale, back * def.size * 0.4 * bodyScale);
+  const bodyScale = boss ? 1.34 : 1;
+  const bodyMat = makeEnemyMaterial(def.color, { roughness: 0.5, metalness: 0.38, emissive: 0x132030, emissiveIntensity: 0.14 });
+  const panelMat = makeEnemyMaterial(def.accents || 0xd6e0f3, { roughness: 0.36, metalness: 0.55, emissive: def.accents || 0x8fb5e8, emissiveIntensity: 0.2 });
+  const darkMat = makeEnemyMaterial(0x252a36, { roughness: 0.66, metalness: 0.22, emissive: 0x0f1117, emissiveIntensity: 0.08 });
+  const coreMat = makeEnemyMaterial(def.accents || 0xaad9ff, { roughness: 0.3, metalness: 0.62, emissive: def.accents || 0xaad9ff, emissiveIntensity: 0.38 });
+
+  if (def.type === 'runner') {
+    const torso = new THREE.Mesh(new THREE.CapsuleGeometry(def.size * 0.42 * bodyScale, def.size * 0.84 * bodyScale, 4, 8), bodyMat);
+    torso.rotation.x = Math.PI * 0.08;
+    torso.castShadow = true;
+    g.add(torso);
+    const visor = new THREE.Mesh(new THREE.BoxGeometry(def.size * 0.52 * bodyScale, def.size * 0.22 * bodyScale, def.size * 0.34 * bodyScale), coreMat);
+    visor.position.set(0, def.size * 0.22 * bodyScale, def.size * 0.44 * bodyScale);
+    g.add(visor);
+    for (let i = 0; i < 2; i++) {
+      const side = i === 0 ? -1 : 1;
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(def.size * 0.09 * bodyScale, def.size * 0.11 * bodyScale, def.size * 0.88 * bodyScale, 6), darkMat);
+      leg.position.set(side * def.size * 0.2 * bodyScale, -def.size * 0.34 * bodyScale, 0);
       leg.castShadow = true;
       g.add(leg);
+      const kneePlate = new THREE.Mesh(new THREE.BoxGeometry(def.size * 0.16 * bodyScale, def.size * 0.12 * bodyScale, def.size * 0.16 * bodyScale), panelMat);
+      kneePlate.position.set(side * def.size * 0.2 * bodyScale, -def.size * 0.06 * bodyScale, def.size * 0.16 * bodyScale);
+      g.add(kneePlate);
     }
-  }
-  if (def.type === 'runner') {
-    const hornMat = new THREE.MeshStandardMaterial({ color: 0xefe8cb, roughness: 0.4 });
-    [-1, 1].forEach(side => {
-      const horn = new THREE.Mesh(new THREE.ConeGeometry(def.size * 0.13 * bodyScale, def.size * 0.48 * bodyScale, 7), hornMat);
-      horn.position.set(side * def.size * 0.32 * bodyScale, def.size * 0.98 * bodyScale, def.size * 0.56 * bodyScale);
-      horn.rotation.z = -side * 0.35;
-      g.add(horn);
-    });
+    const rearFin = new THREE.Mesh(new THREE.ConeGeometry(def.size * 0.16 * bodyScale, def.size * 0.5 * bodyScale, 5), panelMat);
+    rearFin.position.set(0, def.size * 0.1 * bodyScale, -def.size * 0.52 * bodyScale);
+    rearFin.rotation.x = Math.PI;
+    g.add(rearFin);
   } else if (def.type === 'tank' || boss) {
-    const armor = new THREE.Mesh(new THREE.BoxGeometry(def.size * 1.7 * bodyScale, def.size * 0.82 * bodyScale, def.size * 1.55 * bodyScale), new THREE.MeshStandardMaterial({ color: 0x4f3630, metalness: 0.5, roughness: 0.45 }));
-    armor.position.y = def.size * 0.18 * bodyScale;
-    armor.castShadow = true;
-    g.add(armor);
+    const hull = new THREE.Mesh(new THREE.BoxGeometry(def.size * 1.78 * bodyScale, def.size * 0.82 * bodyScale, def.size * 1.55 * bodyScale), bodyMat);
+    hull.position.y = def.size * 0.08 * bodyScale;
+    hull.castShadow = true;
+    g.add(hull);
+    const topArmor = new THREE.Mesh(new THREE.BoxGeometry(def.size * 1.3 * bodyScale, def.size * 0.4 * bodyScale, def.size * 1.02 * bodyScale), panelMat);
+    topArmor.position.set(0, def.size * 0.46 * bodyScale, -def.size * 0.04 * bodyScale);
+    topArmor.castShadow = true;
+    g.add(topArmor);
+    const core = new THREE.Mesh(new THREE.OctahedronGeometry(def.size * 0.32 * bodyScale, 0), coreMat);
+    core.position.set(0, def.size * 0.38 * bodyScale, def.size * 0.54 * bodyScale);
+    g.add(core);
+    for (let i = 0; i < 3; i++) {
+      const vent = new THREE.Mesh(new THREE.BoxGeometry(def.size * 0.28 * bodyScale, def.size * 0.08 * bodyScale, def.size * 0.18 * bodyScale), darkMat);
+      vent.position.set((i - 1) * def.size * 0.46 * bodyScale, def.size * 0.18 * bodyScale, -def.size * 0.68 * bodyScale);
+      g.add(vent);
+    }
+    for (let i = 0; i < 2; i++) {
+      const side = i === 0 ? -1 : 1;
+      const tread = new THREE.Mesh(new THREE.BoxGeometry(def.size * 0.42 * bodyScale, def.size * 0.42 * bodyScale, def.size * 1.46 * bodyScale), darkMat);
+      tread.position.set(side * def.size * 0.98 * bodyScale, -def.size * 0.04 * bodyScale, 0);
+      tread.castShadow = true;
+      g.add(tread);
+    }
   } else if (def.type === 'shielded') {
-    const shell = new THREE.Mesh(new THREE.SphereGeometry(def.size * 1.35 * bodyScale, 14, 12), new THREE.MeshStandardMaterial({ color: 0x7db6ff, transparent: true, opacity: 0.18, emissive: 0x7db6ff, emissiveIntensity: 0.5 }));
+    const chassis = new THREE.Mesh(new THREE.CylinderGeometry(def.size * 0.5 * bodyScale, def.size * 0.64 * bodyScale, def.size * 1.08 * bodyScale, 7), bodyMat);
+    chassis.rotation.z = Math.PI / 2;
+    chassis.castShadow = true;
+    g.add(chassis);
+    const face = new THREE.Mesh(new THREE.BoxGeometry(def.size * 0.88 * bodyScale, def.size * 0.6 * bodyScale, def.size * 0.28 * bodyScale), panelMat);
+    face.position.set(0, def.size * 0.08 * bodyScale, def.size * 0.5 * bodyScale);
+    g.add(face);
+    const core = new THREE.Mesh(new THREE.OctahedronGeometry(def.size * 0.26 * bodyScale, 0), coreMat);
+    core.position.set(0, def.size * 0.16 * bodyScale, def.size * 0.58 * bodyScale);
+    g.add(core);
+    const backPack = new THREE.Mesh(new THREE.BoxGeometry(def.size * 0.65 * bodyScale, def.size * 0.44 * bodyScale, def.size * 0.5 * bodyScale), darkMat);
+    backPack.position.set(0, def.size * 0.1 * bodyScale, -def.size * 0.44 * bodyScale);
+    g.add(backPack);
+    const shell = new THREE.Mesh(new THREE.SphereGeometry(def.size * 1.38 * bodyScale, 10, 8), makeEnemyMaterial(0x7db6ff, { transparent: true, opacity: 0.18, roughness: 0.16, metalness: 0.14, emissive: 0x7db6ff, emissiveIntensity: 0.42 }));
     shell.name = 'shieldShell';
     g.add(shell);
+  } else if (def.flying) {
+    const cockpit = new THREE.Mesh(new THREE.OctahedronGeometry(def.size * 0.58 * bodyScale, 0), bodyMat);
+    cockpit.castShadow = true;
+    g.add(cockpit);
+    const sensor = new THREE.Mesh(new THREE.SphereGeometry(def.size * 0.2 * bodyScale, 8, 6), coreMat);
+    sensor.position.set(0, 0, def.size * 0.46 * bodyScale);
+    g.add(sensor);
+    for (let i = 0; i < 2; i++) {
+      const side = i === 0 ? -1 : 1;
+      const wing = new THREE.Mesh(new THREE.BoxGeometry(def.size * 0.16 * bodyScale, def.size * 0.06 * bodyScale, def.size * 1.6 * bodyScale), panelMat);
+      wing.position.set(side * def.size * 0.58 * bodyScale, 0, 0);
+      wing.rotation.x = Math.PI * 0.18;
+      g.add(wing);
+      const thruster = new THREE.Mesh(new THREE.ConeGeometry(def.size * 0.11 * bodyScale, def.size * 0.4 * bodyScale, 6), darkMat);
+      thruster.position.set(side * def.size * 0.48 * bodyScale, -def.size * 0.02 * bodyScale, -def.size * 0.62 * bodyScale);
+      thruster.rotation.x = Math.PI;
+      g.add(thruster);
+    }
   }
+  g.traverse(part => { if (part.isMesh) part.castShadow = true; });
   return g;
 }
 
@@ -906,15 +965,20 @@ function spawnDeathFx(enemy) {
   const pieces = enemy.boss ? 18 : 11;
   const base = enemy.mesh.position.clone();
   for (let i = 0; i < pieces; i++) {
-    const frag = state.pools.fragments.pop() || { mesh: new THREE.Mesh(new THREE.TetrahedronGeometry(0.11, 0), new THREE.MeshStandardMaterial({ color: 0xa8b0bc, roughness: 0.8 })), vel: new THREE.Vector3(), life: 0 };
+    const frag = state.pools.fragments.pop() || { mesh: new THREE.Mesh(new THREE.TetrahedronGeometry(0.11, 0), new THREE.MeshStandardMaterial({ color: 0xa8b0bc, roughness: 0.8 })), vel: new THREE.Vector3(), life: 0, settleY: null, groundLock: 0 };
     frag.mesh.visible = true;
     if (!frag.mesh.parent) world.add(frag.mesh);
     const sizeJitter = enemy.boss ? (0.8 + Math.random() * 1.3) : (0.65 + Math.random() * 1.05);
     frag.mesh.scale.setScalar(sizeJitter);
     frag.mesh.position.copy(base).add(new THREE.Vector3((Math.random() - 0.5) * 0.35, 0.2 + Math.random() * 0.35, (Math.random() - 0.5) * 0.35));
     frag.vel.set((Math.random() - 0.5) * 3.7, 2.2 + Math.random() * 2.6, (Math.random() - 0.5) * 3.7);
-    frag.life = 0.85 + Math.random() * 0.5;
+    frag.life = 2.2 + Math.random() * 0.9;
+    frag.fadeDuration = 0.9;
+    frag.settleY = null;
+    frag.groundLock = 0;
     frag.mesh.material.color.setHex(enemy.isFinalBoss ? 0xff5d78 : enemy.def?.color || 0xc7d0db);
+    frag.mesh.material.transparent = true;
+    frag.mesh.material.opacity = 1;
     state.effects.push({ kind: 'fragment', frag });
   }
   emitParticleBurst(base, { color: enemy.world === 3 ? 0xff8a5f : enemy.world === 2 ? 0xade7ff : 0xffc094, count: enemy.boss ? 16 : 10, spread: enemy.world === 3 ? 3.4 : 2.7, life: 0.42, y: 0.25 });
@@ -1456,7 +1520,10 @@ function spawnEnemy(boss = false) {
     armor,
     rage: worldId===4,
     hitFlash: 0,
-    deathScale: boss ? 1.4 : 1
+    deathScale: boss ? 1.4 : 1,
+    motionPhase: Math.random() * Math.PI * 2,
+    stridePhase: Math.random() * Math.PI * 2,
+    settledGroundY: null
   };
   updateEnemyHealthBarVisual(enemy, true);
   return enemy;
@@ -1881,20 +1948,57 @@ function animate(now) {
     const f = e.t * (board.path.length - 1) - idx;
     const a = cellToWorld(...board.path[idx]);
     const b = cellToWorld(...board.path[idx + 1]);
-    const yLift = e.flying ? 0.62 + Math.sin(now * 0.006 + e.bob) * 0.2 : 0.32 + Math.abs(Math.sin(now * 0.01 + e.bob)) * 0.06;
-    e.mesh.position.lerpVectors(a, b, f).setY((a.y * (1 - f) + b.y * f) + yLift);
+    const pathPos = new THREE.Vector3().lerpVectors(a, b, f);
+    const pathDir = b.clone().sub(a);
+    const dirLen = Math.max(0.0001, pathDir.length());
+    pathDir.multiplyScalar(1 / dirLen);
+    const phase = now * 0.009 + e.motionPhase;
+    const stride = now * 0.016 + e.stridePhase;
+    const pathYaw = Math.atan2(pathDir.x, pathDir.z);
+    let yLift = 0.33;
+    let bobAmount = 0;
+    let roll = 0;
+    let pitch = 0;
+
+    if (e.flying) {
+      bobAmount = Math.sin(phase) * 0.22;
+      yLift = 0.72 + bobAmount;
+      roll = Math.sin(stride) * 0.18;
+      pitch = 0.08 + Math.sin(stride * 0.9) * 0.05;
+    } else if (e.archetype === 'runner') {
+      bobAmount = Math.abs(Math.sin(stride)) * 0.12;
+      yLift = 0.28 + bobAmount;
+      pitch = 0.25 + Math.sin(stride) * 0.08;
+      roll = Math.sin(stride * 2) * 0.05;
+    } else if (e.archetype === 'tank' || e.boss) {
+      bobAmount = Math.abs(Math.sin(stride * 0.55)) * 0.06;
+      yLift = 0.27 + bobAmount;
+      pitch = 0.06 + Math.sin(stride * 0.55) * 0.03;
+      roll = Math.sin(stride * 0.35) * 0.02;
+    } else if (e.archetype === 'shielded') {
+      bobAmount = Math.abs(Math.sin(stride * 0.75)) * 0.08;
+      yLift = 0.3 + bobAmount;
+      pitch = 0.11 + Math.sin(stride * 0.75) * 0.04;
+      roll = Math.sin(stride * 0.6) * 0.03;
+    } else {
+      bobAmount = Math.abs(Math.sin(stride)) * 0.07;
+      yLift = 0.31 + bobAmount;
+      pitch = 0.09;
+    }
+
+    e.mesh.position.copy(pathPos).setY(pathPos.y + yLift);
     if (e.blobShadow) {
-      const groundY = (a.y * (1 - f) + b.y * f) + 0.02;
+      const groundY = pathPos.y + 0.02;
       e.blobShadow.position.set(e.mesh.position.x, groundY, e.mesh.position.z);
-      e.blobShadow.material.opacity = e.flying ? 0.14 : 0.34;
-      const squash = e.flying ? 1.25 : 1;
+      e.blobShadow.material.opacity = e.flying ? (0.1 + Math.abs(Math.sin(phase)) * 0.05) : 0.3 + bobAmount * 0.26;
+      const squash = e.flying ? (1.25 + Math.sin(stride) * 0.07) : (1 + bobAmount * 0.5);
       e.blobShadow.scale.set(squash, squash, 1);
     }
-    e.mesh.rotation.y += dt * (e.flying ? 1.8 : 1.1);
     const pulse = 1 + Math.sin(now * 0.012 + e.bob) * 0.04;
     const hitScale = e.hitFlash > 0 ? 1.12 : 1;
     if (wasFrozen && e.freeze <= 0.01) emitParticleBurst(e.mesh.position.clone(), { color: 0xbfefff, count: 8, spread: 2.1, life: 0.26, y: 0.22 });
     e.mesh.scale.setScalar((e.boss ? 1.45 : 1) * pulse * hitScale);
+    e.mesh.rotation.set(pitch, pathYaw + roll, roll * 0.7);
     e.mesh.traverse(part => {
       if (part.material?.emissive) {
         const em = e.hitFlash > 0 ? 0xffd8b1 : (e.poison > 0 ? 0x88ff55 : (e.freeze > 0 ? 0x8edbff : (e.shield > 0 ? 0x7f8cff : 0x18232d)));
@@ -1970,11 +2074,25 @@ function animate(now) {
     if (fx.kind === 'fragment') {
       const f = fx.frag;
       f.life -= simDt;
-      f.vel.y -= simDt * 5.8;
-      f.mesh.position.addScaledVector(f.vel, simDt);
-      f.mesh.rotation.x += simDt * 5;
-      f.mesh.rotation.y += simDt * 6.5;
-      f.mesh.material.opacity = Math.max(0, f.life * 1.2);
+      if (f.settleY == null) {
+        f.vel.y -= simDt * 5.8;
+        f.mesh.position.addScaledVector(f.vel, simDt);
+        f.mesh.rotation.x += simDt * 5;
+        f.mesh.rotation.y += simDt * 6.5;
+        const groundY = GROUND_Y + 0.03;
+        if (f.mesh.position.y <= groundY) {
+          f.settleY = groundY;
+          f.mesh.position.y = groundY;
+          f.vel.set(0, 0, 0);
+        }
+      } else {
+        f.groundLock += simDt;
+        f.mesh.position.y = f.settleY;
+        f.mesh.rotation.x += simDt * 0.25;
+      }
+      const fadeWindow = f.fadeDuration || 0.9;
+      const opacity = f.life < fadeWindow ? Math.max(0, f.life / fadeWindow) : 1;
+      f.mesh.material.opacity = opacity;
       f.mesh.material.transparent = true;
       if (f.life <= 0) {
         f.mesh.visible = false;
