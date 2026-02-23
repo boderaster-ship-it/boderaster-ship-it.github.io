@@ -1871,6 +1871,7 @@ function animate(now) {
       world.remove(e.mesh);
       if (state.lives <= 0) {
         state.paused = true;
+        closeTransientPanels();
         ui.mainMenu.classList.remove('hidden');
         showToast('Niederlage. Neustart...', false);
       }
@@ -2353,9 +2354,30 @@ ui.sellBtn.onclick = () => {
 };
 ui.pauseBtn.onclick = () => { state.paused = true; ui.pauseMenu.classList.remove('hidden'); };
 ui.resumeBtn.onclick = () => { state.paused = false; ui.pauseMenu.classList.add('hidden'); };
-ui.menuBtn.onclick = () => { state.paused = true; state.gameStarted = false; ui.pauseMenu.classList.add('hidden'); ui.mainMenu.classList.remove('hidden'); };
+
+function closeTransientPanels() {
+  state.selectedTower = null;
+  state.buildMode = false;
+  ghost.visible = false;
+  rangeRing.visible = false;
+  blockedCross.visible = false;
+  ui.selectionPanel.classList.add('hidden');
+  ui.buildPanel.classList.add('hidden');
+  ui.obstaclePanel.classList.add('hidden');
+  ui.pauseMenu.classList.add('hidden');
+  ui.levelCompleteModal.classList.add('hidden');
+  ui.towerBuilderModal.classList.add('hidden');
+}
+
+ui.menuBtn.onclick = () => {
+  state.paused = true;
+  state.gameStarted = false;
+  closeTransientPanels();
+  ui.mainMenu.classList.remove('hidden');
+};
 
 function start(mode) {
+  closeTransientPanels();
   state.mode = mode;
   if (mode === 'campaign') {
     const w = Number(state.campaign.selectedWorld) || 1;
@@ -2405,7 +2427,7 @@ ui.playFinalBoss.onclick = () => start('boss');
 ui.overviewBtn.onclick = () => unifiedOverview(true);
 ui.speedBtn.onclick = () => { state.gameSpeed = state.gameSpeed >= 4 ? 1 : state.gameSpeed + 1; };
 ui.continueBtn.onclick = () => {
-  ui.levelCompleteModal.classList.add('hidden');
+  closeTransientPanels();
   ui.mainMenu.classList.remove('hidden');
   state.gameStarted = false;
 };
