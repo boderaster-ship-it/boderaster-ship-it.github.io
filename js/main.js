@@ -319,6 +319,12 @@ dir.shadow.camera.top = 22;
 dir.shadow.camera.bottom = -22;
 dir.shadow.radius = 4;
 scene.add(dir);
+const rimLight = new THREE.DirectionalLight(0x9fc7ff, 0.4);
+rimLight.position.set(-10, 7, -8);
+scene.add(rimLight);
+const fillLight = new THREE.DirectionalLight(0xffd5ab, 0.28);
+fillLight.position.set(6, 5, -4);
+scene.add(fillLight);
 
 const sky = new THREE.Mesh(
   new THREE.SphereGeometry(190, 32, 24),
@@ -517,12 +523,23 @@ function applyWorldTheme(worldId) {
   const theme = worldThemes[worldId] || worldThemes[1];
   scene.background = new THREE.Color(theme.bg);
   scene.fog = new THREE.Fog(theme.fog, 38, theme.fogFar || (worldId === 4 ? 105 : 130));
-  if (terrain?.material) terrain.material.color.setHex(theme.terrain);
+  if (terrain?.material) {
+    terrain.material.color.setHex(0xffffff);
+    if (terrain.material.map) terrain.material.map.dispose();
+    terrain.material.map = createTerrainTexture(theme);
+    terrain.material.roughness = 0.97;
+    terrain.material.metalness = 0.01;
+    terrain.material.needsUpdate = true;
+  }
   sky.material.color.setHex(theme.sky || theme.bg);
   hemi.color.setHex(theme.ambient || 0xd9efff);
   hemi.groundColor.setHex(worldId === 3 ? 0x5e3a2c : 0x6f9269);
   dir.color.setHex(theme.sun || 0xfff5dd);
   dir.intensity = theme.sunIntensity || 1.6;
+  rimLight.color.setHex(worldId === 3 ? 0x8cb9ff : 0xa7cdff);
+  rimLight.intensity = worldId === 3 ? 0.34 : 0.42;
+  fillLight.color.setHex(worldId === 2 ? 0xffe4c7 : 0xffd1a4);
+  fillLight.intensity = worldId === 3 ? 0.22 : 0.3;
 }
 
 function rebuildWorldForCampaign() {
@@ -544,6 +561,89 @@ function getHeight(x, z) {
   return GROUND_Y;
 }
 
+function createBlobShadowTexture(size = 96) {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const gradient = ctx.createRadialGradient(size * 0.5, size * 0.5, size * 0.08, size * 0.5, size * 0.5, size * 0.5);
+  gradient.addColorStop(0, 'rgba(12, 10, 16, 0.58)');
+  gradient.addColorStop(0.55, 'rgba(10, 9, 14, 0.26)');
+  gradient.addColorStop(1, 'rgba(10, 9, 14, 0)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = false;
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  return texture;
+}
+
+const blobShadowTexture = createBlobShadowTexture();
+
+function createBlobShadow(radius = 0.7, opacity = 0.34) {
+  const material = new THREE.MeshBasicMaterial({
+    map: blobShadowTexture,
+    transparent: true,
+    opacity,
+    depthWrite: false,
+    depthTest: false,
+    toneMapped: false
+  });
+  const shadow = new THREE.Mesh(new THREE.PlaneGeometry(radius * 2, radius * 2), material);
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.renderOrder = 9;
+  return shadow;
+}
+
+function createTerrainTexture(theme) {
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const image = ctx.createImageData(size, size);
+  const data = image.data;
+  const base = new THREE.Color(theme.terrain);
+  const warm = new THREE.Color(theme.edge || theme.terrain);
+  const cool = new THREE.Color(theme.fog || theme.terrain);
+  const biomeShift = theme.prop === 'ice' ? new THREE.Color(0xb7dcff) : theme.prop === 'lava' ? new THREE.Color(0xffb078) : new THREE.Color(0xa7d79c);
+  const seed = (theme.terrain ^ theme.road) & 1023;
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const nx = x / size;
+      const ny = y / size;
+      const detailA = Math.sin((nx * 6.0 + seed * 0.0017) * Math.PI * 2) * Math.cos((ny * 6.0 - seed * 0.0011) * Math.PI * 2);
+      const detailB = Math.sin((nx * 13.0 + seed * 0.0007) * Math.PI * 2 + Math.cos(ny * Math.PI * 2 * 5.0));
+      const detailC = Math.cos((nx + ny) * Math.PI * 2 * 9.0 + seed * 0.003);
+      const noise = detailA * 0.5 + detailB * 0.35 + detailC * 0.15;
+      const mixAmount = 0.5 + noise * 0.22;
+      const color = base.clone().lerp(noise > 0 ? warm : cool, Math.abs(noise) * 0.22).lerp(biomeShift, mixAmount * 0.1);
+      const shade = 0.86 + noise * 0.12;
+      color.multiplyScalar(shade);
+      const idx = (y * size + x) * 4;
+      data[idx] = Math.round(color.r * 255);
+      data[idx + 1] = Math.round(color.g * 255);
+      data[idx + 2] = Math.round(color.b * 255);
+      data[idx + 3] = 255;
+    }
+  }
+
+  ctx.putImageData(image, 0, 0);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(6, 6);
+  texture.anisotropy = 2;
+  texture.minFilter = THREE.LinearMipMapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.needsUpdate = true;
+  return texture;
+}
+
 function buildTerrain() {
   const extra = 14;
   const terrainW = (board.w + extra * 2) * board.tile;
@@ -551,32 +651,76 @@ function buildTerrain() {
   const segW = board.w + extra * 2;
   const segH = board.h + extra * 2;
   const geometry = new THREE.PlaneGeometry(terrainW, terrainH, segW, segH);
-  const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0x314f3a, roughness: 0.96, metalness: 0.02 }));
+  const theme = worldThemes[getSelectedCampaignDef().world] || worldThemes[1];
+  const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    roughness: 0.97,
+    metalness: 0.01,
+    map: createTerrainTexture(theme)
+  }));
   mesh.rotation.x = -Math.PI / 2;
   mesh.receiveShadow = true;
   mesh.position.set(0, GROUND_Y - 0.03, board.h * board.tile * 0.5 - board.tile * 0.5);
   return mesh;
 }
 
+function createPathStripGeometry(pathCells, width = board.tile * 0.86) {
+  const centers = pathCells.map(([x, z]) => cellToWorld(x, z));
+  const left = [];
+  const right = [];
+  const half = width * 0.5;
+
+  for (let i = 0; i < centers.length; i++) {
+    const prev = centers[Math.max(0, i - 1)];
+    const next = centers[Math.min(centers.length - 1, i + 1)];
+    const dir = next.clone().sub(prev);
+    dir.y = 0;
+    if (dir.lengthSq() < 0.0001) dir.set(0, 0, 1);
+    dir.normalize();
+    const side = new THREE.Vector3(-dir.z, 0, dir.x).multiplyScalar(half);
+    const c = centers[i];
+    left.push(c.clone().add(side).setY(GROUND_Y + 0.082));
+    right.push(c.clone().sub(side).setY(GROUND_Y + 0.082));
+  }
+
+  const vertices = [];
+  const colors = [];
+  const indices = [];
+  for (let i = 0; i < centers.length; i++) {
+    const t = centers.length <= 1 ? 0 : i / (centers.length - 1);
+    const edgeFade = 0.76 + Math.sin(t * Math.PI) * 0.18;
+    const centerFade = 0.88 + Math.sin(t * Math.PI * 2) * 0.06;
+    vertices.push(left[i].x, left[i].y, left[i].z);
+    vertices.push(right[i].x, right[i].y, right[i].z);
+    colors.push(edgeFade, edgeFade, edgeFade);
+    colors.push(centerFade, centerFade, centerFade);
+  }
+
+  for (let i = 0; i < centers.length - 1; i++) {
+    const idx = i * 2;
+    indices.push(idx, idx + 2, idx + 1);
+    indices.push(idx + 1, idx + 2, idx + 3);
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setIndex(indices);
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 function buildPath() {
   const w = getSelectedCampaignDef().world;
   const theme = worldThemes[w] || worldThemes[1];
-  const roadMat = new THREE.MeshStandardMaterial({ color: theme.road, roughness: 0.92, metalness: w === 2 ? 0.08 : 0.02 });
-  const edgeMat = new THREE.MeshStandardMaterial({ color: theme.edge, roughness: 0.8 });
-  for (const [x, z] of board.path) {
-    const center = cellToWorld(x, z);
-    const pathTile = new THREE.Mesh(new THREE.BoxGeometry(board.tile * 0.93, 0.07, board.tile * 0.86), roadMat);
-    pathTile.position.copy(center).setY(center.y + 0.07);
-    pathTile.receiveShadow = true;
-    world.add(pathTile);
-
-    const leftEdge = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.1, board.tile * 0.82), edgeMat);
-    const rightEdge = leftEdge.clone();
-    leftEdge.position.copy(center).add(new THREE.Vector3(-board.tile * 0.45, 0.11, 0));
-    rightEdge.position.copy(center).add(new THREE.Vector3(board.tile * 0.45, 0.11, 0));
-    leftEdge.receiveShadow = rightEdge.receiveShadow = true;
-    world.add(leftEdge, rightEdge);
-  }
+  const roadMat = new THREE.MeshStandardMaterial({ color: theme.road, roughness: 0.9, metalness: w === 2 ? 0.1 : 0.03, vertexColors: true });
+  const edgeMat = new THREE.MeshStandardMaterial({ color: theme.edge, roughness: 0.84, metalness: 0.04, transparent: true, opacity: 0.62 });
+  const road = new THREE.Mesh(createPathStripGeometry(board.path, board.tile * 0.9), roadMat);
+  const shoulders = new THREE.Mesh(createPathStripGeometry(board.path, board.tile * 1.04), edgeMat);
+  shoulders.position.y = -0.004;
+  road.receiveShadow = true;
+  shoulders.receiveShadow = true;
+  world.add(shoulders, road);
 }
 
 function buildBuildZonePads() {
@@ -660,14 +804,14 @@ function createMarker(cell, color) {
 function createEnemyMesh(def, boss = false) {
   const g = new THREE.Group();
   const bodyScale = boss ? 1.3 : 1;
-  const body = new THREE.Mesh(new THREE.SphereGeometry(def.size * 0.95 * bodyScale, 14, 12), new THREE.MeshStandardMaterial({ color: def.color, roughness: 0.65, metalness: 0.2 }));
+  const body = new THREE.Mesh(new THREE.SphereGeometry(def.size * 0.95 * bodyScale, 14, 12), new THREE.MeshStandardMaterial({ color: def.color, roughness: 0.58, metalness: 0.12, emissive: 0x101720, emissiveIntensity: 0.1 }));
   body.castShadow = true;
   g.add(body);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(def.size * 0.58 * bodyScale, 12, 10), new THREE.MeshStandardMaterial({ color: def.accents || 0xffffff, emissive: def.accents || def.color, emissiveIntensity: 0.18, roughness: 0.45 }));
+  const head = new THREE.Mesh(new THREE.SphereGeometry(def.size * 0.58 * bodyScale, 12, 10), new THREE.MeshStandardMaterial({ color: def.accents || 0xffffff, emissive: def.accents || def.color, emissiveIntensity: 0.16, roughness: 0.5, metalness: 0.08 }));
   head.position.set(0, def.size * 0.62 * bodyScale, def.size * 0.68 * bodyScale);
   head.castShadow = true;
   g.add(head);
-  const limbMat = new THREE.MeshStandardMaterial({ color: 0x2f2631, roughness: 0.85 });
+  const limbMat = new THREE.MeshStandardMaterial({ color: 0x2f2631, roughness: 0.74, metalness: 0.06 });
   if (def.flying) {
     for (let i = -1; i <= 1; i += 2) {
       const wing = new THREE.Mesh(new THREE.ConeGeometry(def.size * 0.42 * bodyScale, def.size * 1.2 * bodyScale, 3), new THREE.MeshStandardMaterial({ color: def.accents || 0xc9f2ff, transparent: true, opacity: 0.85, emissive: def.accents || 0x9fe9ff, emissiveIntensity: 0.28 }));
@@ -1226,12 +1370,12 @@ function makeTower(type, cell, customCfg = null) {
     aoe: customCfg.stats.aoe
   } : towerDefs[type];
   const g = new THREE.Group();
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.55, 0.55, 14), new THREE.MeshStandardMaterial({ color: 0x3f4859, roughness: 0.5, metalness: 0.6 }));
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.55, 0.55, 14), new THREE.MeshStandardMaterial({ color: 0x3f4859, roughness: 0.56, metalness: 0.38 }));
   const coreColor = customCfg ? 0xa6d6ff : d.color;
   const core = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.42, 10), new THREE.MeshStandardMaterial({ color: coreColor, emissive: coreColor, emissiveIntensity: 0.35 }));
   core.position.y = 0.46;
   const barrelGeo = type === 'laser' ? new THREE.CylinderGeometry(0.08, 0.08, 0.9, 10) : type === 'missile' ? new THREE.ConeGeometry(0.13, 0.9, 10) : type === 'cryo' ? new THREE.BoxGeometry(0.12, 0.3, 0.82) : type === 'flame' ? new THREE.TorusGeometry(0.22, 0.06, 8, 16) : new THREE.BoxGeometry(0.16, 0.16, 0.9);
-  const barrel = new THREE.Mesh(barrelGeo, new THREE.MeshStandardMaterial({ color: type === 'flame' ? 0xffbc74 : 0xdce7f8, roughness: 0.3, metalness: 0.7 }));
+  const barrel = new THREE.Mesh(barrelGeo, new THREE.MeshStandardMaterial({ color: type === 'flame' ? 0xffbc74 : 0xdce7f8, roughness: 0.44, metalness: 0.42 }));
   barrel.position.set(0, 0.62, 0.22);
   g.add(base, core, barrel);
 
@@ -1262,8 +1406,11 @@ function makeTower(type, cell, customCfg = null) {
   const p = cellToWorld(cell[0], cell[1]);
   g.position.copy(p).setY(p.y + 0.3);
   g.castShadow = true;
+  const blobShadow = createBlobShadow(0.62, 0.32);
+  blobShadow.position.copy(p).setY(GROUND_Y + 0.02);
+  world.add(blobShadow);
   world.add(g);
-  return { type, cell, level: 1, cooldown: 0, mesh: g, barrel, core, branch: 'none', custom: customCfg, displayName: customCfg ? customCfg.name : d.name };
+  return { type, cell, level: 1, cooldown: 0, mesh: g, barrel, core, branch: 'none', custom: customCfg, displayName: customCfg ? customCfg.name : d.name, blobShadow };
 }
 
 function spawnEnemy(boss = false) {
@@ -1283,9 +1430,13 @@ function spawnEnemy(boss = false) {
   const spd = (isFinalBoss ? 0.4 : boss ? 0.62 : def.speed) + state.wave * 0.012 + (worldId===3 ? 0.08 : 0);
   const frostResist = worldId === 3 ? 0.55 : 0;
   const armor = worldId === 4 ? 0.2 + Math.min(0.4, state.wave * 0.02) : 0;
+  const shadowRadius = def.flying ? def.size * 0.92 : def.size * 1.22;
+  const blobShadow = createBlobShadow(shadowRadius, def.flying ? 0.22 : 0.34);
+  world.add(blobShadow);
   const enemy = {
     mesh,
     healthBar,
+    blobShadow,
     def,
     t: 0,
     speed: spd,
@@ -1698,6 +1849,7 @@ function animate(now) {
       spawnDeathFx(e);
       releaseHealthBar(e.healthBar);
       e.mesh.visible = false;
+      if (e.blobShadow) world.remove(e.blobShadow);
       world.remove(e.mesh);
       state.enemies.splice(i, 1);
       continue;
@@ -1715,6 +1867,7 @@ function animate(now) {
       state.lives -= e.boss ? 4 : 1;
       state.enemies.splice(i, 1);
       releaseHealthBar(e.healthBar);
+      if (e.blobShadow) world.remove(e.blobShadow);
       world.remove(e.mesh);
       if (state.lives <= 0) {
         state.paused = true;
@@ -1729,6 +1882,13 @@ function animate(now) {
     const b = cellToWorld(...board.path[idx + 1]);
     const yLift = e.flying ? 0.62 + Math.sin(now * 0.006 + e.bob) * 0.2 : 0.32 + Math.abs(Math.sin(now * 0.01 + e.bob)) * 0.06;
     e.mesh.position.lerpVectors(a, b, f).setY((a.y * (1 - f) + b.y * f) + yLift);
+    if (e.blobShadow) {
+      const groundY = (a.y * (1 - f) + b.y * f) + 0.02;
+      e.blobShadow.position.set(e.mesh.position.x, groundY, e.mesh.position.z);
+      e.blobShadow.material.opacity = e.flying ? 0.14 : 0.34;
+      const squash = e.flying ? 1.25 : 1;
+      e.blobShadow.scale.set(squash, squash, 1);
+    }
     e.mesh.rotation.y += dt * (e.flying ? 1.8 : 1.1);
     const pulse = 1 + Math.sin(now * 0.012 + e.bob) * 0.04;
     const hitScale = e.hitFlash > 0 ? 1.12 : 1;
@@ -1758,6 +1918,7 @@ function animate(now) {
     t.recoil = Math.max(0, (t.recoil || 0) - simDt * 1.8);
     t.barrel.position.z = 0.22 - t.recoil;
     t.mesh.rotation.y += dt * 0.25;
+    if (t.blobShadow) t.blobShadow.position.set(t.mesh.position.x, GROUND_Y + 0.02, t.mesh.position.z);
     t.core.material.emissiveIntensity = 0.3 + Math.sin(now * 0.008) * 0.08 + t.level * 0.05;
     const baseRange = t.custom ? t.custom.stats.range : towerDefs[t.type].range;
     const range = baseRange + (t.level - 1) * 0.45;
@@ -2186,6 +2347,7 @@ ui.sellBtn.onclick = () => {
   board.blocked.delete(`${t.cell[0]},${t.cell[1]}`);
   syncBuildPads();
   world.remove(t.mesh);
+  if (t.blobShadow) world.remove(t.blobShadow);
   state.towers = state.towers.filter(x => x !== t);
   state.selectedTower = null;
 };
@@ -2209,8 +2371,8 @@ function start(mode) {
   state.wave = 0;
   state.inWave = false;
   state.buildPhase = true;
-  state.towers.forEach(t => world.remove(t.mesh));
-  state.enemies.forEach(e => { releaseHealthBar(e.healthBar); world.remove(e.mesh); });
+  state.towers.forEach(t => { world.remove(t.mesh); if (t.blobShadow) world.remove(t.blobShadow); });
+  state.enemies.forEach(e => { releaseHealthBar(e.healthBar); if (e.blobShadow) world.remove(e.blobShadow); world.remove(e.mesh); });
   state.towers = [];
   state.enemies = [];
   state.projectiles = [];
