@@ -1764,9 +1764,11 @@ function animate(now) {
       releaseProjectile(i);
       continue;
     }
-    const dirV = p.target.mesh.position.clone().sub(p.pos);
-    const step = Math.min(dirV.length(), p.speed * simDt);
-    const moveDir = dirV.normalize();
+    const toTarget = p.target.mesh.position.clone().sub(p.pos);
+    const dist = toTarget.length();
+    const maxStep = p.speed * simDt;
+    const moveDir = toTarget.normalize();
+    const step = Math.min(dist, maxStep);
     p.pos.add(moveDir.multiplyScalar(step));
     p.mesh.position.copy(p.pos);
     if (p.kind === 'shell') {
@@ -1782,7 +1784,8 @@ function animate(now) {
     } else {
       p.mesh.lookAt(p.pos.clone().add(moveDir));
     }
-    if (step < 0.2) {
+    const reached = dist <= maxStep + 1e-6;
+    if (reached) {
       if (p.aoe) state.enemies.forEach(e => { if (e.mesh.position.distanceTo(p.pos) < p.aoe) applyHit(e, p.damage, p.slow, p.kind === 'flame' ? 1.4 : 0, p.custom, p.damageType); });
       else applyHit(p.target, p.damage, p.slow, p.kind === 'flame' ? 1.4 : 0, p.custom, p.damageType);
       releaseProjectile(i);
