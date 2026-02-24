@@ -274,6 +274,7 @@ button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; co
 .builderPreview { font-size: 13px; line-height: 1.45; margin-bottom: 10px; background: rgba(8,16,26,.6); border:1px solid rgba(106,169,240,.35); border-radius:10px; padding:8px; }
 .savedBuilds { display:grid; grid-template-columns: repeat(1,minmax(0,1fr)); gap: 6px; margin-bottom: 10px; }
 .savedBuildRow { display:flex; justify-content:space-between; gap:8px; align-items:center; font-size:12px; border:1px solid rgba(122,174,220,.35); border-radius:10px; padding:7px; }
+.savedBuildActions { display:flex; gap:6px; }
 .savedBuildRow button { padding: 6px 8px; font-size: 12px; }
 .tiny { opacity: .82; font-size: 12px; margin-top: -2px; }
 @media (max-width: 420px) {
