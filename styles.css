@@ -39,7 +39,9 @@ body { margin: 0; background: linear-gradient(#a9d7ff, #d8efff 38%, #eff7ff); pa
 }
 .iconBtn, .sideCamBtn { width: clamp(34px, calc(40px * var(--hudScale)), 52px); height: clamp(34px, calc(40px * var(--hudScale)), 52px); padding: 0; font-size: clamp(15px, calc(18px * var(--hudScale)), 22px); }
 #speedLabel { font-weight: 800; font-size: clamp(11px, calc(13px * var(--hudScale)), 16px); min-width: clamp(22px, calc(26px * var(--hudScale)), 34px); text-shadow: 0 2px 4px rgba(0,0,0,.6); }
-.sideCamBtn { position: absolute; top: 50%; right: clamp(6px, calc(8px * var(--hudScale)), 14px); transform: translateY(-50%); z-index: 6; }
+#overviewBtn { position: absolute; top: 50%; right: clamp(6px, calc(8px * var(--hudScale)), 14px); transform: translateY(-50%); z-index: 6; }
+#cineCamBtn { position: absolute; top: calc(50% + clamp(40px, calc(46px * var(--hudScale)), 58px)); right: clamp(6px, calc(8px * var(--hudScale)), 14px); transform: translateY(-50%); z-index: 6; }
+.sideCamBtn.active { outline: 2px solid rgba(132, 224, 255, 0.95); box-shadow: 0 0 0 1px rgba(180, 238, 255, 0.45), 0 0 18px rgba(84, 212, 255, 0.6); }
 
 #wavePreview {
   position: absolute;
