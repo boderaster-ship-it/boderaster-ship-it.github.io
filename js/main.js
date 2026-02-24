@@ -1967,7 +1967,8 @@ function updateCamera(dt = 1 / 60, now = performance.now()) {
 
         const desiredYaw = baseYaw + cam.cine.userYawOffset;
         const desiredPitch = clamp(basePitch + cam.cine.userPitchOffset, 0.5, 1.4);
-        const desiredDist = clamp(baseDist + cam.cine.userDistOffset, 6, 32);
+        const distanceMultiplier = 2;
+        const desiredDist = clamp(baseDist * distanceMultiplier + cam.cine.userDistOffset, 6, 64);
 
         const followLerp = 1 - Math.exp(-dt * 6.5);
         cam.yaw += (desiredYaw - cam.yaw) * followLerp;
