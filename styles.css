@@ -80,8 +80,117 @@ button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; co
 .deltaUp { color: #7affbf; }
 .deltaDown { color: #ff8fa8; }
 .modal { position: absolute; inset: 0; background: rgba(1, 4, 8, 0.78); display: grid; place-items: center; z-index: 8; }
-.sheet { width: min(92vw, 460px); max-height: 86vh; overflow: auto; background: #0f1a29; border: 1px solid rgba(106, 169, 240, 0.5); border-radius: 16px; padding: 16px; }
+.sheet {
+  width: min(92vw, 460px);
+  max-height: 86vh;
+  overflow: auto;
+  background:
+    linear-gradient(160deg, rgba(20, 34, 54, 0.96), rgba(8, 16, 28, 0.95)),
+    repeating-linear-gradient(180deg, rgba(120, 190, 255, 0.04) 0 1px, transparent 1px 3px);
+  border: 1px solid rgba(106, 169, 240, 0.52);
+  box-shadow: 0 0 0 1px rgba(146, 212, 255, 0.15) inset, 0 18px 45px rgba(0, 0, 0, 0.45);
+  border-radius: 18px;
+  padding: 16px;
+}
+.sheet h1 { margin: 0; font-size: clamp(24px, 6.5vw, 30px); letter-spacing: 0.01em; }
+.sheet h3 { margin: 0 0 8px; font-size: 14px; color: #b8dcff; letter-spacing: 0.03em; }
+
+#mainMenu .sheet {
+  display: grid;
+  gap: 12px;
+  padding-bottom: max(16px, calc(12px + env(safe-area-inset-bottom)));
+}
+
+.menuHero {
+  border: 1px solid rgba(121, 193, 255, 0.4);
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(19, 35, 58, 0.8), rgba(9, 19, 33, 0.86));
+  padding: 14px 14px 12px;
+}
+.menuHero p { margin: 6px 0 0; color: #b8d7f5; }
+
+.modeCardGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.menuCard {
+  width: 100%;
+  min-height: 78px;
+  text-align: left;
+  border-radius: 12px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    'icon title'
+    'icon hint';
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 2px;
+  padding: 12px 13px;
+}
+.menuCardIcon { grid-area: icon; font-size: 24px; }
+.menuCardTitle { grid-area: title; font-size: 17px; font-weight: 800; }
+.menuCardHint { grid-area: hint; margin: 0; color: #c1dcf3; }
+
+.btnPrimary {
+  border-color: rgba(137, 224, 255, 0.72);
+  background: linear-gradient(160deg, #204972, #143352);
+  box-shadow: 0 0 0 1px rgba(173, 235, 255, 0.18) inset;
+}
+.btnSecondary {
+  border-color: rgba(117, 177, 231, 0.55);
+  background: linear-gradient(160deg, #162b45, #10243a);
+}
+
+.menuSection {
+  border: 1px solid rgba(110, 171, 226, 0.42);
+  border-radius: 14px;
+  background: linear-gradient(155deg, rgba(16, 31, 50, 0.74), rgba(9, 18, 31, 0.84));
+  overflow: hidden;
+}
+.menuSection > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 14px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.menuSection > summary::-webkit-details-marker { display: none; }
+.menuSection > summary::after {
+  content: '▾';
+  color: #8fcfff;
+  font-size: 16px;
+  transition: transform 0.2s ease;
+}
+.menuSection:not([open]) > summary::after { transform: rotate(-90deg); }
+.sectionBody {
+  border-top: 1px solid rgba(123, 177, 227, 0.25);
+  padding: 10px 12px 12px;
+  display: grid;
+  gap: 8px;
+}
+
 .settings { display: grid; gap: 8px; }
+#mainMenu button,
+#mainMenu .settings label {
+  transition: transform 0.12s ease, border-color 0.14s ease, filter 0.14s ease;
+}
+#mainMenu button:active {
+  transform: translateY(1px) scale(0.992);
+  filter: brightness(1.05);
+}
+#mainMenu button:focus-visible,
+#mainMenu .menuSection > summary:focus-visible {
+  outline: 2px solid #88deff;
+  outline-offset: 2px;
+}
+
 #metaTree { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin-bottom: 12px; }
 #toast { position: absolute; left: 50%; top: 48%; transform: translate(-50%, -50%); background: #154926; border: 1px solid #6ccf96; padding: 10px 14px; border-radius: 10px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 12; }
 #toast.show { opacity: 1; }
@@ -142,6 +251,21 @@ button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; co
   #towerDock { bottom: calc(22px + env(safe-area-inset-bottom)); }
   #bossWarning { top: calc(214px + env(safe-area-inset-top)); }
   .builderModules { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+
+@media (min-width: 500px) {
+  .modeCardGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .menuCard {
+    min-height: 124px;
+    align-content: start;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'icon'
+      'title'
+      'hint';
+  }
 }
 
 #obstaclePanel {
