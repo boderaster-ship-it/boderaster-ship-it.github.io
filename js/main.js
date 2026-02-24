@@ -1590,11 +1590,23 @@ function setCampaignSelectionToLatestPlayable() {
   state.campaign.selectedLevel = ((latestPlayable - 1) % 6) + 1;
 }
 
+function isWorldUnlockedByCampaign(worldId) {
+  const safeWorld = Math.max(1, Math.min(4, Number(worldId) || 1));
+  return safeWorld === 1 || !!state.campaign.completed[(safeWorld - 1) * 6];
+}
+
+function getHighestUnlockedWorld() {
+  for (let worldId = 4; worldId >= 1; worldId--) {
+    if (isWorldUnlockedByCampaign(worldId)) return worldId;
+  }
+  return 1;
+}
+
 function buildCampaignMenu() {
   const selWorld = state.campaign.selectedWorld || 1;
   ui.campaignWorldSelect.innerHTML = '';
   for (let world = 1; world <= 4; world++) {
-    const unlocked = world === 1 || !!state.campaign.completed[(world - 1) * 6];
+    const unlocked = isWorldUnlockedByCampaign(world);
     const b = document.createElement('button');
     b.disabled = !unlocked;
     b.textContent = unlocked ? WORLD_MENU_LABELS[world] : `World ${world} (Gesperrt · Schließe World ${world-1} ab)`;
@@ -1626,13 +1638,18 @@ function buildCampaignMenu() {
 
 function buildModeWorldSelect(container, modeKey) {
   if (!container) return;
+  const highestUnlockedWorld = getHighestUnlockedWorld();
+  state[`${modeKey}World`] = Math.max(1, Math.min(highestUnlockedWorld, Number(state[`${modeKey}World`]) || 1));
   container.innerHTML = '';
   for (let worldId = 1; worldId <= 4; worldId++) {
     const btn = document.createElement('button');
+    const unlocked = isWorldUnlockedByCampaign(worldId);
     const active = (state[`${modeKey}World`] || 1) === worldId;
     btn.className = 'levelBtn' + (active ? ' active' : '');
-    btn.textContent = WORLD_MENU_LABELS[worldId];
+    btn.disabled = !unlocked;
+    btn.textContent = unlocked ? WORLD_MENU_LABELS[worldId] : `World ${worldId} (Gesperrt · Kampagne abschließen)`;
     btn.onclick = () => {
+      if (!unlocked) return;
       state[`${modeKey}World`] = worldId;
       buildModeWorldSelect(container, modeKey);
     };
@@ -1880,8 +1897,8 @@ function getActiveWorldId() {
     const cdef = campaignDefs[Math.min(state.currentLevel,24)-1];
     return cdef?.world || 1;
   }
-  if (state.mode === 'endless') return Math.max(1, Math.min(4, Number(state.endlessWorld) || 1));
-  if (state.mode === 'challenge') return Math.max(1, Math.min(4, Number(state.challengeWorld) || 1));
+  if (state.mode === 'endless') return Math.max(1, Math.min(getHighestUnlockedWorld(), Number(state.endlessWorld) || 1));
+  if (state.mode === 'challenge') return Math.max(1, Math.min(getHighestUnlockedWorld(), Number(state.challengeWorld) || 1));
   return 1;
 }
 
@@ -3282,8 +3299,8 @@ function start(mode) {
   ui.mainMenu.classList.add('hidden');
   resetCineCam(false);
   if (mode === 'campaign') rebuildWorldForCampaign();
-  else if (mode === 'endless') rebuildWorldForMode(state.endlessWorld);
-  else if (mode === 'challenge') rebuildWorldForMode(state.challengeWorld);
+  else if (mode === 'endless') rebuildWorldForMode(getActiveWorldId());
+  else if (mode === 'challenge') rebuildWorldForMode(getActiveWorldId());
   else if (mode === 'boss') rebuildWorldForMode(4);
   ui.bossWarning.classList.add('hidden');
   syncProgressUnlocks();
