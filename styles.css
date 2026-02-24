@@ -1,26 +1,31 @@
 :root {
   color-scheme: dark;
   font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --vwPx: 0;
+  --vhPx: 0;
+  --uiScale: 1;
+  --hudScale: 1;
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: linear-gradient(#a9d7ff, #d8efff 38%, #eff7ff); overflow: hidden; padding-bottom: env(safe-area-inset-bottom); }
-#app { width: 100vw; height: 100dvh; min-height: 100vh; position: relative; padding-bottom: calc(env(safe-area-inset-bottom) + 6px); }
+html, body { width: 100%; height: calc(var(--vhPx) * 1px); overflow: hidden; }
+body { margin: 0; background: linear-gradient(#a9d7ff, #d8efff 38%, #eff7ff); padding: 0; overscroll-behavior: none; }
+#app { width: calc(var(--vwPx) * 1px); height: calc(var(--vhPx) * 1px); position: relative; overflow: hidden; }
 #gameCanvas { width: 100%; height: 100%; display: block; touch-action: none; }
 
 #hud {
   position: absolute;
-  top: calc(8px + env(safe-area-inset-top));
-  left: 10px;
+  top: calc(env(safe-area-inset-top) + clamp(6px, calc(10px * var(--hudScale)), 18px));
+  left: clamp(8px, calc(10px * var(--hudScale)), 18px);
   display: grid;
-  gap: 4px;
-  font-size: 14px;
+  gap: clamp(2px, calc(4px * var(--hudScale)), 8px);
+  font-size: clamp(11px, calc(14px * var(--hudScale)), 17px);
   font-weight: 700;
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
 }
 #controlBar {
   position: absolute;
-  top: calc(8px + env(safe-area-inset-top));
-  right: 10px;
+  top: calc(env(safe-area-inset-top) + clamp(6px, calc(10px * var(--hudScale)), 18px));
+  right: clamp(8px, calc(10px * var(--hudScale)), 18px);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -32,9 +37,9 @@ body { margin: 0; background: linear-gradient(#a9d7ff, #d8efff 38%, #eff7ff); ov
   color: #f2fbff;
   backdrop-filter: blur(2px);
 }
-.iconBtn, .sideCamBtn { width: 40px; height: 40px; padding: 0; font-size: 18px; }
-#speedLabel { font-weight: 800; font-size: 13px; min-width: 26px; text-shadow: 0 2px 4px rgba(0,0,0,.6); }
-.sideCamBtn { position: absolute; top: 50%; right: 8px; transform: translateY(-50%); z-index: 6; }
+.iconBtn, .sideCamBtn { width: clamp(34px, calc(40px * var(--hudScale)), 52px); height: clamp(34px, calc(40px * var(--hudScale)), 52px); padding: 0; font-size: clamp(15px, calc(18px * var(--hudScale)), 22px); }
+#speedLabel { font-weight: 800; font-size: clamp(11px, calc(13px * var(--hudScale)), 16px); min-width: clamp(22px, calc(26px * var(--hudScale)), 34px); text-shadow: 0 2px 4px rgba(0,0,0,.6); }
+.sideCamBtn { position: absolute; top: 50%; right: clamp(6px, calc(8px * var(--hudScale)), 14px); transform: translateY(-50%); z-index: 6; }
 
 #wavePreview {
   position: absolute;
@@ -51,7 +56,7 @@ body { margin: 0; background: linear-gradient(#a9d7ff, #d8efff 38%, #eff7ff); ov
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  width: min(92vw, 560px);
+  width: min(calc(var(--vwPx) * 0.92px), calc(560px * var(--hudScale)));
   display: flex;
   flex-direction: row;
   justify-content: center;
@@ -62,14 +67,14 @@ body { margin: 0; background: linear-gradient(#a9d7ff, #d8efff 38%, #eff7ff); ov
   padding: 2px 0;
   scrollbar-width: thin;
 }
-#towerDock { bottom: calc(22px + env(safe-area-inset-bottom)); }
-#abilityBar { bottom: calc(82px + env(safe-area-inset-bottom)); }
-.dockBtn, .abilityBtn { width: 44px; height: 44px; min-width: 44px; padding: 0; font-size: 21px; display: grid; place-items: center; }
+#towerDock { bottom: calc(env(safe-area-inset-bottom) + clamp(12px, calc(22px * var(--hudScale)), 32px)); }
+#abilityBar { bottom: calc(env(safe-area-inset-bottom) + clamp(62px, calc(82px * var(--hudScale)), 110px)); }
+.dockBtn, .abilityBtn { width: clamp(40px, calc(44px * var(--hudScale)), 56px); height: clamp(40px, calc(44px * var(--hudScale)), 56px); min-width: clamp(40px, calc(44px * var(--hudScale)), 56px); padding: 0; font-size: clamp(18px, calc(21px * var(--hudScale)), 26px); display: grid; place-items: center; }
 .dockBtn.active { outline: 2px solid #69ffbf; }
 .dockBtn.locked, .abilityBtn.disabled { opacity: .45; }
 
 #buildPanel, #selectionPanel {
-  position: absolute; left: 8px; right: 8px; bottom: calc(116px + env(safe-area-inset-bottom));
+  position: absolute; left: clamp(6px, calc(8px * var(--hudScale)), 14px); right: clamp(6px, calc(8px * var(--hudScale)), 14px); bottom: calc(env(safe-area-inset-bottom) + clamp(96px, calc(116px * var(--hudScale)), 146px));
   background: rgba(6, 15, 22, 0.6); border: 1px solid rgba(143, 198, 246, 0.42); border-radius: 10px; padding: 8px;
 }
 #buildPanel { display: flex; justify-content: space-between; align-items: center; }
@@ -79,10 +84,10 @@ body { margin: 0; background: linear-gradient(#a9d7ff, #d8efff 38%, #eff7ff); ov
 button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; color: #e4f2ff; padding: 10px; font-size: 14px; font-weight: 700; }
 .deltaUp { color: #7affbf; }
 .deltaDown { color: #ff8fa8; }
-.modal { position: absolute; inset: 0; background: rgba(1, 4, 8, 0.78); display: grid; place-items: center; z-index: 8; }
+.modal { position: absolute; inset: 0; background: rgba(1, 4, 8, 0.78); display: grid; place-items: center; z-index: 8; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
 .sheet {
-  width: min(92vw, 460px);
-  max-height: 86vh;
+  width: min(calc(var(--vwPx) * 0.92px), 520px);
+  max-height: calc(var(--vhPx) * 0.9px);
   overflow: auto;
   background:
     linear-gradient(160deg, rgba(20, 34, 54, 0.96), rgba(8, 16, 28, 0.95)),
@@ -97,8 +102,32 @@ button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; co
 
 #mainMenu .sheet {
   display: grid;
-  gap: 12px;
-  padding-bottom: max(16px, calc(12px + env(safe-area-inset-bottom)));
+  gap: clamp(8px, calc(12px * var(--uiScale)), 14px);
+  padding-bottom: max(10px, calc((10px * var(--uiScale)) + env(safe-area-inset-bottom)));
+  height: calc(var(--vhPx) * 1px);
+  max-height: calc(var(--vhPx) * 1px);
+  overflow: hidden;
+}
+.menuSheet {
+  transform: scale(var(--uiScale));
+  transform-origin: center top;
+}
+.menuLayout {
+  display: grid;
+  gap: clamp(8px, calc(10px * var(--uiScale)), 14px);
+  min-height: 0;
+}
+.menuPrimaryColumn,
+.menuSecondaryColumn {
+  min-height: 0;
+  display: grid;
+  gap: clamp(8px, calc(9px * var(--uiScale)), 12px);
+}
+.menuSecondaryColumn {
+  overflow: hidden;
+}
+.menuSecondaryColumn .menuSection {
+  min-height: 0;
 }
 
 .menuHero {
@@ -112,12 +141,12 @@ button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; co
 .modeCardGrid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 8px;
+  gap: clamp(6px, calc(8px * var(--uiScale)), 12px);
 }
 
 .menuCard {
   width: 100%;
-  min-height: 78px;
+  min-height: clamp(60px, calc(78px * var(--uiScale)), 96px);
   text-align: left;
   border-radius: 12px;
   display: grid;
@@ -232,7 +261,7 @@ button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; co
 #upgradePointsLabel { margin-bottom: 8px; color: #9bd4ff; font-weight: 700; }
 #levelRewards { display: grid; gap: 8px; margin: 8px 0 14px; }
 
-.builderSheet { width: min(94vw, 520px); max-height: 88vh; }
+.builderSheet { width: min(calc(var(--vwPx) * 0.94px), 520px); max-height: calc(var(--vhPx) * 0.88px); }
 .builderModules { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin: 8px 0; }
 .builderModuleBtn { border-radius: 12px; min-height: 62px; display:flex; flex-direction:column; align-items:flex-start; gap:2px; font-size:12px; }
 .builderModuleBtn strong { font-size: 13px; }
@@ -245,11 +274,6 @@ button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; co
 .savedBuildRow button { padding: 6px 8px; font-size: 12px; }
 .tiny { opacity: .82; font-size: 12px; margin-top: -2px; }
 @media (max-width: 420px) {
-  #controlBar { top: calc(8px + env(safe-area-inset-top)); }
-  #wavePreview { top: calc(118px + env(safe-area-inset-top)); }
-  #abilityBar { bottom: calc(82px + env(safe-area-inset-bottom)); }
-  #towerDock { bottom: calc(22px + env(safe-area-inset-bottom)); }
-  #bossWarning { top: calc(214px + env(safe-area-inset-top)); }
   .builderModules { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
 
@@ -269,8 +293,41 @@ button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; co
 }
 
 #obstaclePanel {
-  position: absolute; left: 8px; right: 8px; bottom: calc(170px + env(safe-area-inset-bottom));
+  position: absolute; left: clamp(6px, calc(8px * var(--hudScale)), 14px); right: clamp(6px, calc(8px * var(--hudScale)), 14px); bottom: calc(env(safe-area-inset-bottom) + clamp(142px, calc(170px * var(--hudScale)), 204px));
   background: rgba(18, 15, 12, 0.78); border: 1px solid rgba(236, 170, 120, 0.6); border-radius: 10px; padding: 8px;
   display: flex; justify-content: space-between; align-items: center; z-index: 7;
 }
 #clearObstacleBtn { padding: 8px 10px; border-radius: 9px; }
+
+@media (orientation: landscape) {
+  .menuLayout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    align-items: start;
+  }
+  .modeCardGrid {
+    grid-template-columns: 1fr;
+  }
+  #hud {
+    max-width: 34vw;
+  }
+  #controlBar {
+    right: calc(env(safe-area-inset-right) + clamp(6px, calc(10px * var(--hudScale)), 16px));
+  }
+  #abilityBar, #towerDock {
+    width: min(calc(var(--vwPx) * 0.44px), calc(390px * var(--hudScale)));
+    left: calc(env(safe-area-inset-left) + clamp(12px, calc(24px * var(--hudScale)), 34px));
+    transform: none;
+    justify-content: flex-start;
+  }
+  #abilityBar {
+    bottom: calc(env(safe-area-inset-bottom) + clamp(14px, calc(18px * var(--hudScale)), 28px));
+  }
+  #towerDock {
+    bottom: calc(env(safe-area-inset-bottom) + clamp(68px, calc(74px * var(--hudScale)), 98px));
+  }
+  #buildPanel, #selectionPanel, #obstaclePanel {
+    left: auto;
+    width: min(calc(var(--vwPx) * 0.42px), calc(360px * var(--hudScale)));
+    right: calc(env(safe-area-inset-right) + clamp(8px, calc(12px * var(--hudScale)), 18px));
+  }
+}

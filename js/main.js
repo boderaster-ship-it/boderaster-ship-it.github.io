@@ -300,12 +300,12 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.35;
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-renderer.setSize(window.innerWidth, window.innerHeight, false);
+renderer.setSize(1, 1, false);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd5ff);
 scene.fog = new THREE.Fog(0xbfdff4, 45, 130);
-const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 220);
+const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 220);
 const cam = { yaw: 0.6, pitch: 0.98, dist: 24, target: new THREE.Vector3(0, 0, 8.2), velYaw: 0, velPitch: 0, velDist: 0, panVel: new THREE.Vector2(), transitioning: null };
 
 const hemi = new THREE.HemisphereLight(0xd9efff, 0x6f9269, 1.05);
@@ -2552,14 +2552,29 @@ ui.continueBtn.onclick = () => {
   state.gameStarted = false;
 };
 
-window.addEventListener('resize', () => {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
+function updateViewport() {
+  const vv = window.visualViewport;
+  const vw = vv?.width ?? window.innerWidth;
+  const vh = vv?.height ?? window.innerHeight;
+  const safeW = Math.max(1, Math.round(vw));
+  const safeH = Math.max(1, Math.round(vh));
+  const minSide = Math.min(safeW, safeH);
+  const uiScale = Math.min(1.15, Math.max(0.75, minSide / 820));
+  const hudScale = Math.min(1.2, Math.max(0.78, uiScale * (safeW > safeH ? 0.95 : 1)));
+  document.documentElement.style.setProperty('--vwPx', String(safeW));
+  document.documentElement.style.setProperty('--vhPx', String(safeH));
+  document.documentElement.style.setProperty('--uiScale', uiScale.toFixed(4));
+  document.documentElement.style.setProperty('--hudScale', hudScale.toFixed(4));
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-  renderer.setSize(w, h, false);
-  camera.aspect = w / h;
+  renderer.setSize(safeW, safeH, false);
+  camera.aspect = safeW / safeH;
   camera.updateProjectionMatrix();
-});
+}
+
+window.addEventListener('resize', updateViewport);
+window.addEventListener('orientationchange', updateViewport);
+window.visualViewport?.addEventListener('resize', updateViewport);
+window.visualViewport?.addEventListener('scroll', updateViewport);
 
 document.addEventListener('visibilitychange', () => { if (document.hidden) state.paused = true; });
 
@@ -2590,6 +2605,8 @@ function assertRequiredDomNodes() {
   const missing = required.filter(key => !ui[key]);
   if (missing.length) throw new Error(`Missing required DOM nodes: ${missing.join(', ')}`);
 }
+
+updateViewport();
 
 function bootstrapMenu() {
   try {
