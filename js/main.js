@@ -179,8 +179,9 @@ const abilities = {
   }
 };
 
-const towerUnlockOrder = ['laser', 'missile', 'cryo', 'flame'];
+const towerUnlockOrder = ['laser', 'missile', 'cryo'];
 const abilityUnlockOrder = ['overclock', 'poison', 'nuke'];
+const TOWER_BUILDER_UNLOCK_LEVEL = 12;
 
 const metaDefs = [
   { key: 'upCannon', icon: towerDefs.cannon.icon, name: 'Bastion-Upgrade', tower: 'cannon', affects: 'Bastion-Schaden', desc: 'Erhöht den Schaden der Bastion.', unit: '%', perLevel: 10 },
@@ -286,7 +287,7 @@ state.campaign.selectedLevel = Number(state.campaign.selectedLevel) || 1;
 state.campaign.finalBossUnlocked = !!state.campaign.finalBossUnlocked;
 state.campaign.bossCompleted = !!state.campaign.bossCompleted;
 state.campaign.clearedObstacles = state.campaign.clearedObstacles || {};
-if ((state.campaign.completed && state.campaign.completed[1]) || (state.campaign.unlockedLevel || 1) > 1) state.unlocks.towerBuilder = true;
+state.unlocks.towerBuilder = (state.campaign.unlockedLevel || 1) >= TOWER_BUILDER_UNLOCK_LEVEL;
 syncProgressUnlocks();
 
 const board = { w: 16, h: 16, tile: 1.12, blocked: new Set(), path: [...worldPaths[1][1]] };
@@ -1015,6 +1016,7 @@ function saveCampaign() { localStorage.setItem('aegis-campaign', JSON.stringify(
 function saveUnlocks() { localStorage.setItem('aegis-unlocks', JSON.stringify(state.unlocks)); }
 
 function getTowerUnlockLevel(key) {
+  if (key === 'flame') return 1;
   const idx = towerUnlockOrder.indexOf(key);
   return idx >= 0 ? (idx + 1) * 3 : 1;
 }
@@ -1147,7 +1149,7 @@ function buildCampaignMenu() {
   ui.playFinalBoss.classList.toggle('hidden', !state.campaign.finalBossUnlocked);
   const towerRows = Object.keys(towerDefs).map(k => `<div>${towerDefs[k].icon} ${towerDefs[k].name} — ${isTowerUnlocked(k) ? 'Freigeschaltet' : `Gesperrt: Schließe Level ${getTowerUnlockLevel(k)} ab`}</div>`);
   const abilityRows = Object.keys(abilities).map(k => `<div>${abilities[k].icon} ${abilities[k].name} — ${isAbilityUnlocked(k) ? 'Freigeschaltet' : `Gesperrt: Schließe Level ${getAbilityUnlockLevel(k)} ab`}</div>`);
-  const builderRow = `<div>🧩 Turm-Editor — ${isTowerBuilderUnlocked() ? 'Freigeschaltet' : 'Gesperrt: Schließe Kampagnenlevel 1 ab'}</div>`;
+  const builderRow = `<div>🧩 Turm-Editor — ${isTowerBuilderUnlocked() ? 'Freigeschaltet' : `Gesperrt: Schließe Level ${TOWER_BUILDER_UNLOCK_LEVEL} ab`}</div>`;
   ui.unlockList.innerHTML = [...towerRows, ...abilityRows, builderRow].join('');
 }
 
@@ -1410,7 +1412,7 @@ function handleLevelComplete() {
   Object.keys(abilities).forEach(k => { if (state.currentLevel >= getAbilityUnlockLevel(k)) unlockAbility(k); });
   state.campaign.completed[state.currentLevel] = true;
   if (state.currentLevel >= 24) state.campaign.finalBossUnlocked = true;
-  if (state.currentLevel >= 1) state.unlocks.towerBuilder = true;
+  state.unlocks.towerBuilder = (state.currentLevel >= TOWER_BUILDER_UNLOCK_LEVEL) || state.unlocks.towerBuilder;
   state.campaign.unlockedLevel = Math.max(state.campaign.unlockedLevel || 1, state.currentLevel + 1);
   saveMeta();
   saveCampaign();
