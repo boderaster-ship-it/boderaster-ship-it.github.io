@@ -1476,6 +1476,67 @@ function handleLevelComplete() {
   buildMeta();
 }
 
+const towerVisuals = (() => {
+  const materialPreset = {
+    housing: { color: 0x3f4859, roughness: 0.84, metalness: 0.14 },
+    metal: { color: 0xd3deee, roughness: 0.48, metalness: 0.7 },
+    energy: { roughness: 0.32, metalness: 0.22, emissiveIntensity: 0.34 }
+  };
+
+  const sharedMaterials = {
+    housing: new THREE.MeshStandardMaterial(materialPreset.housing),
+    metal: new THREE.MeshStandardMaterial(materialPreset.metal)
+  };
+
+  const detailGeometries = {
+    ring: new THREE.TorusGeometry(0.26, 0.03, 8, 14),
+    sidePlate: new THREE.BoxGeometry(0.09, 0.18, 0.46),
+    sensorCone: new THREE.ConeGeometry(0.06, 0.18, 8),
+    sensorStem: new THREE.CylinderGeometry(0.024, 0.024, 0.14, 8)
+  };
+
+  function makePreset(energyColor) {
+    return {
+      housingMaterial: sharedMaterials.housing,
+      metalMaterial: sharedMaterials.metal,
+      energyMaterial: new THREE.MeshStandardMaterial({
+        color: energyColor,
+        emissive: energyColor,
+        roughness: materialPreset.energy.roughness,
+        metalness: materialPreset.energy.metalness,
+        emissiveIntensity: materialPreset.energy.emissiveIntensity
+      })
+    };
+  }
+
+  function addDetailSet(baseGroup, headGroup, type, metalMaterial, housingMaterial) {
+    const baseRing = new THREE.Mesh(detailGeometries.ring, metalMaterial);
+    baseRing.position.set(0, 0.3, 0);
+    baseRing.rotation.x = Math.PI / 2;
+    baseGroup.add(baseRing);
+
+    const plateOffset = type === 'flame' ? 0.28 : 0.26;
+    const leftPlate = new THREE.Mesh(detailGeometries.sidePlate, housingMaterial);
+    leftPlate.position.set(-plateOffset, 0.58, 0.12);
+    headGroup.add(leftPlate);
+
+    const rightPlate = leftPlate.clone();
+    rightPlate.position.x = plateOffset;
+    headGroup.add(rightPlate);
+
+    const sensorStem = new THREE.Mesh(detailGeometries.sensorStem, metalMaterial);
+    sensorStem.position.set(0, 0.82, -0.1);
+    headGroup.add(sensorStem);
+
+    const sensorCone = new THREE.Mesh(detailGeometries.sensorCone, metalMaterial);
+    sensorCone.position.set(0, 0.97, -0.1);
+    sensorCone.rotation.x = Math.PI;
+    headGroup.add(sensorCone);
+  }
+
+  return { makePreset, addDetailSet };
+})();
+
 function makeTower(type, cell, customCfg = null) {
   const d = customCfg ? {
     name: customCfg.name,
@@ -1487,30 +1548,37 @@ function makeTower(type, cell, customCfg = null) {
     aoe: customCfg.stats.aoe
   } : towerDefs[type];
   const g = new THREE.Group();
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.55, 0.55, 14), new THREE.MeshStandardMaterial({ color: 0x3f4859, roughness: 0.56, metalness: 0.38 }));
+  const baseGroup = new THREE.Group();
+  const headGroup = new THREE.Group();
+  g.add(baseGroup, headGroup);
+
   const coreColor = customCfg ? 0xa6d6ff : d.color;
-  const core = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.42, 10), new THREE.MeshStandardMaterial({ color: coreColor, emissive: coreColor, emissiveIntensity: 0.35 }));
+  const mats = towerVisuals.makePreset(coreColor);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.55, 0.55, 14), mats.housingMaterial);
+  const core = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.42, 10), mats.energyMaterial);
   core.position.y = 0.46;
   const barrelGeo = type === 'laser' ? new THREE.CylinderGeometry(0.08, 0.08, 0.9, 10) : type === 'missile' ? new THREE.ConeGeometry(0.13, 0.9, 10) : type === 'cryo' ? new THREE.BoxGeometry(0.12, 0.3, 0.82) : type === 'flame' ? new THREE.TorusGeometry(0.22, 0.06, 8, 16) : new THREE.BoxGeometry(0.16, 0.16, 0.9);
-  const barrel = new THREE.Mesh(barrelGeo, new THREE.MeshStandardMaterial({ color: type === 'flame' ? 0xffbc74 : 0xdce7f8, roughness: 0.44, metalness: 0.42 }));
+  const barrel = new THREE.Mesh(barrelGeo, mats.metalMaterial);
   barrel.position.set(0, 0.62, 0.22);
-  g.add(base, core, barrel);
+  baseGroup.add(base);
+  headGroup.add(core, barrel);
+  towerVisuals.addDetailSet(baseGroup, headGroup, type, mats.metalMaterial, mats.housingMaterial);
 
   if (customCfg) {
     const accents = [];
-    const addAccent = (geo, color, x, y, z, s = 1) => {
-      const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.25, roughness: 0.4, metalness: 0.55 }));
+    const addAccent = (geo, color, parent, x, y, z, s = 1) => {
+      const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.22, roughness: 0.44, metalness: 0.5 }));
       m.position.set(x, y, z);
       m.scale.setScalar(s);
-      g.add(m);
+      parent.add(m);
       accents.push(m);
     };
     const c = customCfg.map;
-    if (c.cryo) addAccent(new THREE.CylinderGeometry(0.07, 0.07, 0.45, 8), 0x8de9ff, -0.25, 0.55, 0, 1 + c.cryo * 0.15);
-    if (c.arc) addAccent(new THREE.ConeGeometry(0.11, 0.34, 6), 0xb388ff, 0.26, 0.62, 0.1, 1 + c.arc * 0.12);
-    if (c.explosive) addAccent(new THREE.TorusGeometry(0.2, 0.05, 8, 16), 0xffa74f, 0, 0.74, 0.25, 1 + c.explosive * 0.14);
-    if (c.beam) addAccent(new THREE.SphereGeometry(0.1, 10, 8), 0xffe5ea, 0, 0.65, 0.5, 1 + c.beam * 0.1);
-    if (c.kinetic) addAccent(new THREE.BoxGeometry(0.35, 0.08, 0.3), 0x9eb1c7, 0, 0.36, -0.1, 1 + c.kinetic * 0.1);
+    if (c.cryo) addAccent(new THREE.CylinderGeometry(0.07, 0.07, 0.45, 8), 0x8de9ff, headGroup, -0.25, 0.55, 0, 1 + c.cryo * 0.15);
+    if (c.arc) addAccent(new THREE.ConeGeometry(0.11, 0.34, 6), 0xb388ff, headGroup, 0.26, 0.62, 0.1, 1 + c.arc * 0.12);
+    if (c.explosive) addAccent(new THREE.TorusGeometry(0.2, 0.05, 8, 16), 0xffa74f, headGroup, 0, 0.74, 0.25, 1 + c.explosive * 0.14);
+    if (c.beam) addAccent(new THREE.SphereGeometry(0.1, 10, 8), 0xffe5ea, headGroup, 0, 0.65, 0.5, 1 + c.beam * 0.1);
+    if (c.kinetic) addAccent(new THREE.BoxGeometry(0.35, 0.08, 0.3), 0x9eb1c7, baseGroup, 0, 0.36, -0.1, 1 + c.kinetic * 0.1);
     const tint = new THREE.Color(0x9eb1c7);
     if (c.cryo) tint.lerp(new THREE.Color(0x7fdfff), 0.2);
     if (c.arc) tint.lerp(new THREE.Color(0xa985ff), 0.2);
@@ -1527,7 +1595,7 @@ function makeTower(type, cell, customCfg = null) {
   blobShadow.position.copy(p).setY(GROUND_Y + 0.02);
   world.add(blobShadow);
   world.add(g);
-  return { type, cell, level: 1, cooldown: 0, mesh: g, barrel, core, branch: 'none', custom: customCfg, displayName: customCfg ? customCfg.name : d.name, blobShadow };
+  return { type, cell, level: 1, cooldown: 0, mesh: g, baseGroup, headGroup, barrel, core, branch: 'none', custom: customCfg, displayName: customCfg ? customCfg.name : d.name, blobShadow, pulsePhase: Math.random() * Math.PI * 2 };
 }
 
 function spawnEnemy(boss = false) {
@@ -2171,9 +2239,10 @@ function animate(now) {
     t.cooldown -= simDt;
     t.recoil = Math.max(0, (t.recoil || 0) - simDt * 1.8);
     t.barrel.position.z = 0.22 - t.recoil;
-    t.mesh.rotation.y += dt * 0.25;
+    t.headGroup.rotation.y += dt * 0.25;
     if (t.blobShadow) t.blobShadow.position.set(t.mesh.position.x, GROUND_Y + 0.02, t.mesh.position.z);
-    t.core.material.emissiveIntensity = 0.3 + Math.sin(now * 0.008) * 0.08 + t.level * 0.05;
+    t.pulsePhase += simDt * 2.1;
+    t.core.material.emissiveIntensity = 0.28 + Math.sin(t.pulsePhase) * 0.05 + t.level * 0.05;
     const baseRange = t.custom ? t.custom.stats.range : towerDefs[t.type].range;
     const range = baseRange + (t.level - 1) * 0.45;
     const target = getFrontmostEnemyInRange(t, range);
