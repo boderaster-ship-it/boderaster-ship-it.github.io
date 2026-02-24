@@ -1359,8 +1359,8 @@ function getDifficultyRamp() {
   const boostedWaveProgress = baseWaveProgress + Math.min(10, Math.max(0, state.wave)) / 12;
   const waveProgress = Math.min(2.1, boostedWaveProgress);
   return {
-    count: 2 * (1 + levelProgress * 0.65 + waveProgress * 0.22),
-    hp: 2 * (1 + levelProgress * 0.82 + waveProgress * 0.28)
+    count: 2 * (1 + levelProgress * 0.65 + waveProgress * 0.44),
+    hp: 2 * (1 + levelProgress * 0.82 + waveProgress * 0.56)
   };
 }
 
@@ -1380,7 +1380,7 @@ function getWorldDifficultyBoost() {
 function spawnWave() {
   state.wave += 1;
   const ramp = getDifficultyRamp();
-  const baseCount = 8 + Math.floor(state.wave * 1.6);
+  const baseCount = 8 + Math.floor(state.wave * 3.2);
   const count = Math.ceil(baseCount * ramp.count * getWorldDifficultyBoost());
   state.remainingInWave = count;
   state.spawnTimer = 0.2;
@@ -1492,8 +1492,8 @@ function spawnEnemy(boss = false) {
   const hpMult = worldId === 4 ? 1.42 : worldId === 3 ? 1.25 : worldId === 2 ? 1.12 : 1;
   const worldBoost = getWorldDifficultyBoost();
   const ramp = getDifficultyRamp();
-  const hp = ((isFinalBoss ? 4800 : boss ? 680 : def.hp + state.wave * 9) * hpMult) * (modeRules[state.mode]?.scale || 1.2) * ramp.hp * worldBoost;
-  const spd = (isFinalBoss ? 0.4 : boss ? 0.62 : def.speed) + state.wave * 0.012 + (worldId===3 ? 0.08 : 0);
+  const hp = ((isFinalBoss ? 4800 : boss ? 680 : def.hp + state.wave * 18) * hpMult) * (modeRules[state.mode]?.scale || 1.2) * ramp.hp * worldBoost;
+  const spd = (isFinalBoss ? 0.4 : boss ? 0.62 : def.speed) + state.wave * 0.024 + (worldId===3 ? 0.08 : 0);
   const frostResist = worldId === 3 ? 0.55 : 0;
   const armor = worldId === 4 ? 0.2 + Math.min(0.4, state.wave * 0.02) : 0;
   const shadowRadius = def.flying ? def.size * 0.92 : def.size * 1.22;
