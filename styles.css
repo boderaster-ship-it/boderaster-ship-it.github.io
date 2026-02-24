@@ -106,11 +106,11 @@ button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; co
   padding-bottom: max(10px, calc((10px * var(--uiScale)) + env(safe-area-inset-bottom)));
   height: calc(var(--vhPx) * 1px);
   max-height: calc(var(--vhPx) * 1px);
-  overflow: hidden;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .menuSheet {
-  transform: scale(var(--uiScale));
-  transform-origin: center top;
+  transform: none;
 }
 .menuLayout {
   display: grid;
