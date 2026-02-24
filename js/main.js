@@ -1,4 +1,6 @@
 import * as THREE from 'https://unpkg.com/three@0.164.1/build/three.module.js';
+import { PlanarMapAdapter } from './maps/PlanarMapAdapter.js';
+import { GlobeMapAdapter } from './maps/GlobeMapAdapter.js';
 
 const canvas = document.getElementById('gameCanvas');
 const toastEl = document.getElementById('toast');
@@ -95,7 +97,7 @@ const ui = {
 const modeRules = {
   campaign: { scale: 1, mod: 'Standardbetrieb' },
   endless: { scale: 1.16, mod: 'Skalierende Panzerung pro Welle' },
-  challenge: { scale: 1.34, mod: 'Aggressive Feinde' }
+  challenge: { scale: 1, mod: 'Globe Mode' }
 };
 
 const towerDefs = {
@@ -270,7 +272,8 @@ const state = {
   activeBuild: null,
   builderDraft: [],
   unlocks: safeJSONParse('aegis-unlocks', { towerBuilder: false }),
-  obstacleTap: { key: null, expires: 0 }
+  obstacleTap: { key: null, expires: 0 },
+  mapAdapter: null
 };
 
 state.meta.unlockedTowers = state.meta.unlockedTowers || ['cannon'];
@@ -294,6 +297,10 @@ syncProgressUnlocks();
 const board = { w: 16, h: 16, tile: 1.12, blocked: new Set(), path: [...worldPaths[1][1]] };
 let pathCellSet = new Set(board.path.map(([x, z]) => `${x},${z}`));
 const GROUND_Y = 0;
+let terrain = null;
+let mapAdapter = null;
+const WORLD_UP = new THREE.Vector3(0, 1, 0);
+const _tmpQuat = new THREE.Quaternion();
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
 renderer.shadowMap.enabled = true;
@@ -594,10 +601,6 @@ function syncObjectiveVisuals(worldId, levelId) {
   if (objectiveEntities.castle?.group) world.add(objectiveEntities.castle.group);
 }
 
-const terrain = buildTerrain();
-world.add(terrain);
-buildPath();
-syncObjectiveVisuals(1, 1);
 
 const ghost = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 1.25, 10), new THREE.MeshStandardMaterial({ color: 0x57ffa3, transparent: true, opacity: 0.45 }));
 ghost.visible = false;
@@ -614,13 +617,7 @@ crossA.rotation.y = Math.PI / 4;
 crossB.rotation.y = -Math.PI / 4;
 blockedCross.add(crossA, crossB);
 blockedCross.visible = false;
-const boardPlane = new THREE.Mesh(
-  new THREE.PlaneGeometry(board.w * board.tile, board.h * board.tile),
-  new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide })
-);
-boardPlane.rotation.x = -Math.PI / 2;
-boardPlane.position.set(0, GROUND_Y + 0.18, board.h * board.tile * 0.5 - board.tile * 0.5);
-world.add(boardPlane, ghost, hoverTile, rangeRing, blockedCross);
+world.add(ghost, hoverTile, rangeRing, blockedCross);
 
 const buildPads = new Map();
 const obstacleCells = new Map();
@@ -636,8 +633,6 @@ const PAN_MULT = 0.00465;
 const PINCH_MULT = 0.0057;
 let hoverVisualState = { valid: true, pulse: 0 };
 
-buildBuildZonePads();
-buildEnvironmentProps();
 
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
@@ -647,14 +642,22 @@ let lastTapAt = 0;
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
 function cellToWorld(x, z) {
-  return new THREE.Vector3((x - board.w / 2) * board.tile + board.tile * 0.5, getHeight(x, z), z * board.tile);
+  return mapAdapter.cellToWorld(x, z);
 }
 
 function worldToCell(pos) {
-  const x = Math.floor((pos.x + board.w * board.tile * 0.5) / board.tile);
-  const z = Math.floor(pos.z / board.tile);
-  if (x < 0 || z < 0 || x >= board.w || z >= board.h) return null;
-  return [x, z];
+  const cell = mapAdapter.worldToCell(pos);
+  return cell ? [cell.x, cell.z] : null;
+}
+
+function getSurfaceNormalAtCell(x, z) {
+  return mapAdapter.getSurfaceNormalAtCell(x, z);
+}
+
+function orientToSurface(obj, normal, yaw = 0) {
+  _tmpQuat.setFromUnitVectors(WORLD_UP, normal);
+  obj.quaternion.copy(_tmpQuat);
+  if (yaw) obj.rotateOnAxis(normal, yaw);
 }
 
 
@@ -808,7 +811,8 @@ function rebuildWorldForCampaign() {
   buildPath();
   buildEnvironmentProps();
   syncObjectiveVisuals(def.world, def.levelInWorld);
-  world.add(boardPlane, ghost, hoverTile, rangeRing, blockedCross);
+  if (mapAdapter?.pickPlane || mapAdapter?.pickSphere) world.add(mapAdapter.pickPlane || mapAdapter.pickSphere);
+  world.add(ghost, hoverTile, rangeRing, blockedCross);
   buildPads.clear();
   buildBuildZonePads();
   applyWorldTheme(def.world);
@@ -902,69 +906,8 @@ function createTerrainTexture(theme) {
 }
 
 function buildTerrain() {
-  const extra = 14;
-  const terrainW = (board.w + extra * 2) * board.tile;
-  const terrainH = (board.h + extra * 2) * board.tile;
-  const segW = board.w + extra * 2;
-  const segH = board.h + extra * 2;
-  const geometry = new THREE.PlaneGeometry(terrainW, terrainH, segW, segH);
   const theme = worldThemes[getSelectedCampaignDef().world] || worldThemes[1];
-  const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    roughness: 0.97,
-    metalness: 0.01,
-    map: createTerrainTexture(theme)
-  }));
-  mesh.rotation.x = -Math.PI / 2;
-  mesh.receiveShadow = true;
-  mesh.position.set(0, GROUND_Y - 0.03, board.h * board.tile * 0.5 - board.tile * 0.5);
-  return mesh;
-}
-
-function createPathStripGeometry(pathCells, width = board.tile * 0.86) {
-  const centers = pathCells.map(([x, z]) => cellToWorld(x, z));
-  const left = [];
-  const right = [];
-  const half = width * 0.5;
-
-  for (let i = 0; i < centers.length; i++) {
-    const prev = centers[Math.max(0, i - 1)];
-    const next = centers[Math.min(centers.length - 1, i + 1)];
-    const dir = next.clone().sub(prev);
-    dir.y = 0;
-    if (dir.lengthSq() < 0.0001) dir.set(0, 0, 1);
-    dir.normalize();
-    const side = new THREE.Vector3(-dir.z, 0, dir.x).multiplyScalar(half);
-    const c = centers[i];
-    left.push(c.clone().add(side).setY(GROUND_Y + 0.082));
-    right.push(c.clone().sub(side).setY(GROUND_Y + 0.082));
-  }
-
-  const vertices = [];
-  const colors = [];
-  const indices = [];
-  for (let i = 0; i < centers.length; i++) {
-    const t = centers.length <= 1 ? 0 : i / (centers.length - 1);
-    const edgeFade = 0.76 + Math.sin(t * Math.PI) * 0.18;
-    const centerFade = 0.88 + Math.sin(t * Math.PI * 2) * 0.06;
-    vertices.push(left[i].x, left[i].y, left[i].z);
-    vertices.push(right[i].x, right[i].y, right[i].z);
-    colors.push(edgeFade, edgeFade, edgeFade);
-    colors.push(centerFade, centerFade, centerFade);
-  }
-
-  for (let i = 0; i < centers.length - 1; i++) {
-    const idx = i * 2;
-    indices.push(idx, idx + 2, idx + 1);
-    indices.push(idx + 1, idx + 2, idx + 3);
-  }
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setIndex(indices);
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-  geometry.computeVertexNormals();
-  return geometry;
+  return mapAdapter.buildTerrainMesh(theme, createTerrainTexture);
 }
 
 function buildPath() {
@@ -972,31 +915,32 @@ function buildPath() {
   const theme = worldThemes[w] || worldThemes[1];
   const roadMat = new THREE.MeshStandardMaterial({ color: theme.road, roughness: 0.9, metalness: w === 2 ? 0.1 : 0.03, vertexColors: true });
   const edgeMat = new THREE.MeshStandardMaterial({ color: theme.edge, roughness: 0.84, metalness: 0.04, transparent: true, opacity: 0.62 });
-  const road = new THREE.Mesh(createPathStripGeometry(board.path, board.tile * 0.9), roadMat);
-  const shoulders = new THREE.Mesh(createPathStripGeometry(board.path, board.tile * 1.04), edgeMat);
-  shoulders.position.y = -0.004;
+  const road = mapAdapter.buildPathMesh(board.path, board.tile * 0.9);
+  const shoulders = mapAdapter.buildPathMesh(board.path, board.tile * 1.04);
+  road.material = roadMat;
+  shoulders.material = edgeMat;
   road.receiveShadow = true;
   shoulders.receiveShadow = true;
   world.add(shoulders, road);
 }
 
 function buildBuildZonePads() {
-  const padGeo = new THREE.CylinderGeometry(board.tile * 0.41, board.tile * 0.44, 0.055, 18);
-  const topGeo = new THREE.RingGeometry(board.tile * 0.3, board.tile * 0.41, 24);
+  const nonPathCells = [];
   for (let z = 0; z < board.h; z++) {
     for (let x = 0; x < board.w; x++) {
       const key = `${x},${z}`;
-      if (pathCellSet.has(key)) continue;
-      const p = cellToWorld(x, z);
-      const pad = new THREE.Mesh(padGeo, new THREE.MeshStandardMaterial({ color: BUILD_PAD_COLORS.free, roughness: 0.9, metalness: 0.08 }));
-      const ring = new THREE.Mesh(topGeo, new THREE.MeshBasicMaterial({ color: 0x8fd6b4, transparent: true, opacity: 0.22, side: THREE.DoubleSide }));
-      pad.position.copy(p).setY(p.y + 0.038);
-      ring.position.copy(p).setY(p.y + 0.072);
-      ring.rotation.x = -Math.PI / 2;
-      pad.receiveShadow = true;
-      buildPads.set(key, { pad, ring });
-      world.add(pad, ring);
+      if (!pathCellSet.has(key)) nonPathCells.push([x, z]);
     }
+  }
+  const built = mapAdapter.buildBuildPads(nonPathCells, board.tile);
+  for (const entry of built) {
+    const pad = entry.pad;
+    const ring = entry.ring;
+    pad.material = new THREE.MeshStandardMaterial({ color: BUILD_PAD_COLORS.free, roughness: 0.9, metalness: 0.08 });
+    ring.material = new THREE.MeshBasicMaterial({ color: 0x8fd6b4, transparent: true, opacity: 0.22, side: THREE.DoubleSide });
+    pad.receiveShadow = true;
+    buildPads.set(entry.key, { pad, ring });
+    world.add(pad, ring);
   }
 }
 
@@ -1026,6 +970,7 @@ function buildEnvironmentProps() {
       if (!spawn || cleared.has(key)) continue;
       const obstacle = new THREE.Group();
       obstacle.position.copy(worldPos);
+      orientToSurface(obstacle, getSurfaceNormalAtCell(x, z));
       obstacle.userData = { obstacle: true, cellKey: key, world: worldId, kind: 'rock' };
       if (theme.prop === 'forest' || (theme.prop === 'hybrid' && seed < 0.33)) {
         obstacle.userData.kind = 'tree';
@@ -1850,10 +1795,13 @@ function makeTower(type, cell, customCfg = null) {
   }
 
   const p = cellToWorld(cell[0], cell[1]);
-  g.position.copy(p).setY(p.y + 0.3);
+  const n = getSurfaceNormalAtCell(cell[0], cell[1]);
+  g.position.copy(p).addScaledVector(n, 0.3);
+  orientToSurface(g, n);
   g.castShadow = true;
   const blobShadow = createBlobShadow(0.62, 0.32);
-  blobShadow.position.copy(p).setY(GROUND_Y + 0.02);
+  blobShadow.position.copy(p).addScaledVector(n, 0.02);
+  orientToSurface(blobShadow, n);
   world.add(blobShadow);
   world.add(g);
   return { type, cell, level: 1, cooldown: 0, mesh: g, baseGroup, headGroup, barrel, core, branch: 'none', custom: customCfg, displayName: customCfg ? customCfg.name : d.name, blobShadow, pulsePhase: Math.random() * Math.PI * 2 };
@@ -2110,15 +2058,11 @@ function getFrontmostEnemyInRange(tower, range) {
 
 
 function getPathPosition(path, progress) {
-  if (!path?.length) return null;
-  if (path.length === 1) return cellToWorld(path[0][0], path[0][1]).clone();
-  const clamped = Math.min(1, Math.max(0, progress));
-  const scaled = clamped * (path.length - 1);
-  const idx = Math.min(path.length - 2, Math.floor(scaled));
-  const frac = scaled - idx;
-  const a = cellToWorld(path[idx][0], path[idx][1]);
-  const b = cellToWorld(path[idx + 1][0], path[idx + 1][1]);
-  return a.lerp(b, frac);
+  return mapAdapter.samplePath(path, progress)?.position || null;
+}
+
+function getPathFrame(path, progress) {
+  return mapAdapter.samplePath(path, progress);
 }
 
 function launchAbilityStorm(kind, color, config = {}) {
@@ -2400,7 +2344,7 @@ function animate(now) {
       continue;
     }
 
-    const speed = e.freeze > 0 ? 0 : e.speed * (state.mode === 'challenge' ? 1.15 : 1);
+    const speed = e.freeze > 0 ? 0 : e.speed;
     const wasFrozen = e.freeze > 0.12;
     e.freeze = Math.max(0, e.freeze - simDt);
     e.hitFlash = Math.max(0, (e.hitFlash || 0) - simDt);
@@ -2424,16 +2368,12 @@ function animate(now) {
       continue;
     }
 
-    const f = e.t * (board.path.length - 1) - idx;
-    const a = cellToWorld(...board.path[idx]);
-    const b = cellToWorld(...board.path[idx + 1]);
-    const pathPos = new THREE.Vector3().lerpVectors(a, b, f);
-    const pathDir = b.clone().sub(a);
-    const dirLen = Math.max(0.0001, pathDir.length());
-    pathDir.multiplyScalar(1 / dirLen);
+    const frame = getPathFrame(board.path, e.t) || { position: cellToWorld(...board.path[idx]), tangent: new THREE.Vector3(0, 0, 1), normal: WORLD_UP.clone() };
+    const pathPos = frame.position;
+    const pathDir = frame.tangent.lengthSq() > 0.00001 ? frame.tangent.clone().normalize() : new THREE.Vector3(0, 0, 1);
+    const surfaceNormal = frame.normal.lengthSq() > 0.00001 ? frame.normal.clone().normalize() : WORLD_UP.clone();
     const phase = now * 0.009 + e.motionPhase;
     const stride = now * 0.016 + e.stridePhase;
-    const pathYaw = Math.atan2(pathDir.x, pathDir.z);
     let yLift = 0.33;
     let bobAmount = 0;
     let roll = 0;
@@ -2465,10 +2405,10 @@ function animate(now) {
       pitch = 0.09;
     }
 
-    e.mesh.position.copy(pathPos).setY(pathPos.y + yLift);
+    e.mesh.position.copy(pathPos).addScaledVector(surfaceNormal, yLift);
     if (e.blobShadow) {
-      const groundY = pathPos.y + 0.02;
-      e.blobShadow.position.set(e.mesh.position.x, groundY, e.mesh.position.z);
+      e.blobShadow.position.copy(pathPos).addScaledVector(surfaceNormal, 0.02);
+      orientToSurface(e.blobShadow, surfaceNormal);
       e.blobShadow.material.opacity = e.flying ? (0.1 + Math.abs(Math.sin(phase)) * 0.05) : 0.3 + bobAmount * 0.26;
       const squash = e.flying ? (1.25 + Math.sin(stride) * 0.07) : (1 + bobAmount * 0.5);
       e.blobShadow.scale.set(squash, squash, 1);
@@ -2477,7 +2417,10 @@ function animate(now) {
     const hitScale = e.hitFlash > 0 ? 1.12 : 1;
     if (wasFrozen && e.freeze <= 0.01) emitParticleBurst(e.mesh.position.clone(), { color: 0xbfefff, count: 8, spread: 2.1, life: 0.26, y: 0.22 });
     e.mesh.scale.setScalar((e.boss ? 1.45 : 1) * pulse * hitScale);
-    e.mesh.rotation.set(pitch, pathYaw + roll, roll * 0.7);
+    orientToSurface(e.mesh, surfaceNormal);
+    const lateral = new THREE.Vector3().crossVectors(surfaceNormal, pathDir).normalize();
+    if (lateral.lengthSq() > 0.00001) e.mesh.rotateOnAxis(lateral, pitch);
+    e.mesh.rotateOnAxis(surfaceNormal, roll * 0.7);
     e.mesh.traverse(part => {
       if (part.material?.emissive) {
         const em = e.hitFlash > 0 ? 0xffd8b1 : (e.poison > 0 ? 0x88ff55 : (e.freeze > 0 ? 0x8edbff : (e.shield > 0 ? 0x7f8cff : 0x18232d)));
@@ -2502,7 +2445,11 @@ function animate(now) {
     t.recoil = Math.max(0, (t.recoil || 0) - simDt * 1.8);
     t.barrel.position.z = 0.22 - t.recoil;
     t.headGroup.rotation.y += dt * 0.25;
-    if (t.blobShadow) t.blobShadow.position.set(t.mesh.position.x, GROUND_Y + 0.02, t.mesh.position.z);
+    if (t.blobShadow) {
+      const n = mapAdapter.getSurfaceNormalAtWorld(t.mesh.position);
+      t.blobShadow.position.copy(t.mesh.position).addScaledVector(n, -0.28);
+      orientToSurface(t.blobShadow, n);
+    }
     t.pulsePhase += simDt * 2.1;
     t.core.material.emissiveIntensity = 0.28 + Math.sin(t.pulsePhase) * 0.05 + t.level * 0.05;
     const baseRange = t.custom ? t.custom.stats.range : towerDefs[t.type].range;
@@ -2716,9 +2663,9 @@ function pickCell(clientX, clientY) {
   const rect = canvas.getBoundingClientRect();
   pointer.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
   raycaster.setFromCamera(pointer, camera);
-  const hits = raycaster.intersectObject(boardPlane);
-  if (!hits.length) return null;
-  return worldToCell(hits[0].point);
+  const hit = mapAdapter.getPickIntersection(raycaster.ray);
+  if (!hit) return null;
+  return worldToCell(hit.point);
 }
 
 function isValidPlacementCell(cell) {
@@ -2741,17 +2688,21 @@ function updateHoverVisual(cell, force = false) {
   state.hoverCell = cell;
   const worldPos = cellToWorld(cell[0], cell[1]);
   hoverTile.visible = true;
-  hoverTile.position.copy(worldPos).setY(worldPos.y + 0.045);
+  const normal = getSurfaceNormalAtCell(cell[0], cell[1]);
+  hoverTile.position.copy(worldPos).addScaledVector(normal, 0.045);
+  orientToSurface(hoverTile, normal);
   const valid = isValidPlacementCell(cell);
   hoverVisualState.valid = valid;
 
   if (state.buildMode && state.selectedTowerType) {
-    const snapY = worldPos.y + 0.6;
-    if (!ghost.visible || force) ghost.position.copy(worldPos).setY(snapY);
-    else ghost.position.lerp(new THREE.Vector3(worldPos.x, snapY, worldPos.z), 0.42);
+    const ghostTarget = worldPos.clone().addScaledVector(normal, 0.6);
+    if (!ghost.visible || force) ghost.position.copy(ghostTarget);
+    else ghost.position.lerp(ghostTarget, 0.42);
+    orientToSurface(ghost, normal);
     ghost.visible = true;
     rangeRing.visible = true;
-    rangeRing.position.copy(ghost.position).setY(worldPos.y + 0.062);
+    rangeRing.position.copy(worldPos).addScaledVector(normal, 0.062);
+    orientToSurface(rangeRing, normal);
     const towerDef = state.selectedTowerType === 'custom' ? state.activeBuild : towerDefs[state.selectedTowerType];
     const range = towerDef?.stats?.range || towerDef?.range || 5;
     rangeRing.scale.setScalar(range);
@@ -2759,7 +2710,10 @@ function updateHoverVisual(cell, force = false) {
     ghost.material.color.setHex(valid ? BUILD_PAD_COLORS.hoverValid : BUILD_PAD_COLORS.hoverInvalid);
     rangeRing.material.color.setHex(valid ? 0x67e9a8 : 0xff7788);
     blockedCross.visible = !valid;
-    if (!valid) blockedCross.position.copy(worldPos).setY(worldPos.y + 0.09);
+    if (!valid) {
+      blockedCross.position.copy(worldPos).addScaledVector(normal, 0.09);
+      orientToSurface(blockedCross, normal);
+    }
   }
 }
 
@@ -3020,7 +2974,26 @@ function start(mode) {
   state.gameStarted = true;
   ui.mainMenu.classList.add('hidden');
   resetCineCam(false);
+  mapAdapter?.dispose?.();
+  mapAdapter = mode === 'challenge' ? new GlobeMapAdapter(board, GROUND_Y) : new PlanarMapAdapter(board, GROUND_Y);
+  state.mapAdapter = mapAdapter;
+  camera.near = mode === 'challenge' ? 0.2 : 0.1;
+  camera.far = mode === 'challenge' ? 320 : 220;
+  camera.updateProjectionMatrix();
+  terrain = buildTerrain();
   if (mode === 'campaign') rebuildWorldForCampaign();
+  else {
+    while (world.children.length) world.remove(world.children[0]);
+    world.add(terrain);
+    buildPath();
+    buildEnvironmentProps();
+    syncObjectiveVisuals(1, 1);
+    if (mapAdapter?.pickPlane || mapAdapter?.pickSphere) world.add(mapAdapter.pickPlane || mapAdapter.pickSphere);
+    world.add(ghost, hoverTile, rangeRing, blockedCross);
+    buildPads.clear();
+    buildBuildZonePads();
+    applyWorldTheme(1);
+  }
   ui.bossWarning.classList.add('hidden');
   syncProgressUnlocks();
   initDock();
