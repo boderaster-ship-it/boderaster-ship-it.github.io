@@ -69,6 +69,7 @@ const ui = {
   perfToggle: document.getElementById('perfToggle'),
   updateBtn: document.getElementById('updateBtn'),
   overviewBtn: document.getElementById('overviewBtn'),
+  cineCamBtn: document.getElementById('cineCamBtn'),
   speedBtn: document.getElementById('speedBtn'),
   speedLabel: document.getElementById('speedLabel'),
   nextWaveTimer: document.getElementById('nextWaveTimer'),
@@ -306,7 +307,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd5ff);
 scene.fog = new THREE.Fog(0xbfdff4, 45, 130);
 const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 220);
-const cam = { yaw: 0.6, pitch: 0.98, dist: 24, target: new THREE.Vector3(0, 0, 8.2), velYaw: 0, velPitch: 0, velDist: 0, panVel: new THREE.Vector2(), transitioning: null };
+const cam = { yaw: 0.6, pitch: 0.98, dist: 24, target: new THREE.Vector3(0, 0, 8.2), velYaw: 0, velPitch: 0, velDist: 0, panVel: new THREE.Vector2(), transitioning: null, cine: { active: false, targetEnemy: null, travelStart: 0, travelDur: 820, pathStart: 0, pathEnd: 0, pathProgress: 1, smoothPos: null, smoothLook: null, baseYaw: 0, basePitch: 0, baseDist: 0, userYawOffset: 0, userPitchOffset: 0, userDistOffset: 0, userPanOffset: new THREE.Vector2(), baselineTarget: new THREE.Vector3(0, 0, 8.2) } };
 
 const hemi = new THREE.HemisphereLight(0xd9efff, 0x6f9269, 1.05);
 scene.add(hemi);
@@ -1069,6 +1070,46 @@ function unifiedOverview(animated = true) {
   else { cam.yaw = target.yaw; cam.pitch = target.pitch; cam.dist = target.dist; cam.target.set(target.tx, 0, target.tz); }
 }
 
+function findFrontMostEnemy() {
+  let front = null;
+  for (const enemy of state.enemies) {
+    if (!enemy?.mesh?.parent) continue;
+    if (!front || enemy.t > front.t) front = enemy;
+  }
+  return front;
+}
+
+function resetCineCam(forceOverview = true) {
+  cam.cine.active = false;
+  cam.cine.targetEnemy = null;
+  cam.cine.pathProgress = 1;
+  cam.cine.smoothPos = null;
+  cam.cine.smoothLook = null;
+  cam.cine.userYawOffset = 0;
+  cam.cine.userPitchOffset = 0;
+  cam.cine.userDistOffset = 0;
+  cam.cine.userPanOffset.set(0, 0);
+  ui.cineCamBtn?.classList.remove('active');
+  if (forceOverview) unifiedOverview(true);
+}
+
+function enableCineCam() {
+  cam.cine.active = true;
+  cam.transitioning = null;
+  cam.cine.targetEnemy = null;
+  cam.cine.travelStart = performance.now();
+  cam.cine.pathProgress = 1;
+  cam.cine.smoothPos = camera.position.clone();
+  const look = new THREE.Vector3();
+  camera.getWorldDirection(look);
+  cam.cine.smoothLook = camera.position.clone().add(look.multiplyScalar(8));
+  cam.cine.baseYaw = cam.yaw;
+  cam.cine.basePitch = cam.pitch;
+  cam.cine.baseDist = cam.dist;
+  cam.cine.baselineTarget.copy(cam.target);
+  ui.cineCamBtn?.classList.add('active');
+}
+
 function buildMeta() {
   if (!state.meta || typeof state.meta !== 'object') state.meta = { upgradePoints: 5, unlockedTowers: ['cannon'], unlockedAbilities: ['freeze'] };
   state.meta.upgradePoints = state.meta.upgradePoints || 0;
@@ -1420,6 +1461,7 @@ function handleLevelComplete() {
   ui.levelCompleteSummary.textContent = `World ${(Math.floor((state.currentLevel-1)/6)+1)} Level ${((state.currentLevel-1)%6)+1} abgeschlossen: ${state.levelWaves}/${state.levelWaves} Wellen.`;
   ui.levelRewards.innerHTML = `<div>+${rewards.credits} Credits</div><div>+${rewards.tokens} Upgrade-Punkte</div>${rewards.unlockTower ? `<div>Freigeschalteter Turm: ${towerDefs[rewards.unlockTower].name}</div>` : ''}<div>${state.currentLevel>=24?'Final Boss Mode freigeschaltet!':''}</div>`;
   ui.levelCompleteModal.classList.remove('hidden');
+  resetCineCam(false);
   state.paused = true;
   buildCampaignMenu();
   buildMeta();
@@ -1836,7 +1878,7 @@ function updateUI() {
   updateDock();
 }
 
-function updateCamera() {
+function updateCamera(dt = 1 / 60, now = performance.now()) {
   cam.yaw += cam.velYaw;
   cam.pitch = clamp(cam.pitch + cam.velPitch, 0.64, 1.28);
   cam.dist = clamp(cam.dist + cam.velDist, 9, 44);
@@ -1860,18 +1902,100 @@ function updateCamera() {
     if (k >= 1) cam.transitioning = null;
   }
 
-  const p = new THREE.Vector3(
-    Math.sin(cam.yaw) * Math.cos(cam.pitch),
-    Math.sin(cam.pitch),
-    Math.cos(cam.yaw) * Math.cos(cam.pitch)
-  ).multiplyScalar(cam.dist).add(cam.target);
-  camera.position.copy(p);
-  camera.lookAt(cam.target);
+  if (cam.cine.active) {
+    const lead = findFrontMostEnemy();
+    if (!lead) {
+      const fallback = {
+        yaw: 0.58 + cam.cine.userYawOffset,
+        pitch: clamp(1.12 + cam.cine.userPitchOffset, 0.75, 1.28),
+        dist: clamp(23 + cam.cine.userDistOffset, 10, 42),
+        tx: cam.cine.baselineTarget.x + cam.cine.userPanOffset.x,
+        tz: cam.cine.baselineTarget.z + cam.cine.userPanOffset.y
+      };
+      cam.yaw += (fallback.yaw - cam.yaw) * Math.min(1, dt * 5.5);
+      cam.pitch += (fallback.pitch - cam.pitch) * Math.min(1, dt * 5.5);
+      cam.dist += (fallback.dist - cam.dist) * Math.min(1, dt * 5.5);
+      cam.target.x += (fallback.tx - cam.target.x) * Math.min(1, dt * 5.5);
+      cam.target.z += (fallback.tz - cam.target.z) * Math.min(1, dt * 5.5);
+    } else {
+      const enemyChanged = cam.cine.targetEnemy !== lead;
+      if (enemyChanged) {
+        cam.cine.pathStart = cam.cine.targetEnemy?.t ?? lead.t;
+        cam.cine.pathEnd = lead.t;
+        cam.cine.pathProgress = 0;
+        cam.cine.travelStart = now;
+        cam.cine.travelDur = 600 + Math.random() * 600;
+        cam.cine.targetEnemy = lead;
+      }
+      const travelK = Math.min(1, (now - cam.cine.travelStart) / Math.max(320, cam.cine.travelDur));
+      const eased = 1 - Math.pow(1 - travelK, 3);
+      cam.cine.pathProgress = Math.max(cam.cine.pathProgress, eased);
+      const pathT = cam.cine.pathStart + (cam.cine.pathEnd - cam.cine.pathStart) * cam.cine.pathProgress;
+      const center = getPathPosition(board.path, pathT);
+      const future = getPathPosition(board.path, Math.min(1, pathT + 0.015));
+      const heading = future.clone().sub(center);
+      if (heading.lengthSq() < 0.0001) heading.set(0, 0, 1);
+      heading.normalize();
+      const side = new THREE.Vector3(heading.z, 0, -heading.x).normalize();
+
+      const cineTarget = center.clone().add(heading.clone().multiplyScalar(0.95));
+      cineTarget.y = center.y + 0.35;
+      cineTarget.x += cam.cine.userPanOffset.x;
+      cineTarget.z += cam.cine.userPanOffset.y;
+
+      const baselinePos = center.clone()
+        .add(heading.clone().multiplyScalar(-2.2))
+        .add(side.multiplyScalar(1.2));
+      baselinePos.y = center.y + 3.5;
+
+      const toView = baselinePos.clone().sub(cineTarget);
+      const baseDist = clamp(toView.length(), 5, 26);
+      const baseYaw = Math.atan2(toView.x, toView.z);
+      const basePitch = Math.asin(clamp(toView.y / baseDist, -0.99, 0.99));
+
+      const desiredYaw = baseYaw + cam.cine.userYawOffset;
+      const desiredPitch = clamp(basePitch + cam.cine.userPitchOffset, 0.5, 1.4);
+      const desiredDist = clamp(baseDist + cam.cine.userDistOffset, 6, 32);
+
+      const followLerp = 1 - Math.exp(-dt * 6.5);
+      cam.yaw += (desiredYaw - cam.yaw) * followLerp;
+      cam.pitch += (desiredPitch - cam.pitch) * followLerp;
+      cam.dist += (desiredDist - cam.dist) * followLerp;
+      cam.target.x += (cineTarget.x - cam.target.x) * followLerp;
+      cam.target.z += (cineTarget.z - cam.target.z) * followLerp;
+
+      const idealPos = new THREE.Vector3(
+        Math.sin(cam.yaw) * Math.cos(cam.pitch),
+        Math.sin(cam.pitch),
+        Math.cos(cam.yaw) * Math.cos(cam.pitch)
+      ).multiplyScalar(cam.dist).add(cam.target);
+
+      if (!cam.cine.smoothPos) cam.cine.smoothPos = idealPos.clone();
+      if (!cam.cine.smoothLook) cam.cine.smoothLook = cineTarget.clone();
+      const stable = 1 - Math.exp(-dt * 11);
+      cam.cine.smoothPos.lerp(idealPos, stable);
+      cam.cine.smoothLook.lerp(cineTarget, stable);
+      camera.position.copy(cam.cine.smoothPos);
+      camera.lookAt(cam.cine.smoothLook);
+    }
+  }
+
+  if (!cam.cine.active || !cam.cine.targetEnemy) {
+    const p = new THREE.Vector3(
+      Math.sin(cam.yaw) * Math.cos(cam.pitch),
+      Math.sin(cam.pitch),
+      Math.cos(cam.yaw) * Math.cos(cam.pitch)
+    ).multiplyScalar(cam.dist).add(cam.target);
+    camera.position.copy(p);
+    camera.lookAt(cam.target);
+  }
+
   if (state.shake > 0) {
     camera.position.add(new THREE.Vector3((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake, 0));
     state.shake *= 0.83;
   }
 }
+
 
 function releaseProjectile(i) {
   const p = state.projectiles[i];
@@ -1940,6 +2064,7 @@ function animate(now) {
       world.remove(e.mesh);
       if (state.lives <= 0) {
         state.paused = true;
+        resetCineCam(false);
         closeTransientPanels();
         ui.mainMenu.classList.remove('hidden');
         showToast('Niederlage. Neustart...', false);
@@ -2229,7 +2354,7 @@ function animate(now) {
     hoverTile.material.opacity += ((hoverVisualState.valid ? 0.42 : 0.34) - hoverTile.material.opacity) * 0.2;
   }
 
-  updateCamera();
+  updateCamera(dt, now);
   updateUI();
   renderer.render(scene, camera);
 }
@@ -2351,6 +2476,10 @@ canvas.addEventListener('pointermove', e => {
     if (!(state.buildMode && state.selectedTowerType)) {
       cam.velYaw += -e.movementX * 0.0021;
       cam.velPitch += e.movementY * 0.00165;
+      if (cam.cine.active) {
+        cam.cine.userYawOffset += -e.movementX * 0.0016;
+        cam.cine.userPitchOffset += e.movementY * 0.00125;
+      }
     }
     const cell = pickCell(e.clientX, e.clientY);
     updateHoverVisual(cell);
@@ -2364,6 +2493,11 @@ canvas.addEventListener('pointermove', e => {
     cam.velDist += (g.d - d) * PINCH_MULT;
     cam.panVel.x += -(cx - g.cx) * PAN_MULT;
     cam.panVel.y += (cy - g.cy) * PAN_MULT;
+    if (cam.cine.active) {
+      cam.cine.userDistOffset += (g.d - d) * PINCH_MULT * 0.55;
+      cam.cine.userPanOffset.x += -(cx - g.cx) * PAN_MULT * 0.7;
+      cam.cine.userPanOffset.y += (cy - g.cy) * PAN_MULT * 0.7;
+    }
     touches.gesture = { d, cx, cy };
     if (touchSession?.startedInBuild) {
       touchSession.canceledByGesture = true;
@@ -2416,6 +2550,7 @@ canvas.addEventListener('pointercancel', e => {
 canvas.addEventListener('dblclick', () => unifiedOverview(true));
 canvas.addEventListener('wheel', e => {
   cam.velDist += e.deltaY * 0.006;
+  if (cam.cine.active) cam.cine.userDistOffset += e.deltaY * 0.0028;
 }, { passive: true });
 
 
@@ -2492,6 +2627,7 @@ function closeTransientPanels() {
 ui.menuBtn.onclick = () => {
   state.paused = true;
   state.gameStarted = false;
+  resetCineCam(false);
   closeTransientPanels();
   ui.mainMenu.classList.remove('hidden');
 };
@@ -2527,6 +2663,7 @@ function start(mode) {
   state.betweenWaveCountdown = 0;
   state.gameStarted = true;
   ui.mainMenu.classList.add('hidden');
+  resetCineCam(false);
   if (mode === 'campaign') rebuildWorldForCampaign();
   ui.bossWarning.classList.add('hidden');
   syncProgressUnlocks();
@@ -2544,9 +2681,17 @@ ui.playCampaign.onclick = () => {
 ui.playEndless.onclick = () => start('endless');
 ui.playChallenge.onclick = () => start('challenge');
 ui.playFinalBoss.onclick = () => start('boss');
-ui.overviewBtn.onclick = () => unifiedOverview(true);
+ui.overviewBtn.onclick = () => {
+  if (cam.cine.active) resetCineCam(false);
+  unifiedOverview(true);
+};
+ui.cineCamBtn.onclick = () => {
+  if (cam.cine.active) resetCineCam(true);
+  else enableCineCam();
+};
 ui.speedBtn.onclick = () => { state.gameSpeed = state.gameSpeed >= 4 ? 1 : state.gameSpeed + 1; };
 ui.continueBtn.onclick = () => {
+  resetCineCam(false);
   closeTransientPanels();
   ui.mainMenu.classList.remove('hidden');
   state.gameStarted = false;
