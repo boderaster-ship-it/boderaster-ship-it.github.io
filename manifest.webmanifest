@@ -1,6 +1,6 @@
 {
-  "name": "Aegis Frontier Tower Defense",
-  "short_name": "AegisTD",
+  "name": "Bode Defense",
+  "short_name": "Bode Defense",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",
