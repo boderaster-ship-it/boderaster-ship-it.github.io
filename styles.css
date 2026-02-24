@@ -103,112 +103,75 @@ button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; co
 .sheet h3 { margin: 0 0 8px; font-size: 14px; color: #b8dcff; letter-spacing: 0.03em; }
 
 #mainMenu .sheet {
+  width: min(calc(var(--vwPx) * 0.94px), 560px);
+  height: min(calc(var(--vhPx) * 0.92px), 760px);
+  max-height: calc(var(--vhPx) * 0.92px);
+  overflow: hidden;
+  padding: clamp(12px, 2.4vw, 20px);
+  -webkit-overflow-scrolling: touch;
+}
+.menuSheet { transform: none; }
+.menuPage {
   display: grid;
-  gap: clamp(8px, calc(12px * var(--uiScale)), 14px);
-  padding-bottom: max(10px, calc((10px * var(--uiScale)) + env(safe-area-inset-bottom)));
-  max-height: calc(var(--vhPx) * 0.9px);
+  gap: 12px;
+  align-content: start;
+  height: 100%;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
+  padding-right: 2px;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
   touch-action: pan-y;
 }
-.menuSheet {
-  transform: none;
-}
-.menuLayout {
-  display: grid;
-  gap: clamp(8px, calc(10px * var(--uiScale)), 14px);
-  min-height: 0;
-}
-.menuPrimaryColumn,
-.menuSecondaryColumn {
-  min-height: 0;
-  display: grid;
-  gap: clamp(8px, calc(9px * var(--uiScale)), 12px);
-}
-.menuSecondaryColumn {
-  overflow: hidden;
-}
-.menuSecondaryColumn .menuSection {
-  min-height: 0;
-}
-
 .menuHero {
   border: 1px solid rgba(121, 193, 255, 0.4);
   border-radius: 14px;
   background: linear-gradient(145deg, rgba(19, 35, 58, 0.8), rgba(9, 19, 33, 0.86));
-  padding: 14px 14px 12px;
+  padding: 16px;
 }
 .menuHero p { margin: 6px 0 0; color: #b8d7f5; }
-
 .modeCardGrid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: clamp(6px, calc(8px * var(--uiScale)), 12px);
+  gap: 10px;
 }
-
 .menuCard {
   width: 100%;
-  min-height: clamp(60px, calc(78px * var(--uiScale)), 96px);
+  min-height: 88px;
   text-align: left;
-  border-radius: 12px;
+  border-radius: 14px;
   display: grid;
   grid-template-columns: auto 1fr;
-  grid-template-areas:
-    'icon title'
-    'icon hint';
+  grid-template-areas: 'icon title' 'icon hint';
   align-items: center;
   column-gap: 10px;
   row-gap: 2px;
-  padding: 12px 13px;
+  padding: 14px;
 }
 .menuCardIcon { grid-area: icon; font-size: 24px; }
-.menuCardTitle { grid-area: title; font-size: 17px; font-weight: 800; }
+.menuCardTitle { grid-area: title; font-size: 18px; font-weight: 800; }
 .menuCardHint { grid-area: hint; margin: 0; color: #c1dcf3; }
-
+.homeQuickLinks {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
 .btnPrimary {
   border-color: rgba(137, 224, 255, 0.72);
-  background: linear-gradient(160deg, #204972, #143352);
+  background: linear-gradient(160deg, #265783, #173d60);
   box-shadow: 0 0 0 1px rgba(173, 235, 255, 0.18) inset;
 }
 .btnSecondary {
   border-color: rgba(117, 177, 231, 0.55);
   background: linear-gradient(160deg, #162b45, #10243a);
 }
-
-.menuSection {
-  border: 1px solid rgba(110, 171, 226, 0.42);
-  border-radius: 14px;
-  background: linear-gradient(155deg, rgba(16, 31, 50, 0.74), rgba(9, 18, 31, 0.84));
-  overflow: hidden;
-}
-.menuSection > summary {
-  list-style: none;
-  cursor: pointer;
-  padding: 12px 14px;
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.menuSection > summary::-webkit-details-marker { display: none; }
-.menuSection > summary::after {
-  content: '▾';
-  color: #8fcfff;
-  font-size: 16px;
-  transition: transform 0.2s ease;
-}
-.menuSection:not([open]) > summary::after { transform: rotate(-90deg); }
-.sectionBody {
-  border-top: 1px solid rgba(123, 177, 227, 0.25);
-  padding: 10px 12px 12px;
-  display: grid;
-  gap: 8px;
-}
-
 .settings { display: grid; gap: 8px; }
+.menuPageActions {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr;
+  margin-top: 6px;
+}
 #mainMenu button,
 #mainMenu .settings label {
   transition: transform 0.12s ease, border-color 0.14s ease, filter 0.14s ease;
@@ -217,12 +180,10 @@ button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; co
   transform: translateY(1px) scale(0.992);
   filter: brightness(1.05);
 }
-#mainMenu button:focus-visible,
-#mainMenu .menuSection > summary:focus-visible {
+#mainMenu button:focus-visible {
   outline: 2px solid #88deff;
   outline-offset: 2px;
 }
-
 #metaTree { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin-bottom: 12px; }
 #toast { position: absolute; left: 50%; top: 48%; transform: translate(-50%, -50%); background: #154926; border: 1px solid #6ccf96; padding: 10px 14px; border-radius: 10px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 12; }
 #toast.show { opacity: 1; }
@@ -285,14 +246,9 @@ button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; co
   .modeCardGrid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  .menuCard {
-    min-height: 124px;
-    align-content: start;
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      'icon'
-      'title'
-      'hint';
+  .homeQuickLinks,
+  .menuPageActions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -304,13 +260,6 @@ button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; co
 #clearObstacleBtn { padding: 8px 10px; border-radius: 9px; }
 
 @media (orientation: landscape) {
-  .menuLayout {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
-    align-items: start;
-  }
-  .modeCardGrid {
-    grid-template-columns: 1fr;
-  }
   #hud {
     max-width: 34vw;
   }

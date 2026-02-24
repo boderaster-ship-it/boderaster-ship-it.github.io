@@ -63,6 +63,11 @@ const ui = {
   playCampaign: document.getElementById('playCampaign'),
   playEndless: document.getElementById('playEndless'),
   playChallenge: document.getElementById('playChallenge'),
+  playCampaignStart: document.getElementById('playCampaignStart'),
+  playEndlessStart: document.getElementById('playEndlessStart'),
+  playChallengeStart: document.getElementById('playChallengeStart'),
+  openUpgrades: document.getElementById('openUpgrades'),
+  openUnlockSettings: document.getElementById('openUnlockSettings'),
   metaTree: document.getElementById('metaTree'),
   audioToggle: document.getElementById('audioToggle'),
   shakeToggle: document.getElementById('shakeToggle'),
@@ -82,6 +87,8 @@ const ui = {
   builderCancelBtn: document.getElementById('builderCancelBtn'),
   campaignWorldSelect: document.getElementById('campaignWorldSelect'),
   campaignLevelSelect: document.getElementById('campaignLevelSelect'),
+  endlessWorldSelect: document.getElementById('endlessWorldSelect'),
+  challengeWorldSelect: document.getElementById('challengeWorldSelect'),
   finalBossUnlock: document.getElementById('finalBossUnlock'),
   playFinalBoss: document.getElementById('playFinalBoss'),
   unlockList: document.getElementById('unlockList'),
@@ -91,6 +98,9 @@ const ui = {
   levelRewards: document.getElementById('levelRewards'),
   continueBtn: document.getElementById('continueBtn')
 };
+
+const menuPages = Array.from(document.querySelectorAll('.menuPage'));
+let activeMenuPage = 'home';
 
 const modeRules = {
   campaign: { scale: 1, mod: 'Standardbetrieb' },
@@ -265,6 +275,8 @@ const state = {
   maxParticlesFrame: 70,
   campaign: safeJSONParse('aegis-campaign', { selectedLevel: 1, selectedWorld: 1, completed: {}, unlockedLevel: 1, clearedObstacles: {} }),
   currentLevel: 1,
+  endlessWorld: 1,
+  challengeWorld: 1,
   levelWaves: 10,
   pendingLevelRewards: null,
   activeBuild: null,
@@ -812,6 +824,20 @@ function rebuildWorldForCampaign() {
   buildPads.clear();
   buildBuildZonePads();
   applyWorldTheme(def.world);
+}
+
+function rebuildWorldForMode(worldId = 1) {
+  const safeWorld = Math.max(1, Math.min(4, Number(worldId) || 1));
+  setBoardPath(worldPaths[safeWorld][1]);
+  while (world.children.length) world.remove(world.children[0]);
+  world.add(terrain);
+  buildPath();
+  buildEnvironmentProps();
+  syncObjectiveVisuals(safeWorld, 1);
+  world.add(boardPlane, ghost, hoverTile, rangeRing, blockedCross);
+  buildPads.clear();
+  buildBuildZonePads();
+  applyWorldTheme(safeWorld);
 }
 
 function getHeight(x, z) {
@@ -1438,7 +1464,7 @@ function buildCampaignMenu() {
     btn.className = 'levelBtn';
     btn.disabled = !unlocked;
     btn.innerHTML = `L${lvl}<br><small>${completed ? 'Abgeschlossen' : unlocked ? 'Freigeschaltet' : (lvl===1 ? `Schließe World ${selWorld-1} ab` : 'Schließe vorheriges Level ab')}</small><br><small>Empf. Türme: ${def.recommendedTowers}</small>`;
-    btn.onclick = () => { state.campaign.selectedWorld = selWorld; state.campaign.selectedLevel = lvl; saveCampaign(); start('campaign'); };
+    btn.onclick = () => { state.campaign.selectedWorld = selWorld; state.campaign.selectedLevel = lvl; saveCampaign(); buildCampaignMenu(); };
     if (state.campaign.selectedLevel === lvl) btn.classList.add('active');
     ui.campaignLevelSelect.appendChild(btn);
   }
@@ -1448,6 +1474,30 @@ function buildCampaignMenu() {
   const abilityRows = Object.keys(abilities).map(k => `<div>${abilities[k].icon} ${abilities[k].name} — ${isAbilityUnlocked(k) ? 'Freigeschaltet' : `Gesperrt: Schließe Level ${getAbilityUnlockLevel(k)} ab`}</div>`);
   const builderRow = `<div>🧩 Turm-Editor — ${isTowerBuilderUnlocked() ? 'Freigeschaltet' : `Gesperrt: Schließe Level ${TOWER_BUILDER_UNLOCK_LEVEL} ab`}</div>`;
   ui.unlockList.innerHTML = [...towerRows, ...abilityRows, builderRow].join('');
+}
+
+function buildModeWorldSelect(container, modeKey) {
+  if (!container) return;
+  container.innerHTML = '';
+  for (let worldId = 1; worldId <= 4; worldId++) {
+    const btn = document.createElement('button');
+    const active = (state[`${modeKey}World`] || 1) === worldId;
+    btn.className = 'levelBtn' + (active ? ' active' : '');
+    btn.textContent = WORLD_MENU_LABELS[worldId];
+    btn.onclick = () => {
+      state[`${modeKey}World`] = worldId;
+      buildModeWorldSelect(container, modeKey);
+    };
+    container.appendChild(btn);
+  }
+}
+
+function showPage(pageName) {
+  activeMenuPage = pageName;
+  menuPages.forEach(page => page.classList.toggle('hidden', page.dataset.page !== pageName));
+  if (pageName === 'campaign') buildCampaignMenu();
+  if (pageName === 'endless') buildModeWorldSelect(ui.endlessWorldSelect, 'endless');
+  if (pageName === 'challenge') buildModeWorldSelect(ui.challengeWorldSelect, 'challenge');
 }
 
 
@@ -1680,6 +1730,8 @@ function getActiveWorldId() {
     const cdef = campaignDefs[Math.min(state.currentLevel,24)-1];
     return cdef?.world || 1;
   }
+  if (state.mode === 'endless') return Math.max(1, Math.min(4, Number(state.endlessWorld) || 1));
+  if (state.mode === 'challenge') return Math.max(1, Math.min(4, Number(state.challengeWorld) || 1));
   return 1;
 }
 
@@ -2984,7 +3036,7 @@ ui.menuBtn.onclick = () => {
   closeTransientPanels();
   setCampaignSelectionToLatestPlayable();
   saveCampaign();
-  buildCampaignMenu();
+  showPage('home');
   ui.mainMenu.classList.remove('hidden');
 };
 
@@ -3021,6 +3073,9 @@ function start(mode) {
   ui.mainMenu.classList.add('hidden');
   resetCineCam(false);
   if (mode === 'campaign') rebuildWorldForCampaign();
+  else if (mode === 'endless') rebuildWorldForMode(state.endlessWorld);
+  else if (mode === 'challenge') rebuildWorldForMode(state.challengeWorld);
+  else if (mode === 'boss') rebuildWorldForMode(4);
   ui.bossWarning.classList.add('hidden');
   syncProgressUnlocks();
   initDock();
@@ -3029,16 +3084,24 @@ function start(mode) {
   unifiedOverview(false);
 }
 
-ui.playCampaign.onclick = () => {
+ui.playCampaign.onclick = () => showPage('campaign');
+ui.playEndless.onclick = () => showPage('endless');
+ui.playChallenge.onclick = () => showPage('challenge');
+ui.openUpgrades.onclick = () => showPage('upgrades');
+ui.openUnlockSettings.onclick = () => showPage('unlockSettings');
+ui.playCampaignStart.onclick = () => {
   const w = Number(state.campaign.selectedWorld) || 1;
   const l = Number(state.campaign.selectedLevel) || 1;
   const sel = (w - 1) * 6 + l;
   if (sel > (state.campaign.unlockedLevel || 1)) return showToast('Dieses Level ist gesperrt.', false);
   start('campaign');
 };
-ui.playEndless.onclick = () => start('endless');
-ui.playChallenge.onclick = () => start('challenge');
+ui.playEndlessStart.onclick = () => start('endless');
+ui.playChallengeStart.onclick = () => start('challenge');
 ui.playFinalBoss.onclick = () => start('boss');
+for (const navBtn of document.querySelectorAll('[data-nav]')) {
+  navBtn.addEventListener('click', () => showPage(navBtn.dataset.nav || 'home'));
+}
 ui.overviewBtn.onclick = () => {
   if (cam.cine.active) resetCineCam(false);
   unifiedOverview(true);
@@ -3053,7 +3116,7 @@ ui.continueBtn.onclick = () => {
   closeTransientPanels();
   setCampaignSelectionToLatestPlayable();
   saveCampaign();
-  buildCampaignMenu();
+  showPage('home');
   ui.mainMenu.classList.remove('hidden');
   state.gameStarted = false;
 };
@@ -3107,7 +3170,7 @@ if ('serviceWorker' in navigator) {
 }
 
 function assertRequiredDomNodes() {
-  const required = ['mainMenu','campaignWorldSelect','campaignLevelSelect','playCampaign','playEndless','playChallenge','metaTree','unlockList','upgradePointsLabel','finalBossUnlock','playFinalBoss'];
+  const required = ['mainMenu','campaignWorldSelect','campaignLevelSelect','playCampaign','playEndless','playChallenge','playCampaignStart','playEndlessStart','playChallengeStart','metaTree','unlockList','upgradePointsLabel','finalBossUnlock','playFinalBoss','openUpgrades','openUnlockSettings','endlessWorldSelect','challengeWorldSelect'];
   const missing = required.filter(key => !ui[key]);
   if (missing.length) throw new Error(`Missing required DOM nodes: ${missing.join(', ')}`);
 }
@@ -3122,7 +3185,7 @@ function bootstrapMenu() {
     saveCampaign();
     validateCampaignDefinitions();
     buildMeta();
-    buildCampaignMenu();
+    showPage('home');
     initDock();
     initAbilities();
     refreshWavePreview();

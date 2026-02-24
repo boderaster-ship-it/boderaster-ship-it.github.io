@@ -59,68 +59,88 @@
 
     <main id="mainMenu" class="modal">
       <div class="sheet menuSheet">
-        <div class="menuHero">
-          <h1>Bode Defense</h1>
-          <p>Premium-3D-Tower-Defense im Hochformat.</p>
-        </div>
-
-        <div class="menuLayout">
-          <div class="menuPrimaryColumn">
-            <div class="modeCardGrid" role="group" aria-label="Spielmodi wählen">
-              <button id="playCampaign" class="menuCard btnPrimary">
-                <span class="menuCardIcon" aria-hidden="true">🛰️</span>
-                <span class="menuCardTitle">Kampagne</span>
-                <span class="menuCardHint tiny">Welt &amp; Level auswählen</span>
-              </button>
-              <button id="playEndless" class="menuCard btnSecondary">
-                <span class="menuCardIcon" aria-hidden="true">♾️</span>
-                <span class="menuCardTitle">Endlos</span>
-                <span class="menuCardHint tiny">Überlebe so lange wie möglich</span>
-              </button>
-              <button id="playChallenge" class="menuCard btnSecondary">
-                <span class="menuCardIcon" aria-hidden="true">⚡</span>
-                <span class="menuCardTitle">Herausforderung</span>
-                <span class="menuCardHint tiny">Spezialregeln &amp; Druck</span>
-              </button>
-            </div>
+        <section class="menuPage" data-page="home">
+          <div class="menuHero">
+            <h1>Bode Defense</h1>
+            <p>Premium-3D-Tower-Defense im Hochformat.</p>
           </div>
-
-          <div class="menuSecondaryColumn">
-            <details class="menuSection" open>
-              <summary>Fortschritt</summary>
-              <div class="sectionBody">
-                <h3>Kampagnenlevel</h3>
-                <div id="campaignWorldSelect"></div>
-                <div id="campaignLevelSelect"></div>
-                <div id="finalBossUnlock" class="tiny"></div>
-                <button id="playFinalBoss" class="hidden btnSecondary">Final Boss Mode</button>
-              </div>
-            </details>
-
-            <details class="menuSection">
-              <summary>Upgrades</summary>
-              <div class="sectionBody">
-                <h3>Kommandozentrale-Upgrades</h3>
-                <div id="upgradePointsLabel"></div>
-                <div id="metaTree"></div>
-              </div>
-            </details>
-
-            <details class="menuSection">
-              <summary>Freischaltungen &amp; Einstellungen</summary>
-              <div class="sectionBody">
-                <h3>Turm-Freischaltungen</h3>
-                <div id="unlockList"></div>
-                <h3>Einstellungen</h3>
-                <div class="settings">
-                  <label><input type="checkbox" id="audioToggle" checked /> Audio</label>
-                  <label><input type="checkbox" id="shakeToggle" checked /> Kameraerschütterung</label>
-                  <label><input type="checkbox" id="perfToggle" /> Leistungsmodus</label>
-                </div>
-              </div>
-            </details>
+          <div class="modeCardGrid" role="group" aria-label="Spielmodi wählen">
+            <button id="playCampaign" class="menuCard btnPrimary">
+              <span class="menuCardIcon" aria-hidden="true">🛰️</span>
+              <span class="menuCardTitle">Kampagne</span>
+              <span class="menuCardHint tiny">Welt &amp; Level auswählen</span>
+            </button>
+            <button id="playEndless" class="menuCard btnSecondary">
+              <span class="menuCardIcon" aria-hidden="true">♾️</span>
+              <span class="menuCardTitle">Endlos</span>
+              <span class="menuCardHint tiny">Überlebe so lange wie möglich</span>
+            </button>
+            <button id="playChallenge" class="menuCard btnSecondary">
+              <span class="menuCardIcon" aria-hidden="true">⚡</span>
+              <span class="menuCardTitle">Herausforderung</span>
+              <span class="menuCardHint tiny">Spezialregeln &amp; Druck</span>
+            </button>
           </div>
-        </div>
+          <div class="homeQuickLinks">
+            <button id="openUpgrades" class="btnSecondary">Upgrades</button>
+            <button id="openUnlockSettings" class="btnSecondary">Freischaltungen &amp; Einstellungen</button>
+          </div>
+        </section>
+
+        <section class="menuPage hidden" data-page="campaign">
+          <h2>Kampagnenfortschritt</h2>
+          <div id="campaignWorldSelect"></div>
+          <div id="campaignLevelSelect"></div>
+          <div id="finalBossUnlock" class="tiny"></div>
+          <button id="playFinalBoss" class="hidden btnSecondary">Final Boss Mode</button>
+          <div class="menuPageActions">
+            <button id="playCampaignStart" class="btnPrimary">Level starten</button>
+            <button data-nav="home" class="btnSecondary">Back to Menu</button>
+          </div>
+        </section>
+
+        <section class="menuPage hidden" data-page="upgrades">
+          <h2>Upgrades</h2>
+          <h3>Kommandozentrale-Upgrades</h3>
+          <div id="upgradePointsLabel"></div>
+          <div id="metaTree"></div>
+          <div class="menuPageActions">
+            <button data-nav="home" class="btnSecondary">Back to Menu</button>
+          </div>
+        </section>
+
+        <section class="menuPage hidden" data-page="unlockSettings">
+          <h2>Freischaltungen &amp; Einstellungen</h2>
+          <h3>Turm-Freischaltungen</h3>
+          <div id="unlockList"></div>
+          <h3>Einstellungen</h3>
+          <div class="settings">
+            <label><input type="checkbox" id="audioToggle" checked /> Audio</label>
+            <label><input type="checkbox" id="shakeToggle" checked /> Kameraerschütterung</label>
+            <label><input type="checkbox" id="perfToggle" /> Leistungsmodus</label>
+          </div>
+          <div class="menuPageActions">
+            <button data-nav="home" class="btnSecondary">Back to Menu</button>
+          </div>
+        </section>
+
+        <section class="menuPage hidden" data-page="endless">
+          <h2>Endlos-Modus</h2>
+          <div id="endlessWorldSelect"></div>
+          <div class="menuPageActions">
+            <button id="playEndlessStart" class="btnPrimary">Endlos starten</button>
+            <button data-nav="home" class="btnSecondary">Back to Menu</button>
+          </div>
+        </section>
+
+        <section class="menuPage hidden" data-page="challenge">
+          <h2>Challenge-Modus</h2>
+          <div id="challengeWorldSelect"></div>
+          <div class="menuPageActions">
+            <button id="playChallengeStart" class="btnPrimary">Challenge starten</button>
+            <button data-nav="home" class="btnSecondary">Back to Menu</button>
+          </div>
+        </section>
       </div>
     </main>
 
