@@ -252,6 +252,17 @@ button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; co
   }
 }
 
+
+#castleColorsPanel {
+  position: absolute; left: clamp(6px, calc(8px * var(--hudScale)), 14px); right: clamp(6px, calc(8px * var(--hudScale)), 14px); bottom: calc(env(safe-area-inset-bottom) + clamp(186px, calc(214px * var(--hudScale)), 248px));
+  background: rgba(8, 18, 28, 0.72); border: 1px solid rgba(143, 198, 246, 0.42); border-radius: 10px; padding: 8px;
+  display: grid; gap: 8px; z-index: 7;
+}
+.castleColorsHeader { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+.castlePalette { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 6px; }
+.castleSwatch { min-height: 30px; border-radius: 8px; border: 1px solid rgba(230,245,255,0.5); padding: 0; }
+.castleSwatch.active { outline: 2px solid rgba(160, 240, 255, 0.95); }
+
 #obstaclePanel {
   position: absolute; left: clamp(6px, calc(8px * var(--hudScale)), 14px); right: clamp(6px, calc(8px * var(--hudScale)), 14px); bottom: calc(env(safe-area-inset-bottom) + clamp(142px, calc(170px * var(--hudScale)), 204px));
   background: rgba(18, 15, 12, 0.78); border: 1px solid rgba(236, 170, 120, 0.6); border-radius: 10px; padding: 8px;
@@ -278,9 +289,10 @@ button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; co
   #towerDock {
     bottom: calc(env(safe-area-inset-bottom) + clamp(68px, calc(74px * var(--hudScale)), 98px));
   }
-  #buildPanel, #selectionPanel, #obstaclePanel {
+  #buildPanel, #selectionPanel, #obstaclePanel, #castleColorsPanel {
     left: auto;
     width: min(calc(var(--vwPx) * 0.42px), calc(360px * var(--hudScale)));
     right: calc(env(safe-area-inset-right) + clamp(8px, calc(12px * var(--hudScale)), 18px));
   }
 }
+
