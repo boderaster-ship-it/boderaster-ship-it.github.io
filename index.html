@@ -24,7 +24,6 @@
     <section id="controlBar">
       <button id="startWaveBtn" class="iconBtn" aria-label="Welle starten">▶️</button>
       <button id="pauseBtn" class="iconBtn" aria-label="Pause">⏸️</button>
-      <button id="castleColorsBtn" class="iconBtn" aria-label="Castle Colors">🎨</button>
       <button id="speedBtn" class="iconBtn" aria-label="Geschwindigkeit ändern">⏩</button>
       <span id="speedLabel">x1</span>
     </section>
@@ -46,18 +45,6 @@
     <section id="obstaclePanel" class="hidden">
       <div id="obstacleTitle">Hindernis</div>
       <button id="clearObstacleBtn">🪓 Räumen · 300¢</button>
-    </section>
-
-    <section id="castleColorsPanel" class="hidden">
-      <div class="castleColorsHeader">
-        <strong>Castle Colors</strong>
-        <span id="castleColorSelection">Aktiv: #9EA3AB</span>
-      </div>
-      <div id="castlePalette" class="castlePalette"></div>
-      <div class="row">
-        <button id="castleResetBtn">Reset</button>
-        <button id="castleRandomizeBtn">Randomize</button>
-      </div>
     </section>
 
     <section id="selectionPanel" class="hidden">
@@ -95,8 +82,36 @@
             </button>
           </div>
           <div class="homeQuickLinks">
+            <button id="openCastle" class="btnSecondary">Castle</button>
             <button id="openUpgrades" class="btnSecondary">Upgrades</button>
             <button id="openUnlockSettings" class="btnSecondary">Freischaltungen &amp; Einstellungen</button>
+          </div>
+        </section>
+
+        <section class="menuPage hidden" data-page="castle">
+          <h2>Castle</h2>
+          <div class="castleCustomizerLayout">
+            <section class="castleColumn">
+              <h3>Farbe</h3>
+              <div id="castlePalette" class="castlePalette"></div>
+              <h3>Textur</h3>
+              <div id="castleTextureList" class="castleTextureList"></div>
+            </section>
+            <section class="castlePreviewColumn">
+              <div id="castlePreview" class="castlePreview"></div>
+              <div id="castleSelectionStatus" class="tiny">Teil: wall · Farbe: #9EA3AB · Textur: stone</div>
+            </section>
+            <section class="castleColumn">
+              <h3>Bauteile</h3>
+              <div id="castlePartList" class="castlePartList"></div>
+              <div class="menuPageActions">
+                <button id="castleResetBtn" class="btnSecondary">Reset</button>
+                <button id="castleRandomizeBtn" class="btnSecondary">Randomize</button>
+              </div>
+            </section>
+          </div>
+          <div class="menuPageActions">
+            <button data-nav="home" class="btnSecondary">Back to Menu</button>
           </div>
         </section>
 
