@@ -337,11 +337,163 @@ scene.add(sky);
 const world = new THREE.Group();
 scene.add(world);
 
+const objectiveVisuals = (() => {
+  const shared = {
+    spawnBaseGeom: new THREE.CylinderGeometry(0.3, 0.38, 0.28, 20),
+    spawnCoreGeom: new THREE.CylinderGeometry(0.16, 0.2, 0.5, 14),
+    spawnArrowGeom: new THREE.ConeGeometry(0.19, 0.44, 12),
+    castleBaseGeom: new THREE.CylinderGeometry(0.74, 0.88, 0.5, 20),
+    castleKeepGeom: new THREE.BoxGeometry(1.02, 1.02, 1.02),
+    castleTowerGeom: new THREE.CylinderGeometry(0.21, 0.25, 0.9, 10),
+    castleRoofGeom: new THREE.ConeGeometry(0.28, 0.42, 10),
+    spawnMats: {
+      base: new THREE.MeshStandardMaterial({ color: 0x3a3a42, roughness: 0.72, metalness: 0.2 }),
+      ring: new THREE.MeshStandardMaterial({ color: 0x4ef5ad, emissive: 0x3bc185, emissiveIntensity: 0.3, roughness: 0.35, metalness: 0.15 }),
+      arrow: new THREE.MeshStandardMaterial({ color: 0xbefee3, emissive: 0x63ffbe, emissiveIntensity: 0.45, roughness: 0.3, metalness: 0.22 })
+    },
+    castleMats: {
+      stone: new THREE.MeshStandardMaterial({ color: 0x9ea3ab, roughness: 0.82, metalness: 0.08 }),
+      accent: new THREE.MeshStandardMaterial({ color: 0x7082a9, roughness: 0.5, metalness: 0.2 }),
+      roof: new THREE.MeshStandardMaterial({ color: 0x5b4d6d, roughness: 0.62, metalness: 0.12 }),
+      gate: new THREE.MeshStandardMaterial({ color: 0x4a3524, roughness: 0.86, metalness: 0.05 })
+    }
+  };
+
+  const spawnPaletteByWorld = {
+    1: { ring: 0x4ef5ad, arrow: 0xc8ffe8 },
+    2: { ring: 0x7fd7ff, arrow: 0xdff4ff },
+    3: { ring: 0xff9350, arrow: 0xffcd96 },
+    4: { ring: 0xe2d495, arrow: 0xfff4c5 }
+  };
+
+  function getPathDirection(path, fromStart = true) {
+    if (!Array.isArray(path) || path.length < 2) return new THREE.Vector3(0, 0, 1);
+    const a = fromStart ? path[0] : path[path.length - 2];
+    const b = fromStart ? path[1] : path[path.length - 1];
+    const dir = new THREE.Vector3(b[0] - a[0], 0, b[1] - a[1]);
+    return dir.lengthSq() > 0 ? dir.normalize() : new THREE.Vector3(0, 0, 1);
+  }
+
+  function yawFromDirection(dir) {
+    return Math.atan2(dir.x, dir.z);
+  }
+
+  class Castle {
+    constructor() {
+      this.group = new THREE.Group();
+      this.state = 'idle';
+      this.health = 100;
+      this.currentLevelStyle = null;
+      this.model = new THREE.Group();
+      this.group.add(this.model);
+      this.buildBaseModel();
+    }
+
+    buildBaseModel() {
+      const base = new THREE.Mesh(shared.castleBaseGeom, shared.castleMats.stone);
+      base.position.y = 0.25;
+      const keep = new THREE.Mesh(shared.castleKeepGeom, shared.castleMats.stone);
+      keep.position.y = 0.95;
+      const gate = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.46, 0.1), shared.castleMats.gate);
+      gate.position.set(0, 0.52, 0.54);
+      this.model.add(base, keep, gate);
+
+      for (let i = 0; i < 4; i++) {
+        const angle = (Math.PI / 2) * i + Math.PI / 4;
+        const x = Math.cos(angle) * 0.62;
+        const z = Math.sin(angle) * 0.62;
+        const tower = new THREE.Mesh(shared.castleTowerGeom, shared.castleMats.accent);
+        tower.position.set(x, 0.86, z);
+        const roof = new THREE.Mesh(shared.castleRoofGeom, shared.castleMats.roof);
+        roof.position.set(x, 1.52, z);
+        this.model.add(tower, roof);
+      }
+
+      this.group.traverse(obj => {
+        if (obj.isMesh) {
+          obj.castShadow = true;
+          obj.receiveShadow = true;
+        }
+      });
+    }
+
+    setLevel(themeOrLevelId) {
+      this.currentLevelStyle = themeOrLevelId;
+      return this;
+    }
+
+    setState(nextState) {
+      this.state = nextState;
+      const underAttack = nextState === 'underAttack' || nextState === 'damaged';
+      shared.castleMats.accent.emissive?.setHex(underAttack ? 0xa84f37 : 0x11131a);
+      shared.castleMats.accent.emissiveIntensity = underAttack ? 0.3 : 0.08;
+      return this;
+    }
+
+    setHealth(value) {
+      this.health = Number.isFinite(value) ? value : this.health;
+      return this;
+    }
+
+    playAnimation(name) {
+      if (name === 'victory') this.group.rotation.y += 0.0001;
+      return this;
+    }
+  }
+
+  function createSpawnPoint(worldId, levelId, path, toWorld) {
+    if (!Array.isArray(path) || !path.length) return null;
+    const spawn = new THREE.Group();
+    const palette = spawnPaletteByWorld[worldId] || spawnPaletteByWorld[1];
+    const base = new THREE.Mesh(shared.spawnBaseGeom, shared.spawnMats.base);
+    const ring = new THREE.Mesh(shared.spawnCoreGeom, shared.spawnMats.ring.clone());
+    const arrow = new THREE.Mesh(shared.spawnArrowGeom, shared.spawnMats.arrow.clone());
+    ring.material.color.setHex(palette.ring);
+    ring.material.emissive.setHex(palette.ring);
+    arrow.material.color.setHex(palette.arrow);
+    arrow.material.emissive.setHex(palette.ring);
+    ring.position.y = 0.26;
+    arrow.position.y = 0.68;
+    arrow.rotation.x = Math.PI;
+    spawn.add(base, ring, arrow);
+    const startPos = toWorld(path[0][0], path[0][1]);
+    spawn.position.copy(startPos).setY(startPos.y + 0.03);
+    spawn.rotation.y = yawFromDirection(getPathDirection(path, true));
+    spawn.userData = { kind: 'spawnPoint', worldId, levelId };
+    spawn.traverse(obj => { if (obj.isMesh) { obj.castShadow = true; obj.receiveShadow = true; } });
+    return spawn;
+  }
+
+  function createCastle(worldId, levelId, path, toWorld) {
+    if (!Array.isArray(path) || !path.length) return null;
+    const castle = new Castle();
+    castle.setLevel({ worldId, levelId }).setState('idle');
+    const endCell = path[path.length - 1];
+    const endPos = toWorld(endCell[0], endCell[1]);
+    castle.group.position.copy(endPos).setY(endPos.y + 0.04);
+    castle.group.rotation.y = yawFromDirection(getPathDirection(path, false));
+    castle.group.userData = { kind: 'castleGoal', worldId, levelId, entity: castle };
+    return castle;
+  }
+
+  return { createSpawnPoint, createCastle };
+})();
+
+const objectiveEntities = { spawnPoint: null, castle: null };
+
+function syncObjectiveVisuals(worldId, levelId) {
+  objectiveEntities.spawnPoint?.removeFromParent();
+  objectiveEntities.castle?.group?.removeFromParent();
+  objectiveEntities.spawnPoint = objectiveVisuals.createSpawnPoint(worldId, levelId, board.path, cellToWorld);
+  objectiveEntities.castle = objectiveVisuals.createCastle(worldId, levelId, board.path, cellToWorld);
+  if (objectiveEntities.spawnPoint) world.add(objectiveEntities.spawnPoint);
+  if (objectiveEntities.castle?.group) world.add(objectiveEntities.castle.group);
+}
+
 const terrain = buildTerrain();
 world.add(terrain);
 buildPath();
-createMarker(board.path[0], 0x4ef5ad);
-createMarker(board.path[board.path.length - 1], 0xff7d8d);
+syncObjectiveVisuals(1, 1);
 
 const ghost = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 1.25, 10), new THREE.MeshStandardMaterial({ color: 0x57ffa3, transparent: true, opacity: 0.45 }));
 ghost.visible = false;
@@ -551,8 +703,7 @@ function rebuildWorldForCampaign() {
   world.add(terrain);
   buildPath();
   buildEnvironmentProps();
-  createMarker(board.path[0], 0x4ef5ad);
-  createMarker(board.path[board.path.length - 1], 0xff7d8d);
+  syncObjectiveVisuals(def.world, def.levelInWorld);
   world.add(boardPlane, ghost, hoverTile, rangeRing, blockedCross);
   buildPads.clear();
   buildBuildZonePads();
@@ -795,13 +946,6 @@ function buildEnvironmentProps() {
       obstacleCells.set(key, obstacle);
     }
   }
-}
-
-function createMarker(cell, color) {
-  const marker = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.4, 16), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.3 }));
-  const p = cellToWorld(cell[0], cell[1]);
-  marker.position.copy(p).setY(p.y + 0.25);
-  world.add(marker);
 }
 
 function makeEnemyMaterial(color, opts = {}) {
