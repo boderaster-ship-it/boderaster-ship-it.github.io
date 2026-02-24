@@ -1162,6 +1162,12 @@ function sanitizeCampaignState() {
   state.campaign.unlockedLevel = Math.max(1, Math.min(24, Number(state.campaign.unlockedLevel) || 1));
 }
 
+function setCampaignSelectionToLatestPlayable() {
+  const latestPlayable = Math.max(1, Math.min(24, Number(state.campaign.unlockedLevel) || 1));
+  state.campaign.selectedWorld = Math.floor((latestPlayable - 1) / 6) + 1;
+  state.campaign.selectedLevel = ((latestPlayable - 1) % 6) + 1;
+}
+
 function buildCampaignMenu() {
   const selWorld = state.campaign.selectedWorld || 1;
   ui.campaignWorldSelect.innerHTML = '';
@@ -1457,6 +1463,7 @@ function handleLevelComplete() {
   if (state.currentLevel >= 24) state.campaign.finalBossUnlocked = true;
   state.unlocks.towerBuilder = (state.currentLevel >= TOWER_BUILDER_UNLOCK_LEVEL) || state.unlocks.towerBuilder;
   state.campaign.unlockedLevel = Math.max(state.campaign.unlockedLevel || 1, state.currentLevel + 1);
+  setCampaignSelectionToLatestPlayable();
   saveMeta();
   saveCampaign();
   saveUnlocks();
@@ -2644,6 +2651,9 @@ ui.menuBtn.onclick = () => {
   state.gameStarted = false;
   resetCineCam(false);
   closeTransientPanels();
+  setCampaignSelectionToLatestPlayable();
+  saveCampaign();
+  buildCampaignMenu();
   ui.mainMenu.classList.remove('hidden');
 };
 
@@ -2689,7 +2699,9 @@ function start(mode) {
 }
 
 ui.playCampaign.onclick = () => {
-  const sel = state.campaign.selectedLevel || 1;
+  const w = Number(state.campaign.selectedWorld) || 1;
+  const l = Number(state.campaign.selectedLevel) || 1;
+  const sel = (w - 1) * 6 + l;
   if (sel > (state.campaign.unlockedLevel || 1)) return showToast('Dieses Level ist gesperrt.', false);
   start('campaign');
 };
@@ -2708,6 +2720,9 @@ ui.speedBtn.onclick = () => { state.gameSpeed = state.gameSpeed >= 4 ? 1 : state
 ui.continueBtn.onclick = () => {
   resetCineCam(false);
   closeTransientPanels();
+  setCampaignSelectionToLatestPlayable();
+  saveCampaign();
+  buildCampaignMenu();
   ui.mainMenu.classList.remove('hidden');
   state.gameStarted = false;
 };
@@ -2772,6 +2787,8 @@ function bootstrapMenu() {
   try {
     assertRequiredDomNodes();
     sanitizeCampaignState();
+    setCampaignSelectionToLatestPlayable();
+    saveCampaign();
     validateCampaignDefinitions();
     buildMeta();
     buildCampaignMenu();
