@@ -200,7 +200,7 @@ const abilities = {
 
 const towerUnlockOrder = ['laser', 'missile', 'cryo'];
 const abilityUnlockOrder = ['overclock', 'poison', 'nuke'];
-const TOWER_BUILDER_UNLOCK_LEVEL = 12;
+const TOWER_BUILDER_UNLOCK_LEVEL = 18;
 
 const metaDefs = [
   { key: 'upCannon', icon: towerDefs.cannon.icon, name: 'Bastion-Upgrade', tower: 'cannon', affects: 'Bastion-Schaden', desc: 'Erhöht den Schaden der Bastion.', unit: '%', perLevel: 10 },
@@ -343,7 +343,6 @@ state.campaign.finalBossUnlocked = !!state.campaign.finalBossUnlocked;
 state.campaign.bossCompleted = !!state.campaign.bossCompleted;
 state.campaign.clearedObstacles = state.campaign.clearedObstacles || {};
 
-state.unlocks.towerBuilder = (state.campaign.unlockedLevel || 1) >= TOWER_BUILDER_UNLOCK_LEVEL;
 syncProgressUnlocks();
 sanitizeCastleColorState();
 
@@ -1509,7 +1508,12 @@ function unlockAbility(key) {
   }
 }
 
+function syncTowerBuilderUnlock() {
+  state.unlocks.towerBuilder = (state.campaign.unlockedLevel || 1) >= TOWER_BUILDER_UNLOCK_LEVEL;
+}
+
 function syncProgressUnlocks() {
+  syncTowerBuilderUnlock();
   Object.keys(towerDefs).forEach(k => {
     if ((state.campaign.unlockedLevel || 1) >= getTowerUnlockLevel(k)) unlockTower(k);
   });
@@ -2001,8 +2005,8 @@ function handleLevelComplete() {
   Object.keys(abilities).forEach(k => { if (state.currentLevel >= getAbilityUnlockLevel(k)) unlockAbility(k); });
   state.campaign.completed[state.currentLevel] = true;
   if (state.currentLevel >= 24) state.campaign.finalBossUnlocked = true;
-  state.unlocks.towerBuilder = (state.currentLevel >= TOWER_BUILDER_UNLOCK_LEVEL) || state.unlocks.towerBuilder;
   state.campaign.unlockedLevel = Math.max(state.campaign.unlockedLevel || 1, state.currentLevel + 1);
+  syncProgressUnlocks();
   setCampaignSelectionToLatestPlayable();
   saveMeta();
   saveCampaign();
