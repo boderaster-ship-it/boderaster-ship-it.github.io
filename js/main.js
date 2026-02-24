@@ -339,17 +339,35 @@ scene.add(world);
 
 const objectiveVisuals = (() => {
   const shared = {
-    spawnBaseGeom: new THREE.CylinderGeometry(0.3, 0.38, 0.28, 20),
-    spawnCoreGeom: new THREE.CylinderGeometry(0.16, 0.2, 0.5, 14),
-    spawnArrowGeom: new THREE.ConeGeometry(0.19, 0.44, 12),
+    spawnBaseGeom: new THREE.CylinderGeometry(0.56, 0.66, 0.28, 14),
+    spawnHoleGeom: new THREE.CylinderGeometry(0.26, 0.28, 0.19, 14),
+    rockChunkGeom: new THREE.DodecahedronGeometry(0.24, 0),
+    iceShardGeom: new THREE.BoxGeometry(0.14, 0.05, 0.27),
+    flameCoreGeom: new THREE.ConeGeometry(0.22, 0.7, 10),
+    sparkGeom: new THREE.SphereGeometry(0.05, 6, 6),
+    portalCenterGeom: new THREE.CylinderGeometry(0.34, 0.38, 0.1, 20),
+    ringGeom: new THREE.TorusGeometry(0.34, 0.06, 8, 24),
+    w1RimGeom: new THREE.TorusGeometry(0.24, 0.04, 6, 12),
+    w2MistGeom: new THREE.RingGeometry(0.28, 0.5, 24),
+    w4DistortionGeom: new THREE.RingGeometry(0.48, 0.66, 26),
     castleBaseGeom: new THREE.CylinderGeometry(0.74, 0.88, 0.5, 20),
     castleKeepGeom: new THREE.BoxGeometry(1.02, 1.02, 1.02),
     castleTowerGeom: new THREE.CylinderGeometry(0.21, 0.25, 0.9, 10),
     castleRoofGeom: new THREE.ConeGeometry(0.28, 0.42, 10),
     spawnMats: {
-      base: new THREE.MeshStandardMaterial({ color: 0x3a3a42, roughness: 0.72, metalness: 0.2 }),
-      ring: new THREE.MeshStandardMaterial({ color: 0x4ef5ad, emissive: 0x3bc185, emissiveIntensity: 0.3, roughness: 0.35, metalness: 0.15 }),
-      arrow: new THREE.MeshStandardMaterial({ color: 0xbefee3, emissive: 0x63ffbe, emissiveIntensity: 0.45, roughness: 0.3, metalness: 0.22 })
+      w1Rock: new THREE.MeshStandardMaterial({ color: 0x5f5d5f, roughness: 0.92, metalness: 0.02 }),
+      w1Cave: new THREE.MeshStandardMaterial({ color: 0x17151a, emissive: 0x141322, emissiveIntensity: 0.18, roughness: 0.95, metalness: 0.02 }),
+      w1Rim: new THREE.MeshStandardMaterial({ color: 0x5e6174, emissive: 0x354c66, emissiveIntensity: 0.24, roughness: 0.85, metalness: 0.06 }),
+      w2Ice: new THREE.MeshStandardMaterial({ color: 0xa4d6f4, roughness: 0.24, metalness: 0.22, emissive: 0x243f58, emissiveIntensity: 0.12 }),
+      w2Hole: new THREE.MeshStandardMaterial({ color: 0x132238, emissive: 0x0a213b, emissiveIntensity: 0.18, roughness: 0.55, metalness: 0.08 }),
+      w2Mist: new THREE.MeshBasicMaterial({ color: 0xb7e9ff, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide }),
+      w3Rim: new THREE.MeshStandardMaterial({ color: 0x503127, roughness: 0.87, metalness: 0.06 }),
+      w3Core: new THREE.MeshStandardMaterial({ color: 0xffa13b, emissive: 0xff4d00, emissiveIntensity: 0.75, roughness: 0.3, metalness: 0.08 }),
+      w3Flame: new THREE.MeshStandardMaterial({ color: 0xffd18a, emissive: 0xff701f, emissiveIntensity: 1.05, roughness: 0.18, metalness: 0.04 }),
+      w3Spark: new THREE.MeshBasicMaterial({ color: 0xffcb82, transparent: true, opacity: 0.85, depthWrite: false }),
+      w4Void: new THREE.MeshStandardMaterial({ color: 0x0b0c17, emissive: 0x04040a, emissiveIntensity: 0.34, roughness: 0.7, metalness: 0.1 }),
+      w4Ring: new THREE.MeshStandardMaterial({ color: 0x4d4a7a, emissive: 0x7d6dff, emissiveIntensity: 0.66, roughness: 0.22, metalness: 0.38 }),
+      w4Distortion: new THREE.MeshBasicMaterial({ color: 0x8477ff, transparent: true, opacity: 0.1, depthWrite: false, side: THREE.DoubleSide })
     },
     castleMats: {
       stone: new THREE.MeshStandardMaterial({ color: 0x9ea3ab, roughness: 0.82, metalness: 0.08 }),
@@ -357,13 +375,6 @@ const objectiveVisuals = (() => {
       roof: new THREE.MeshStandardMaterial({ color: 0x5b4d6d, roughness: 0.62, metalness: 0.12 }),
       gate: new THREE.MeshStandardMaterial({ color: 0x4a3524, roughness: 0.86, metalness: 0.05 })
     }
-  };
-
-  const spawnPaletteByWorld = {
-    1: { ring: 0x4ef5ad, arrow: 0xc8ffe8 },
-    2: { ring: 0x7fd7ff, arrow: 0xdff4ff },
-    3: { ring: 0xff9350, arrow: 0xffcd96 },
-    4: { ring: 0xe2d495, arrow: 0xfff4c5 }
   };
 
   function getPathDirection(path, fromStart = true) {
@@ -444,24 +455,117 @@ const objectiveVisuals = (() => {
   function createSpawnPoint(worldId, levelId, path, toWorld) {
     if (!Array.isArray(path) || !path.length) return null;
     const spawn = new THREE.Group();
-    const palette = spawnPaletteByWorld[worldId] || spawnPaletteByWorld[1];
-    const base = new THREE.Mesh(shared.spawnBaseGeom, shared.spawnMats.base);
-    const ring = new THREE.Mesh(shared.spawnCoreGeom, shared.spawnMats.ring.clone());
-    const arrow = new THREE.Mesh(shared.spawnArrowGeom, shared.spawnMats.arrow.clone());
-    ring.material.color.setHex(palette.ring);
-    ring.material.emissive.setHex(palette.ring);
-    arrow.material.color.setHex(palette.arrow);
-    arrow.material.emissive.setHex(palette.ring);
-    ring.position.y = 0.26;
-    arrow.position.y = 0.68;
-    arrow.rotation.x = Math.PI;
-    spawn.add(base, ring, arrow);
+    let spawnAnim = null;
+    if (worldId === 2) {
+      const sheet = new THREE.Mesh(shared.spawnBaseGeom, shared.spawnMats.w2Ice);
+      const hole = new THREE.Mesh(shared.spawnHoleGeom, shared.spawnMats.w2Hole);
+      sheet.position.y = 0.04;
+      hole.position.y = 0.1;
+      spawn.add(sheet, hole);
+      for (let i = 0; i < 6; i++) {
+        const shard = new THREE.Mesh(shared.iceShardGeom, shared.spawnMats.w2Ice);
+        const t = (i / 6) * Math.PI * 2;
+        shard.position.set(Math.sin(t) * 0.38, 0.12, Math.cos(t) * 0.38);
+        shard.rotation.set(0, t, (i % 2 === 0 ? 1 : -1) * 0.3);
+        shard.scale.setScalar(0.9 + (i % 3) * 0.12);
+        spawn.add(shard);
+      }
+      const mist = new THREE.Mesh(shared.w2MistGeom, shared.spawnMats.w2Mist);
+      mist.rotation.x = -Math.PI / 2;
+      mist.position.y = 0.16;
+      mist.renderOrder = 3;
+      spawn.add(mist);
+      spawnAnim = { type: 'iceMist', mist, phase: Math.random() * Math.PI * 2 };
+    } else if (worldId === 3) {
+      const rim = new THREE.Mesh(shared.spawnBaseGeom, shared.spawnMats.w3Rim);
+      rim.position.y = 0.04;
+      const core = new THREE.Mesh(shared.spawnHoleGeom, shared.spawnMats.w3Core);
+      core.position.y = 0.11;
+      const flameA = new THREE.Mesh(shared.flameCoreGeom, shared.spawnMats.w3Flame);
+      flameA.position.y = 0.4;
+      const flameB = new THREE.Mesh(shared.flameCoreGeom, shared.spawnMats.w3Flame);
+      flameB.position.y = 0.45;
+      flameB.scale.set(0.7, 0.8, 0.7);
+      flameB.rotation.y = Math.PI / 3;
+      spawn.add(rim, core, flameA, flameB);
+      const animData = { type: 'fire', flames: [flameA, flameB], sparks: [], phase: Math.random() * Math.PI * 2 };
+      if (!ui.perfToggle.checked) {
+        for (let i = 0; i < 3; i++) {
+          const spark = new THREE.Mesh(shared.sparkGeom, shared.spawnMats.w3Spark);
+          spark.position.set(Math.sin(i * 2.2) * 0.18, 0.26 + i * 0.08, Math.cos(i * 2.2) * 0.18);
+          spawn.add(spark);
+          animData.sparks.push(spark);
+        }
+      }
+      spawnAnim = animData;
+    } else if (worldId === 4) {
+      const voidCenter = new THREE.Mesh(shared.portalCenterGeom, shared.spawnMats.w4Void);
+      const ringA = new THREE.Mesh(shared.ringGeom, shared.spawnMats.w4Ring);
+      const ringB = new THREE.Mesh(shared.ringGeom, shared.spawnMats.w4Ring);
+      const distortion = new THREE.Mesh(shared.w4DistortionGeom, shared.spawnMats.w4Distortion);
+      voidCenter.position.y = 0.12;
+      ringA.position.y = 0.21;
+      ringA.rotation.x = -Math.PI / 2;
+      ringB.position.y = 0.24;
+      ringB.rotation.set(-Math.PI / 2 + 0.25, 0.4, 0);
+      distortion.position.y = 0.2;
+      distortion.rotation.x = -Math.PI / 2;
+      distortion.renderOrder = 2;
+      spawn.add(voidCenter, ringA, ringB, distortion);
+      spawnAnim = { type: 'blackHole', rings: [ringA, ringB], distortion, phase: Math.random() * Math.PI * 2 };
+    } else {
+      const baseRock = new THREE.Mesh(shared.spawnBaseGeom, shared.spawnMats.w1Rock);
+      baseRock.position.y = 0.03;
+      const caveMouth = new THREE.Mesh(shared.spawnHoleGeom, shared.spawnMats.w1Cave);
+      caveMouth.position.y = 0.12;
+      spawn.add(baseRock, caveMouth);
+      for (let i = 0; i < 7; i++) {
+        const rock = new THREE.Mesh(shared.rockChunkGeom, shared.spawnMats.w1Rock);
+        const a = (i / 7) * Math.PI * 2;
+        const radius = i % 2 === 0 ? 0.37 : 0.48;
+        rock.position.set(Math.sin(a) * radius, 0.15 + (i % 3) * 0.04, Math.cos(a) * radius);
+        rock.rotation.set(a * 0.2, a, -a * 0.1);
+        rock.scale.set(0.8 + (i % 3) * 0.22, 0.9 + (i % 2) * 0.16, 0.9 + (i % 2) * 0.14);
+        spawn.add(rock);
+      }
+      const rim = new THREE.Mesh(shared.w1RimGeom, shared.spawnMats.w1Rim);
+      rim.rotation.x = -Math.PI / 2;
+      rim.position.y = 0.14;
+      spawn.add(rim);
+    }
     const startPos = toWorld(path[0][0], path[0][1]);
-    spawn.position.copy(startPos).setY(startPos.y + 0.03);
+    spawn.position.copy(startPos).setY(startPos.y + 0.05);
     spawn.rotation.y = yawFromDirection(getPathDirection(path, true));
-    spawn.userData = { kind: 'spawnPoint', worldId, levelId };
+    spawn.userData = { kind: 'spawnPoint', worldId, levelId, spawnAnim };
     spawn.traverse(obj => { if (obj.isMesh) { obj.castShadow = true; obj.receiveShadow = true; } });
     return spawn;
+  }
+
+  function updateSpawn(spawn, dt, now) {
+    const anim = spawn?.userData?.spawnAnim;
+    if (!anim) return;
+    if (anim.type === 'fire') {
+      const t = now * 0.006 + anim.phase;
+      anim.flames.forEach((flame, idx) => {
+        const flicker = 0.88 + Math.sin(t * (1.8 + idx * 0.35)) * 0.16;
+        flame.scale.set(1, flicker, 1);
+      });
+      if (anim.sparks?.length) {
+        anim.sparks.forEach((spark, idx) => {
+          const s = now * 0.002 + idx * 2;
+          spark.position.x = Math.sin(s) * 0.16;
+          spark.position.z = Math.cos(s * 1.1) * 0.14;
+          spark.position.y = 0.26 + Math.abs(Math.sin(s * 1.8)) * 0.18;
+        });
+      }
+    } else if (anim.type === 'blackHole') {
+      anim.rings[0].rotation.z += dt * 0.9;
+      anim.rings[1].rotation.z -= dt * 0.65;
+      anim.distortion.material.opacity = 0.07 + Math.sin(now * 0.0025 + anim.phase) * 0.03;
+    } else if (anim.type === 'iceMist') {
+      anim.mist.material.opacity = 0.1 + Math.sin(now * 0.002 + anim.phase) * 0.04;
+      anim.mist.scale.setScalar(1 + Math.sin(now * 0.0016 + anim.phase) * 0.05);
+    }
   }
 
   function createCastle(worldId, levelId, path, toWorld) {
@@ -476,7 +580,7 @@ const objectiveVisuals = (() => {
     return castle;
   }
 
-  return { createSpawnPoint, createCastle };
+  return { createSpawnPoint, createCastle, updateSpawn };
 })();
 
 const objectiveEntities = { spawnPoint: null, castle: null };
@@ -2262,6 +2366,7 @@ function animate(now) {
   }
 
   const simDt = dt * state.gameSpeed;
+  if (objectiveEntities.spawnPoint) objectiveVisuals.updateSpawn(objectiveEntities.spawnPoint, simDt, now);
   state.particlesFrame = 0;
   for (const k of Object.keys(state.abilityCooldowns)) state.abilityCooldowns[k] = Math.max(0, state.abilityCooldowns[k] - simDt);
 
