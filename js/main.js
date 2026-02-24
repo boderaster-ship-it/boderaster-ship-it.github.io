@@ -254,7 +254,6 @@ const FINAL_BOSS_LEVEL = 25;
 const WORLD_MENU_LABELS = { 1: 'World 1 = Forest', 2: 'World 2 = Ice', 3: 'World 3 = Lava', 4: 'World 4 = Endboss (combined)' };
 
 const CASTLE_CUSTOMIZATION_VERSION = 1;
-const CASTLE_COLOR_PALETTE = ['#9EA3AB', '#7082A9', '#5B4D6D', '#4A3524', '#5FA8D3', '#82C091', '#D9A066', '#D97575', '#7D6BFF', '#E7D96F'];
 const CASTLE_RANDOM_SEQUENCE = ['#5FA8D3', '#82C091', '#D9A066', '#D97575', '#7D6BFF', '#E7D96F', '#9EA3AB', '#7082A9'];
 const CASTLE_TEXTURE_KEYS = ['stone', 'wood', 'metal', 'dark', 'ice', 'lava'];
 
@@ -323,7 +322,7 @@ const state = {
   builderDraft: [],
   unlocks: safeJSONParse('aegis-unlocks', { towerBuilder: false }),
   obstacleTap: { key: null, expires: 0 },
-  selectedCastleColor: CASTLE_COLOR_PALETTE[0],
+  selectedCastleColor: '#9EA3AB',
   selectedCastleTexture: 'stone',
   selectedCastlePart: 'wall'
 };
@@ -1428,6 +1427,20 @@ function sanitizeCastleColorState() {
   state.campaign.castleCustomization = next;
 }
 
+
+function resolveCastlePartTarget(partId) {
+  if (partId?.startsWith('tower_') || partId === 'tower') return ['tower_1', 'tower_2', 'tower_3', 'tower_4'];
+  if (partId?.startsWith('roof_') || partId === 'roof') return ['roof_1', 'roof_2', 'roof_3', 'roof_4'];
+  return [partId];
+}
+
+function getSelectedPartConfig(partId) {
+  const defaults = getDefaultCastleCustomization().parts;
+  if (partId === 'tower') return state.campaign.castleCustomization.parts.tower_1 || defaults.tower_1;
+  if (partId === 'roof') return state.campaign.castleCustomization.parts.roof_1 || defaults.roof_1;
+  return state.campaign.castleCustomization.parts[partId] || defaults[partId];
+}
+
 function applyCastleColorsToModel() {
   if (!objectiveEntities.castle) return;
   Object.keys(castleParts).forEach(partId => {
@@ -1436,16 +1449,21 @@ function applyCastleColorsToModel() {
 }
 
 function setCastlePartCustomization(partId, colorHex, textureKey) {
-  const part = castleParts[partId];
-  if (!part) return false;
-  const current = state.campaign.castleCustomization.parts[partId] || {};
-  const next = {
-    color: normalizeColorHex(colorHex || current.color, part.defaultColor),
-    texture: CASTLE_TEXTURE_PRESETS[textureKey || current.texture] ? (textureKey || current.texture) : part.defaultTexture
-  };
+  const targets = resolveCastlePartTarget(partId);
+  if (!targets.length) return false;
+  let applied = false;
   state.campaign.castleCustomization.version = CASTLE_CUSTOMIZATION_VERSION;
-  state.campaign.castleCustomization.parts[partId] = next;
-  const applied = objectiveVisuals.applyCastlePartCustomization(partId, next);
+  targets.forEach(targetId => {
+    const part = castleParts[targetId];
+    if (!part) return;
+    const current = state.campaign.castleCustomization.parts[targetId] || {};
+    const next = {
+      color: normalizeColorHex(colorHex || current.color, part.defaultColor),
+      texture: CASTLE_TEXTURE_PRESETS[textureKey || current.texture] ? (textureKey || current.texture) : part.defaultTexture
+    };
+    state.campaign.castleCustomization.parts[targetId] = next;
+    applied = objectiveVisuals.applyCastlePartCustomization(targetId, next) || applied;
+  });
   saveCampaign();
   return applied;
 }
@@ -1696,7 +1714,7 @@ function showPage(pageName) {
   if (pageName === 'endless') buildModeWorldSelect(ui.endlessWorldSelect, 'endless');
   if (pageName === 'challenge') buildModeWorldSelect(ui.challengeWorldSelect, 'challenge');
   if (pageName === 'castle') {
-    const current = state.campaign.castleCustomization.parts[state.selectedCastlePart] || getDefaultCastleCustomization().parts[state.selectedCastlePart];
+    const current = getSelectedPartConfig(state.selectedCastlePart);
     state.selectedCastleColor = current.color;
     state.selectedCastleTexture = current.texture;
     buildCastlePalette();
@@ -2984,21 +3002,29 @@ const castlePreview = {
 function updateCastleSelectionText() {
   if (!ui.castleSelectionStatus) return;
   const partId = state.selectedCastlePart;
-  const cfg = state.campaign.castleCustomization.parts[partId] || getDefaultCastleCustomization().parts[partId];
+  const cfg = getSelectedPartConfig(partId);
   ui.castleSelectionStatus.textContent = `Teil: ${castleParts[partId]?.label || partId} · Farbe: ${cfg.color} · Textur: ${cfg.texture}`;
 }
 
 function updateCastlePartList() {
   if (!ui.castlePartList) return;
   ui.castlePartList.innerHTML = '';
-  Object.entries(castleParts).forEach(([partId, partDef]) => {
+  const visibleParts = [
+    { id: 'wall', label: 'wall' },
+    { id: 'keep', label: 'keep' },
+    { id: 'gate', label: 'gate' },
+    { id: 'tower', label: 'tower' },
+    { id: 'roof', label: 'roof' },
+    { id: 'banner', label: 'banner' }
+  ];
+  visibleParts.forEach(({ id: partId, label }) => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'levelBtn' + (partId === state.selectedCastlePart ? ' active' : '');
-    btn.textContent = partDef.label;
+    btn.textContent = label;
     btn.onclick = () => {
       state.selectedCastlePart = partId;
-      const selected = state.campaign.castleCustomization.parts[partId];
+      const selected = getSelectedPartConfig(partId);
       state.selectedCastleColor = selected.color;
       state.selectedCastleTexture = selected.texture;
       buildCastlePalette();
@@ -3013,21 +3039,19 @@ function updateCastlePartList() {
 function buildCastlePalette() {
   if (!ui.castlePalette) return;
   ui.castlePalette.innerHTML = '';
-  CASTLE_COLOR_PALETTE.forEach(color => {
-    const btn = document.createElement('button');
-    btn.className = 'castleSwatch' + (color === state.selectedCastleColor ? ' active' : '');
-    btn.type = 'button';
-    btn.style.background = color;
-    btn.title = color;
-    btn.onclick = () => {
-      state.selectedCastleColor = color;
-      setCastlePartCustomization(state.selectedCastlePart, color, state.selectedCastleTexture);
-      buildCastlePalette();
-      updateCastleSelectionText();
-      syncPreviewFromSave();
-    };
-    ui.castlePalette.appendChild(btn);
-  });
+  const picker = document.createElement('input');
+  picker.type = 'color';
+  picker.className = 'castleColorPicker';
+  picker.value = normalizeColorHex(state.selectedCastleColor);
+  picker.setAttribute('aria-label', 'Freie Farbauswahl für Burgteil');
+  picker.oninput = () => {
+    const color = normalizeColorHex(picker.value, state.selectedCastleColor);
+    state.selectedCastleColor = color;
+    setCastlePartCustomization(state.selectedCastlePart, color, state.selectedCastleTexture);
+    updateCastleSelectionText();
+    syncPreviewFromSave();
+  };
+  ui.castlePalette.appendChild(picker);
 }
 
 function buildCastleTextureList() {

@@ -183,9 +183,8 @@ button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; co
   overflow: hidden;
 }
 .castlePreview canvas { width: 100% !important; height: 100% !important; display: block; }
-.castlePalette { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 6px; }
-.castleSwatch { min-height: 30px; border-radius: 8px; border: 1px solid rgba(230,245,255,0.5); padding: 0; }
-.castleSwatch.active { outline: 2px solid rgba(160, 240, 255, 0.95); }
+.castlePalette { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.castleColorPicker { width: 100%; min-height: 42px; border-radius: 10px; border: 1px solid rgba(230,245,255,0.5); background: transparent; }
 .castleTextureList, .castlePartList { display: grid; gap: 6px; }
 
 .menuPageActions {
@@ -194,6 +193,8 @@ button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; co
   grid-template-columns: 1fr;
   margin-top: 6px;
 }
+
+.menuPageActionsTop { margin-top: 0; }
 #mainMenu button,
 #mainMenu .settings label {
   transition: transform 0.12s ease, border-color 0.14s ease, filter 0.14s ease;
