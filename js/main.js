@@ -1440,7 +1440,20 @@ function renderSavedBuilds() {
       updateBuilderPreview();
       renderSavedBuilds();
     };
-    row.appendChild(load);
+    const actions = document.createElement('div');
+    actions.className = 'savedBuildActions';
+    actions.appendChild(load);
+    if (entry) {
+      const remove = document.createElement('button');
+      remove.textContent = 'Löschen';
+      remove.onclick = () => {
+        state.meta.savedBuilds[i] = null;
+        saveMeta();
+        renderSavedBuilds();
+      };
+      actions.appendChild(remove);
+    }
+    row.appendChild(actions);
     ui.savedBuilds.appendChild(row);
   }
 }
