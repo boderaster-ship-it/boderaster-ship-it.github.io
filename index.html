@@ -24,6 +24,7 @@
     <section id="controlBar">
       <button id="startWaveBtn" class="iconBtn" aria-label="Welle starten">▶️</button>
       <button id="pauseBtn" class="iconBtn" aria-label="Pause">⏸️</button>
+      <button id="castleColorsBtn" class="iconBtn" aria-label="Castle Colors">🎨</button>
       <button id="speedBtn" class="iconBtn" aria-label="Geschwindigkeit ändern">⏩</button>
       <span id="speedLabel">x1</span>
     </section>
@@ -45,6 +46,18 @@
     <section id="obstaclePanel" class="hidden">
       <div id="obstacleTitle">Hindernis</div>
       <button id="clearObstacleBtn">🪓 Räumen · 300¢</button>
+    </section>
+
+    <section id="castleColorsPanel" class="hidden">
+      <div class="castleColorsHeader">
+        <strong>Castle Colors</strong>
+        <span id="castleColorSelection">Aktiv: #9EA3AB</span>
+      </div>
+      <div id="castlePalette" class="castlePalette"></div>
+      <div class="row">
+        <button id="castleResetBtn">Reset</button>
+        <button id="castleRandomizeBtn">Randomize</button>
+      </div>
     </section>
 
     <section id="selectionPanel" class="hidden">
