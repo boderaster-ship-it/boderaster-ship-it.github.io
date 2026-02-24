@@ -57,63 +57,69 @@
     </section>
 
     <main id="mainMenu" class="modal">
-      <div class="sheet">
+      <div class="sheet menuSheet">
         <div class="menuHero">
           <h1>Bode Defense</h1>
           <p>Premium-3D-Tower-Defense im Hochformat.</p>
         </div>
 
-        <div class="modeCardGrid" role="group" aria-label="Spielmodi wählen">
-          <button id="playCampaign" class="menuCard btnPrimary">
-            <span class="menuCardIcon" aria-hidden="true">🛰️</span>
-            <span class="menuCardTitle">Kampagne</span>
-            <span class="menuCardHint tiny">Welt &amp; Level auswählen</span>
-          </button>
-          <button id="playEndless" class="menuCard btnSecondary">
-            <span class="menuCardIcon" aria-hidden="true">♾️</span>
-            <span class="menuCardTitle">Endlos</span>
-            <span class="menuCardHint tiny">Überlebe so lange wie möglich</span>
-          </button>
-          <button id="playChallenge" class="menuCard btnSecondary">
-            <span class="menuCardIcon" aria-hidden="true">⚡</span>
-            <span class="menuCardTitle">Herausforderung</span>
-            <span class="menuCardHint tiny">Spezialregeln &amp; Druck</span>
-          </button>
-        </div>
-
-        <details class="menuSection" open>
-          <summary>Fortschritt</summary>
-          <div class="sectionBody">
-            <h3>Kampagnenlevel</h3>
-            <div id="campaignWorldSelect"></div>
-            <div id="campaignLevelSelect"></div>
-            <div id="finalBossUnlock" class="tiny"></div>
-            <button id="playFinalBoss" class="hidden btnSecondary">Final Boss Mode</button>
-          </div>
-        </details>
-
-        <details class="menuSection">
-          <summary>Upgrades</summary>
-          <div class="sectionBody">
-            <h3>Kommandozentrale-Upgrades</h3>
-            <div id="upgradePointsLabel"></div>
-            <div id="metaTree"></div>
-          </div>
-        </details>
-
-        <details class="menuSection">
-          <summary>Freischaltungen &amp; Einstellungen</summary>
-          <div class="sectionBody">
-            <h3>Turm-Freischaltungen</h3>
-            <div id="unlockList"></div>
-            <h3>Einstellungen</h3>
-            <div class="settings">
-              <label><input type="checkbox" id="audioToggle" checked /> Audio</label>
-              <label><input type="checkbox" id="shakeToggle" checked /> Kameraerschütterung</label>
-              <label><input type="checkbox" id="perfToggle" /> Leistungsmodus</label>
+        <div class="menuLayout">
+          <div class="menuPrimaryColumn">
+            <div class="modeCardGrid" role="group" aria-label="Spielmodi wählen">
+              <button id="playCampaign" class="menuCard btnPrimary">
+                <span class="menuCardIcon" aria-hidden="true">🛰️</span>
+                <span class="menuCardTitle">Kampagne</span>
+                <span class="menuCardHint tiny">Welt &amp; Level auswählen</span>
+              </button>
+              <button id="playEndless" class="menuCard btnSecondary">
+                <span class="menuCardIcon" aria-hidden="true">♾️</span>
+                <span class="menuCardTitle">Endlos</span>
+                <span class="menuCardHint tiny">Überlebe so lange wie möglich</span>
+              </button>
+              <button id="playChallenge" class="menuCard btnSecondary">
+                <span class="menuCardIcon" aria-hidden="true">⚡</span>
+                <span class="menuCardTitle">Herausforderung</span>
+                <span class="menuCardHint tiny">Spezialregeln &amp; Druck</span>
+              </button>
             </div>
           </div>
-        </details>
+
+          <div class="menuSecondaryColumn">
+            <details class="menuSection" open>
+              <summary>Fortschritt</summary>
+              <div class="sectionBody">
+                <h3>Kampagnenlevel</h3>
+                <div id="campaignWorldSelect"></div>
+                <div id="campaignLevelSelect"></div>
+                <div id="finalBossUnlock" class="tiny"></div>
+                <button id="playFinalBoss" class="hidden btnSecondary">Final Boss Mode</button>
+              </div>
+            </details>
+
+            <details class="menuSection">
+              <summary>Upgrades</summary>
+              <div class="sectionBody">
+                <h3>Kommandozentrale-Upgrades</h3>
+                <div id="upgradePointsLabel"></div>
+                <div id="metaTree"></div>
+              </div>
+            </details>
+
+            <details class="menuSection">
+              <summary>Freischaltungen &amp; Einstellungen</summary>
+              <div class="sectionBody">
+                <h3>Turm-Freischaltungen</h3>
+                <div id="unlockList"></div>
+                <h3>Einstellungen</h3>
+                <div class="settings">
+                  <label><input type="checkbox" id="audioToggle" checked /> Audio</label>
+                  <label><input type="checkbox" id="shakeToggle" checked /> Kameraerschütterung</label>
+                  <label><input type="checkbox" id="perfToggle" /> Leistungsmodus</label>
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
       </div>
     </main>
 
