@@ -307,7 +307,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd5ff);
 scene.fog = new THREE.Fog(0xbfdff4, 45, 130);
 const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 220);
-const cam = { yaw: 0.6, pitch: 0.98, dist: 24, target: new THREE.Vector3(0, 0, 8.2), velYaw: 0, velPitch: 0, velDist: 0, panVel: new THREE.Vector2(), transitioning: null, cine: { active: false, targetEnemy: null, travelStart: 0, travelDur: 820, pathStart: 0, pathEnd: 0, pathProgress: 1, smoothPos: null, smoothLook: null, baseYaw: 0, basePitch: 0, baseDist: 0, userYawOffset: 0, userPitchOffset: 0, userDistOffset: 0, userPanOffset: new THREE.Vector2(), baselineTarget: new THREE.Vector3(0, 0, 8.2) } };
+const cam = { yaw: 0.6, pitch: 0.98, dist: 24, target: new THREE.Vector3(0, 0, 8.2), velYaw: 0, velPitch: 0, velDist: 0, panVel: new THREE.Vector2(), transitioning: null, cine: { active: false, targetEnemy: null, travelStart: 0, travelDur: 820, pathStart: 0, pathProgress: 1, camT: 0, followOffsetT: 0.11, smoothPos: null, smoothLook: null, baseYaw: 0, basePitch: 0, baseDist: 0, userYawOffset: 0, userPitchOffset: 0, userDistOffset: 0, userPanOffset: new THREE.Vector2(), baselineTarget: new THREE.Vector3(0, 0, 8.2) } };
 
 const hemi = new THREE.HemisphereLight(0xd9efff, 0x6f9269, 1.05);
 scene.add(hemi);
@@ -1083,6 +1083,7 @@ function resetCineCam(forceOverview = true) {
   cam.cine.active = false;
   cam.cine.targetEnemy = null;
   cam.cine.pathProgress = 1;
+  cam.cine.camT = 0;
   cam.cine.smoothPos = null;
   cam.cine.smoothLook = null;
   cam.cine.userYawOffset = 0;
@@ -1099,6 +1100,7 @@ function enableCineCam() {
   cam.cine.targetEnemy = null;
   cam.cine.travelStart = performance.now();
   cam.cine.pathProgress = 1;
+  cam.cine.camT = clamp((findFrontMostEnemy()?.t ?? 0) + cam.cine.followOffsetT, 0, 1);
   cam.cine.smoothPos = camera.position.clone();
   const look = new THREE.Vector3();
   camera.getWorldDirection(look);
@@ -1918,67 +1920,79 @@ function updateCamera(dt = 1 / 60, now = performance.now()) {
       cam.target.x += (fallback.tx - cam.target.x) * Math.min(1, dt * 5.5);
       cam.target.z += (fallback.tz - cam.target.z) * Math.min(1, dt * 5.5);
     } else {
+      const enemyT = clamp(lead.t, 0, 1);
+      const targetCamT = clamp(enemyT + cam.cine.followOffsetT, 0, 1);
       const enemyChanged = cam.cine.targetEnemy !== lead;
       if (enemyChanged) {
-        cam.cine.pathStart = cam.cine.targetEnemy?.t ?? lead.t;
-        cam.cine.pathEnd = lead.t;
+        cam.cine.pathStart = cam.cine.camT;
         cam.cine.pathProgress = 0;
         cam.cine.travelStart = now;
         cam.cine.travelDur = 600 + Math.random() * 600;
         cam.cine.targetEnemy = lead;
       }
+
       const travelK = Math.min(1, (now - cam.cine.travelStart) / Math.max(320, cam.cine.travelDur));
       const eased = 1 - Math.pow(1 - travelK, 3);
       cam.cine.pathProgress = Math.max(cam.cine.pathProgress, eased);
-      const pathT = cam.cine.pathStart + (cam.cine.pathEnd - cam.cine.pathStart) * cam.cine.pathProgress;
-      const center = getPathPosition(board.path, pathT);
-      const future = getPathPosition(board.path, Math.min(1, pathT + 0.015));
-      const heading = future.clone().sub(center);
-      if (heading.lengthSq() < 0.0001) heading.set(0, 0, 1);
-      heading.normalize();
-      const side = new THREE.Vector3(heading.z, 0, -heading.x).normalize();
+      cam.cine.camT = cam.cine.pathStart + (targetCamT - cam.cine.pathStart) * cam.cine.pathProgress;
 
-      const cineTarget = center.clone().add(heading.clone().multiplyScalar(0.95));
-      cineTarget.y = center.y + 0.35;
-      cineTarget.x += cam.cine.userPanOffset.x;
-      cineTarget.z += cam.cine.userPanOffset.y;
+      const camPosOnPath = getPathPosition(board.path, cam.cine.camT);
+      const enemyPos = getPathPosition(board.path, enemyT);
+      if (!camPosOnPath || !enemyPos) {
+        cam.cine.targetEnemy = null;
+      } else {
+        const eps = 0.012;
+        const prev = getPathPosition(board.path, Math.max(0, cam.cine.camT - eps)) || camPosOnPath;
+        const next = getPathPosition(board.path, Math.min(1, cam.cine.camT + eps)) || camPosOnPath;
+        const dirAtCam = next.clone().sub(prev);
+        if (dirAtCam.lengthSq() < 0.000001) dirAtCam.set(0, 0, -1);
+        dirAtCam.normalize();
+        const side = new THREE.Vector3(dirAtCam.z, 0, -dirAtCam.x);
+        if (side.lengthSq() < 0.000001) side.set(1, 0, 0);
+        side.normalize();
 
-      const baselinePos = center.clone()
-        .add(heading.clone().multiplyScalar(-2.2))
-        .add(side.multiplyScalar(1.2));
-      baselinePos.y = center.y + 3.5;
+        const cineTarget = enemyPos.clone();
+        cineTarget.y = enemyPos.y + 0.35;
+        cineTarget.x += cam.cine.userPanOffset.x;
+        cineTarget.z += cam.cine.userPanOffset.y;
 
-      const toView = baselinePos.clone().sub(cineTarget);
-      const baseDist = clamp(toView.length(), 5, 26);
-      const baseYaw = Math.atan2(toView.x, toView.z);
-      const basePitch = Math.asin(clamp(toView.y / baseDist, -0.99, 0.99));
+        const baselinePos = camPosOnPath.clone()
+          .add(side.multiplyScalar(1.2));
+        baselinePos.y = camPosOnPath.y + 3.5;
 
-      const desiredYaw = baseYaw + cam.cine.userYawOffset;
-      const desiredPitch = clamp(basePitch + cam.cine.userPitchOffset, 0.5, 1.4);
-      const desiredDist = clamp(baseDist + cam.cine.userDistOffset, 6, 32);
+        const toView = baselinePos.clone().sub(cineTarget);
+        const baseDist = clamp(toView.length(), 5, 26);
+        const baseYaw = Math.atan2(toView.x, toView.z);
+        const basePitch = Math.asin(clamp(toView.y / baseDist, -0.99, 0.99));
 
-      const followLerp = 1 - Math.exp(-dt * 6.5);
-      cam.yaw += (desiredYaw - cam.yaw) * followLerp;
-      cam.pitch += (desiredPitch - cam.pitch) * followLerp;
-      cam.dist += (desiredDist - cam.dist) * followLerp;
-      cam.target.x += (cineTarget.x - cam.target.x) * followLerp;
-      cam.target.z += (cineTarget.z - cam.target.z) * followLerp;
+        const desiredYaw = baseYaw + cam.cine.userYawOffset;
+        const desiredPitch = clamp(basePitch + cam.cine.userPitchOffset, 0.5, 1.4);
+        const desiredDist = clamp(baseDist + cam.cine.userDistOffset, 6, 32);
 
-      const idealPos = new THREE.Vector3(
-        Math.sin(cam.yaw) * Math.cos(cam.pitch),
-        Math.sin(cam.pitch),
-        Math.cos(cam.yaw) * Math.cos(cam.pitch)
-      ).multiplyScalar(cam.dist).add(cam.target);
+        const followLerp = 1 - Math.exp(-dt * 6.5);
+        cam.yaw += (desiredYaw - cam.yaw) * followLerp;
+        cam.pitch += (desiredPitch - cam.pitch) * followLerp;
+        cam.dist += (desiredDist - cam.dist) * followLerp;
+        cam.target.x += (cineTarget.x - cam.target.x) * followLerp;
+        cam.target.z += (cineTarget.z - cam.target.z) * followLerp;
 
-      if (!cam.cine.smoothPos) cam.cine.smoothPos = idealPos.clone();
-      if (!cam.cine.smoothLook) cam.cine.smoothLook = cineTarget.clone();
-      const stable = 1 - Math.exp(-dt * 11);
-      cam.cine.smoothPos.lerp(idealPos, stable);
-      cam.cine.smoothLook.lerp(cineTarget, stable);
-      camera.position.copy(cam.cine.smoothPos);
-      camera.lookAt(cam.cine.smoothLook);
+        const idealPos = new THREE.Vector3(
+          Math.sin(cam.yaw) * Math.cos(cam.pitch),
+          Math.sin(cam.pitch),
+          Math.cos(cam.yaw) * Math.cos(cam.pitch)
+        ).multiplyScalar(cam.dist).add(cam.target);
+
+        if (!cam.cine.smoothPos) cam.cine.smoothPos = idealPos.clone();
+        if (!cam.cine.smoothLook) cam.cine.smoothLook = cineTarget.clone();
+        const stable = 1 - Math.exp(-dt * 11);
+        cam.cine.smoothPos.lerp(idealPos, stable);
+        cam.cine.smoothLook.lerp(cineTarget, stable);
+        camera.position.copy(cam.cine.smoothPos);
+        camera.lookAt(cam.cine.smoothLook);
+      }
     }
   }
+
 
   if (!cam.cine.active || !cam.cine.targetEnemy) {
     const p = new THREE.Vector3(
