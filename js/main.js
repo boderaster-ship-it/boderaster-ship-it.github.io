@@ -1684,10 +1684,26 @@ function buildCampaignMenu() {
   }
   ui.finalBossUnlock.textContent = state.campaign.finalBossUnlocked ? 'Final Boss Unlocked: Defeat the Apex Enemy' : 'Final Boss gesperrt: Schließe alle 24 Kampagnenlevel ab';
   ui.playFinalBoss.classList.toggle('hidden', !state.campaign.finalBossUnlocked);
-  const towerRows = Object.keys(towerDefs).map(k => `<div>${towerDefs[k].icon} ${towerDefs[k].name} — ${isTowerUnlocked(k) ? 'Freigeschaltet' : `Gesperrt: Schließe Level ${getTowerUnlockLevel(k)} ab`}</div>`);
-  const abilityRows = Object.keys(abilities).map(k => `<div>${abilities[k].icon} ${abilities[k].name} — ${isAbilityUnlocked(k) ? 'Freigeschaltet' : `Gesperrt: Schließe Level ${getAbilityUnlockLevel(k)} ab`}</div>`);
-  const builderRow = `<div>🧩 Turm-Editor — ${isTowerBuilderUnlocked() ? 'Freigeschaltet' : `Gesperrt: Schließe Level ${TOWER_BUILDER_UNLOCK_LEVEL} ab`}</div>`;
-  ui.unlockList.innerHTML = [...towerRows, ...abilityRows, builderRow].join('');
+  const towerRows = Object.keys(towerDefs).map(k => {
+    const unlockLevel = getTowerUnlockLevel(k);
+    const status = isTowerUnlocked(k) ? 'Freigeschaltet' : 'Gesperrt';
+    return `<div>${towerDefs[k].icon} ${towerDefs[k].name} — ${status} · ab Level ${unlockLevel}</div>`;
+  });
+  const abilityRows = Object.keys(abilities).map(k => {
+    const unlockLevel = getAbilityUnlockLevel(k);
+    const status = isAbilityUnlocked(k) ? 'Freigeschaltet' : 'Gesperrt';
+    return `<div>${abilities[k].icon} ${abilities[k].name} — ${status} · ab Level ${unlockLevel}</div>`;
+  });
+  const builderStatus = isTowerBuilderUnlocked() ? 'Freigeschaltet' : 'Gesperrt';
+  const builderRow = `<div>🧩 Turm-Editor — ${builderStatus} · ab Level ${TOWER_BUILDER_UNLOCK_LEVEL}</div>`;
+  ui.unlockList.innerHTML = [
+    '<div><strong>Waffen</strong></div>',
+    ...towerRows,
+    '<div><strong>Power-ups</strong></div>',
+    ...abilityRows,
+    '<div><strong>Spezial</strong></div>',
+    builderRow
+  ].join('');
 }
 
 function buildModeWorldSelect(container, modeKey) {
