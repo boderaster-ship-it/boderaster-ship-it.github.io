@@ -122,8 +122,6 @@ const ui = {
   tutorialCloseBtn: document.getElementById('tutorialCloseBtn')
 };
 
-const PAUSE_MENU_RESTORE_KEY = 'aegis-pause-menu-pending';
-
 const menuPages = Array.from(document.querySelectorAll('.menuPage'));
 let activeMenuPage = 'home';
 
@@ -338,6 +336,7 @@ const state = {
   hoverCell: null,
   abilityCooldowns: {},
   paused: false,
+  wasBackgrounded: false,
   gameSpeed: 1,
   betweenWaveCountdown: 0,
   gameStarted: false,
@@ -4438,12 +4437,10 @@ ui.pauseBtn.onclick = () => {
   clearActiveCombatDrone({ startCooldown: true });
   state.paused = true;
   ui.pauseMenu.classList.remove('hidden');
-  localStorage.setItem(PAUSE_MENU_RESTORE_KEY, '1');
 };
 ui.resumeBtn.onclick = () => {
   state.paused = false;
   ui.pauseMenu.classList.add('hidden');
-  localStorage.removeItem(PAUSE_MENU_RESTORE_KEY);
 };
 ui.castleVariantCloseBtn.onclick = () => closeCastleVariantModal();
 
@@ -4464,6 +4461,7 @@ function closeTransientPanels() {
 ui.menuBtn.onclick = () => {
   state.paused = true;
   state.gameStarted = false;
+  state.wasBackgrounded = false;
   clearActiveCombatDrone();
   resetCineCam(false);
   closeTransientPanels();
@@ -4472,11 +4470,18 @@ ui.menuBtn.onclick = () => {
   showPage('home');
   refreshProgressionAndUnlockUI();
   ui.mainMenu.classList.remove('hidden');
-  localStorage.removeItem(PAUSE_MENU_RESTORE_KEY);
 };
+
+function resetPauseForNewRun() {
+  state.paused = false;
+  state.wasBackgrounded = false;
+  ui.pauseMenu.classList.add('hidden');
+  state.gameSpeed = 1;
+}
 
 function start(mode) {
   closeTransientPanels();
+  resetPauseForNewRun();
   state.mode = mode;
   if (mode === 'campaign') {
     const w = Number(state.campaign.selectedWorld) || 1;
@@ -4502,17 +4507,9 @@ function start(mode) {
   board.blocked.clear();
   ui.obstaclePanel.classList.add('hidden');
   syncBuildPads();
-  state.paused = false;
-  state.gameSpeed = 1;
   state.betweenWaveCountdown = 0;
   state.gameStarted = true;
   ui.mainMenu.classList.add('hidden');
-  const shouldOpenPauseOnStart = localStorage.getItem(PAUSE_MENU_RESTORE_KEY) === '1';
-  if (shouldOpenPauseOnStart) {
-    clearActiveCombatDrone({ startCooldown: true });
-    state.paused = true;
-    ui.pauseMenu.classList.remove('hidden');
-  }
   resetCineCam(false);
   if (mode === 'campaign') rebuildWorldForCampaign();
   else if (mode === 'endless') rebuildWorldForMode(getActiveWorldId());
@@ -4573,7 +4570,7 @@ ui.continueBtn.onclick = () => {
   ui.mainMenu.classList.remove('hidden');
   clearActiveCombatDrone();
   state.gameStarted = false;
-  localStorage.removeItem(PAUSE_MENU_RESTORE_KEY);
+  state.wasBackgrounded = false;
 };
 
 function updateViewport() {
@@ -4603,26 +4600,25 @@ window.visualViewport?.addEventListener('scroll', updateViewport);
 document.addEventListener('visibilitychange', () => {
   if (!state.gameStarted) return;
   if (document.hidden) {
-    state.paused = true;
-    localStorage.setItem(PAUSE_MENU_RESTORE_KEY, '1');
+    state.wasBackgrounded = true;
     return;
   }
-  if (localStorage.getItem(PAUSE_MENU_RESTORE_KEY) === '1') {
+  if (state.wasBackgrounded) {
     clearActiveCombatDrone({ startCooldown: true });
     state.paused = true;
     ui.pauseMenu.classList.remove('hidden');
+    state.wasBackgrounded = false;
   }
 });
 
 window.addEventListener('pagehide', () => {
   if (!state.gameStarted) return;
-  state.paused = true;
-  localStorage.setItem(PAUSE_MENU_RESTORE_KEY, '1');
+  state.wasBackgrounded = true;
 });
 
 window.addEventListener('beforeunload', () => {
   if (!state.gameStarted) return;
-  localStorage.setItem(PAUSE_MENU_RESTORE_KEY, '1');
+  state.wasBackgrounded = true;
 });
 
 if ('serviceWorker' in navigator) {
