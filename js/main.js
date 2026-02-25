@@ -49,13 +49,14 @@ const ui = {
   obstaclePanel: document.getElementById('obstaclePanel'),
   obstacleTitle: document.getElementById('obstacleTitle'),
   clearObstacleBtn: document.getElementById('clearObstacleBtn'),
-  castlePalette: document.getElementById('castlePalette'),
-  castleTextureList: document.getElementById('castleTextureList'),
   castlePartList: document.getElementById('castlePartList'),
   castleSelectionStatus: document.getElementById('castleSelectionStatus'),
   castlePreview: document.getElementById('castlePreview'),
-  castleResetBtn: document.getElementById('castleResetBtn'),
-  castleRandomizeBtn: document.getElementById('castleRandomizeBtn'),
+  castleCoins: document.getElementById('castleCoins'),
+  castleVariantModal: document.getElementById('castleVariantModal'),
+  castleVariantTitle: document.getElementById('castleVariantTitle'),
+  castleVariantCards: document.getElementById('castleVariantCards'),
+  castleVariantCloseBtn: document.getElementById('castleVariantCloseBtn'),
   selectionPanel: document.getElementById('selectionPanel'),
   selectedName: document.getElementById('selectedName'),
   selectedStats: document.getElementById('selectedStats'),
@@ -253,37 +254,29 @@ const campaignDefs = Array.from({ length: 24 }, (_, i) => {
 const FINAL_BOSS_LEVEL = 25;
 const WORLD_MENU_LABELS = { 1: 'World 1 = Forest', 2: 'World 2 = Ice', 3: 'World 3 = Lava', 4: 'World 4 = Endboss (combined)' };
 
-const CASTLE_CUSTOMIZATION_VERSION = 1;
-const CASTLE_RANDOM_SEQUENCE = ['#5FA8D3', '#82C091', '#D9A066', '#D97575', '#7D6BFF', '#E7D96F', '#9EA3AB', '#7082A9'];
-const CASTLE_TEXTURE_KEYS = ['stone', 'wood', 'metal', 'dark', 'ice', 'lava'];
+const CASTLE_BUILD_VERSION = 1;
+const CASTLE_VARIANTS_PER_PART = 5;
+const CASTLE_VARIANT_COST = 1;
 
 /**
  * Castle part registry is the single source of truth for modular goal-castle parts.
- * Save format: state.campaign.castleCustomization = { version, parts: { [partId]: { color, texture } } }
+ * Save format: state.campaign.castleBuild = { version, coins, selection: { [partId]: variantId }, owned: { [partId]: { [variantId]: true } } }
  */
 const castleParts = {
-  wall: { label: 'wall', defaultColor: '#9EA3AB', defaultTexture: 'stone' },
-  keep: { label: 'keep', defaultColor: '#9EA3AB', defaultTexture: 'stone' },
-  gate: { label: 'gate', defaultColor: '#4A3524', defaultTexture: 'wood' },
-  tower_1: { label: 'tower1', defaultColor: '#7082A9', defaultTexture: 'metal' },
-  tower_2: { label: 'tower2', defaultColor: '#7082A9', defaultTexture: 'metal' },
-  tower_3: { label: 'tower3', defaultColor: '#7082A9', defaultTexture: 'metal' },
-  tower_4: { label: 'tower4', defaultColor: '#7082A9', defaultTexture: 'metal' },
-  roof_1: { label: 'roof1', defaultColor: '#5B4D6D', defaultTexture: 'dark' },
-  roof_2: { label: 'roof2', defaultColor: '#5B4D6D', defaultTexture: 'dark' },
-  roof_3: { label: 'roof3', defaultColor: '#5B4D6D', defaultTexture: 'dark' },
-  roof_4: { label: 'roof4', defaultColor: '#5B4D6D', defaultTexture: 'dark' },
-  banner: { label: 'banner', defaultColor: '#D97575', defaultTexture: 'lava' }
+  wall: { label: 'wall' },
+  keep: { label: 'keep' },
+  gate: { label: 'gate' },
+  tower_1: { label: 'tower1' },
+  tower_2: { label: 'tower2' },
+  tower_3: { label: 'tower3' },
+  tower_4: { label: 'tower4' },
+  roof_1: { label: 'roof1' },
+  roof_2: { label: 'roof2' },
+  roof_3: { label: 'roof3' },
+  roof_4: { label: 'roof4' },
+  banner: { label: 'banner' }
 };
 
-const CASTLE_TEXTURE_PRESETS = {
-  stone: { roughness: 0.82, metalness: 0.08, emissive: 0x000000, emissiveIntensity: 0 },
-  wood: { roughness: 0.9, metalness: 0.02, emissive: 0x000000, emissiveIntensity: 0 },
-  metal: { roughness: 0.4, metalness: 0.68, emissive: 0x0a0d12, emissiveIntensity: 0.05 },
-  dark: { roughness: 0.62, metalness: 0.1, emissive: 0x111111, emissiveIntensity: 0.1 },
-  ice: { roughness: 0.22, metalness: 0.18, emissive: 0x1e4f7d, emissiveIntensity: 0.2 },
-  lava: { roughness: 0.7, metalness: 0.06, emissive: 0x5a1b0d, emissiveIntensity: 0.28 }
-};
 
 const state = {
   money: 220,
@@ -312,7 +305,7 @@ const state = {
   pools: { projectiles: [], effects: [], healthBars: [], fragments: [], particles: [], shockwaves: [], stormHeads: [] },
   particlesFrame: 0,
   maxParticlesFrame: 70,
-  campaign: safeJSONParse('aegis-campaign', { selectedLevel: 1, selectedWorld: 1, completed: {}, unlockedLevel: 1, clearedObstacles: {}, castleCustomization: { version: CASTLE_CUSTOMIZATION_VERSION, parts: {} } }),
+  campaign: safeJSONParse('aegis-campaign', { selectedLevel: 1, selectedWorld: 1, completed: {}, unlockedLevel: 1, clearedObstacles: {}, castleBuild: { version: CASTLE_BUILD_VERSION, coins: 0, selection: {}, owned: {} } }),
   currentLevel: 1,
   endlessWorld: 1,
   challengeWorld: 1,
@@ -322,9 +315,8 @@ const state = {
   builderDraft: [],
   unlocks: safeJSONParse('aegis-unlocks', { towerBuilder: false }),
   obstacleTap: { key: null, expires: 0 },
-  selectedCastleColor: '#9EA3AB',
-  selectedCastleTexture: 'stone',
-  selectedCastlePart: 'wall'
+  selectedCastlePart: 'wall',
+  activeCastleVariantPart: null
 };
 
 state.meta.unlockedTowers = state.meta.unlockedTowers || ['cannon'];
@@ -344,7 +336,7 @@ state.campaign.bossCompleted = !!state.campaign.bossCompleted;
 state.campaign.clearedObstacles = state.campaign.clearedObstacles || {};
 
 syncProgressUnlocks();
-sanitizeCastleColorState();
+sanitizeCastleBuildState();
 
 const board = { w: 16, h: 16, tile: 1.12, blocked: new Set(), path: [...worldPaths[1][1]] };
 let pathCellSet = new Set(board.path.map(([x, z]) => `${x},${z}`));
@@ -424,26 +416,80 @@ const objectiveVisuals = (() => {
       w4Ring: new THREE.MeshStandardMaterial({ color: 0x4d4a7a, emissive: 0x7d6dff, emissiveIntensity: 0.66, roughness: 0.22, metalness: 0.38 }),
       w4Distortion: new THREE.MeshBasicMaterial({ color: 0x8477ff, transparent: true, opacity: 0.1, depthWrite: false, side: THREE.DoubleSide })
     },
-    castleMaterialCache: new Map()
+    castleMaterialCache: new Map(),
+    castlePartGeometries: {
+      gate: new THREE.BoxGeometry(0.34, 0.46, 0.1),
+      banner: new THREE.BoxGeometry(0.08, 0.58, 0.02),
+      crest: new THREE.BoxGeometry(0.2, 0.12, 0.08),
+      trim: new THREE.TorusGeometry(0.28, 0.03, 8, 16)
+    }
   };
 
-
-  function getCastleMaterial(textureKey, colorHex) {
-    const texture = CASTLE_TEXTURE_PRESETS[textureKey] ? textureKey : 'stone';
-    const color = normalizeColorHex(colorHex);
-    const key = `${texture}|${color}`;
+  function getCastleVariantMaterial(partId, variantId) {
+    const colors = [0x9ea3ab, 0x7082a9, 0x82c091, 0xd9a066, 0xd97575];
+    const key = `${partId}|${variantId}`;
     if (shared.castleMaterialCache.has(key)) return shared.castleMaterialCache.get(key);
-    const preset = CASTLE_TEXTURE_PRESETS[texture];
     const material = new THREE.MeshStandardMaterial({
-      color,
-      roughness: preset.roughness,
-      metalness: preset.metalness,
-      emissive: preset.emissive,
-      emissiveIntensity: preset.emissiveIntensity
+      color: colors[Math.max(0, Math.min(colors.length - 1, variantId))],
+      roughness: 0.68,
+      metalness: partId.includes('roof') || partId.includes('tower') ? 0.24 : 0.14,
+      emissive: 0x0a0d12,
+      emissiveIntensity: variantId * 0.02
     });
     shared.castleMaterialCache.set(key, material);
     return material;
   }
+
+  function createVariantBuilders(partId, baseGeometry, basePosition, isRoof = false) {
+    return Array.from({ length: CASTLE_VARIANTS_PER_PART }, (_, variantId) => () => {
+      const group = new THREE.Group();
+      const mat = getCastleVariantMaterial(partId, variantId);
+      const core = new THREE.Mesh(baseGeometry, mat);
+      const scaleMul = 1 + variantId * 0.05;
+      core.scale.set(isRoof ? 1 + variantId * 0.02 : scaleMul, 1 + variantId * 0.04, isRoof ? 1 + variantId * 0.02 : scaleMul);
+      core.position.copy(basePosition);
+      group.add(core);
+      if (variantId > 0) {
+        const crest = new THREE.Mesh(shared.castlePartGeometries.crest, mat);
+        crest.position.set(basePosition.x, basePosition.y + (isRoof ? 0.24 : 0.32), basePosition.z);
+        crest.scale.setScalar(0.85 + variantId * 0.12);
+        group.add(crest);
+      }
+      if (variantId > 2) {
+        const trim = new THREE.Mesh(shared.castlePartGeometries.trim, mat);
+        trim.position.set(basePosition.x, basePosition.y + (isRoof ? 0.14 : 0.2), basePosition.z);
+        trim.rotation.x = -Math.PI / 2;
+        trim.scale.setScalar(0.8 + variantId * 0.04);
+        group.add(trim);
+      }
+      group.traverse(obj => {
+        if (obj.isMesh) {
+          obj.castShadow = true;
+          obj.receiveShadow = true;
+        }
+      });
+      return group;
+    });
+  }
+
+  const towerPositions = Array.from({ length: 4 }, (_, i) => {
+    const angle = (Math.PI / 2) * i + Math.PI / 4;
+    return { x: Math.cos(angle) * 0.62, z: Math.sin(angle) * 0.62 };
+  });
+
+  const castlePartsRegistry = {
+    wall: { variants: createVariantBuilders('wall', shared.castleBaseGeom, new THREE.Vector3(0, 0.25, 0)) },
+    keep: { variants: createVariantBuilders('keep', shared.castleKeepGeom, new THREE.Vector3(0, 0.95, 0)) },
+    gate: { variants: createVariantBuilders('gate', shared.castlePartGeometries.gate, new THREE.Vector3(0, 0.52, 0.54)) },
+    banner: { variants: createVariantBuilders('banner', shared.castlePartGeometries.banner, new THREE.Vector3(0, 1.58, 0.46)) }
+  };
+
+  towerPositions.forEach((pos, idx) => {
+    const towerId = `tower_${idx + 1}`;
+    const roofId = `roof_${idx + 1}`;
+    castlePartsRegistry[towerId] = { variants: createVariantBuilders(towerId, shared.castleTowerGeom, new THREE.Vector3(pos.x, 0.86, pos.z)) };
+    castlePartsRegistry[roofId] = { variants: createVariantBuilders(roofId, shared.castleRoofGeom, new THREE.Vector3(pos.x, 1.52, pos.z), true) };
+  });
 
   function getPathDirection(path, fromStart = true) {
     if (!Array.isArray(path) || path.length < 2) return new THREE.Vector3(0, 0, 1);
@@ -471,93 +517,39 @@ const objectiveVisuals = (() => {
       this.castlePartMeshes = new Map();
       this.group.add(this.model);
       this.model.add(this.castleGroup);
-      this.buildBaseModel();
-      this.applyColorsFromSave();
+      this.applyVariantsFromSave();
     }
 
-    registerPart(mesh, partId) {
-      mesh.userData.castlePartId = partId;
-      mesh.name = `castle:${partId}`;
-      this.castlePartMeshes.set(partId, mesh);
-      this.castleGroup.add(mesh);
-    }
-
-    buildBaseModel() {
-      const wall = new THREE.Mesh(shared.castleBaseGeom, getCastleMaterial(castleParts.wall.defaultTexture, castleParts.wall.defaultColor));
-      wall.position.y = 0.25;
-      this.registerPart(wall, 'wall');
-
-      const keep = new THREE.Mesh(shared.castleKeepGeom, getCastleMaterial(castleParts.keep.defaultTexture, castleParts.keep.defaultColor));
-      keep.position.y = 0.95;
-      this.registerPart(keep, 'keep');
-
-      const gate = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.46, 0.1), getCastleMaterial(castleParts.gate.defaultTexture, castleParts.gate.defaultColor));
-      gate.position.set(0, 0.52, 0.54);
-      this.registerPart(gate, 'gate');
-
-      for (let i = 0; i < 4; i++) {
-        const angle = (Math.PI / 2) * i + Math.PI / 4;
-        const x = Math.cos(angle) * 0.62;
-        const z = Math.sin(angle) * 0.62;
-        const towerId = `tower_${i + 1}`;
-        const roofId = `roof_${i + 1}`;
-        const tower = new THREE.Mesh(shared.castleTowerGeom, getCastleMaterial(castleParts[towerId].defaultTexture, castleParts[towerId].defaultColor));
-        tower.position.set(x, 0.86, z);
-        this.registerPart(tower, towerId);
-        const roof = new THREE.Mesh(shared.castleRoofGeom, getCastleMaterial(castleParts[roofId].defaultTexture, castleParts[roofId].defaultColor));
-        roof.position.set(x, 1.52, z);
-        this.registerPart(roof, roofId);
-      }
-
-      const banner = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.58, 0.02), getCastleMaterial(castleParts.banner.defaultTexture, castleParts.banner.defaultColor));
-      banner.position.set(0, 1.58, 0.46);
-      this.registerPart(banner, 'banner');
-
-      this.group.traverse(obj => {
-        if (obj.isMesh) {
-          obj.castShadow = true;
-          obj.receiveShadow = true;
-        }
-      });
-    }
-
-    applyPartCustomization(partId, partConfig = null) {
-      const mesh = this.castlePartMeshes.get(partId);
-      const part = castleParts[partId];
-      if (!mesh || !part) return false;
-      const color = normalizeColorHex(partConfig?.color, part.defaultColor);
-      const texture = CASTLE_TEXTURE_PRESETS[partConfig?.texture] ? partConfig.texture : part.defaultTexture;
-      mesh.material = getCastleMaterial(texture, color);
-      mesh.userData.castleTexture = texture;
+    replacePartMesh(partId, nextMesh) {
+      const prev = this.castlePartMeshes.get(partId);
+      if (prev?.parent) prev.parent.remove(prev);
+      nextMesh.userData.castlePartId = partId;
+      nextMesh.name = `castle:${partId}`;
+      this.castlePartMeshes.set(partId, nextMesh);
+      this.castleGroup.add(nextMesh);
       return true;
     }
 
-    applyColorsFromSave() {
-      const saved = state.campaign.castleCustomization?.parts || {};
-      Object.entries(castleParts).forEach(([partId]) => {
-        this.applyPartCustomization(partId, saved[partId]);
+    applyPartVariant(partId, variantId = 0) {
+      const builders = castlePartsRegistry[partId]?.variants;
+      if (!builders?.length) return false;
+      const safeVariant = Math.max(0, Math.min(builders.length - 1, Number(variantId) || 0));
+      const partRoot = builders[safeVariant]();
+      partRoot.userData.castleVariant = safeVariant;
+      return this.replacePartMesh(partId, partRoot);
+    }
+
+    applyVariantsFromSave() {
+      const selection = state.campaign.castleBuild?.selection || {};
+      Object.keys(castlePartsRegistry).forEach(partId => {
+        this.applyPartVariant(partId, selection[partId]);
       });
     }
 
-    setLevel(themeOrLevelId) {
-      this.currentLevelStyle = themeOrLevelId;
-      return this;
-    }
-
-    setState(nextState) {
-      this.state = nextState;
-      return this;
-    }
-
-    setHealth(value) {
-      this.health = Number.isFinite(value) ? value : this.health;
-      return this;
-    }
-
-    playAnimation(name) {
-      if (name === 'victory') this.group.rotation.y += 0.0001;
-      return this;
-    }
+    setLevel(themeOrLevelId) { this.currentLevelStyle = themeOrLevelId; return this; }
+    setState(nextState) { this.state = nextState; return this; }
+    setHealth(value) { this.health = Number.isFinite(value) ? value : this.health; return this; }
+    playAnimation(name) { if (name === 'victory') this.group.rotation.y += 0.0001; return this; }
   }
 
   function createSpawnPoint(worldId, levelId, path, toWorld) {
@@ -688,10 +680,10 @@ const objectiveVisuals = (() => {
     return castle;
   }
 
-  return { createSpawnPoint, createCastle, updateSpawn, applyCastlePartCustomization(partId, partConfig) {
+  return { createSpawnPoint, createCastle, updateSpawn, applyCastlePartVariant(partId, variantId) {
     const castle = objectiveEntities.castle;
-    if (!castle?.applyPartCustomization) return false;
-    return castle.applyPartCustomization(partId, partConfig);
+    if (!castle?.applyPartVariant) return false;
+    return castle.applyPartVariant(partId, variantId);
   } };
 })();
 
@@ -704,7 +696,7 @@ function syncObjectiveVisuals(worldId, levelId) {
   objectiveEntities.castle = objectiveVisuals.createCastle(worldId, levelId, board.path, cellToWorld);
   if (objectiveEntities.spawnPoint) world.add(objectiveEntities.spawnPoint);
   if (objectiveEntities.castle?.group) world.add(objectiveEntities.castle.group);
-  applyCastleColorsToModel();
+  applyCastleBuildToModel();
 }
 
 const terrain = buildTerrain();
@@ -1391,41 +1383,43 @@ function saveMeta() { localStorage.setItem('aegis-meta', JSON.stringify(state.me
 function saveCampaign() { localStorage.setItem('aegis-campaign', JSON.stringify(state.campaign)); }
 function saveUnlocks() { localStorage.setItem('aegis-unlocks', JSON.stringify(state.unlocks)); }
 
-function normalizeColorHex(input, fallback = '#9EA3AB') {
-  const candidate = typeof input === 'string' ? input.trim() : '';
-  if (/^#[0-9A-Fa-f]{6}$/.test(candidate)) return candidate.toUpperCase();
-  return fallback.toUpperCase();
-}
-
-function getDefaultCastleCustomization() {
-  const parts = {};
-  Object.entries(castleParts).forEach(([partId, partDef]) => {
-    parts[partId] = {
-      color: normalizeColorHex(partDef.defaultColor),
-      texture: CASTLE_TEXTURE_PRESETS[partDef.defaultTexture] ? partDef.defaultTexture : 'stone'
-    };
+function getDefaultCastleBuild() {
+  const selection = {};
+  const owned = {};
+  Object.keys(castleParts).forEach(partId => {
+    selection[partId] = 0;
+    owned[partId] = { 0: true };
   });
-  return { version: CASTLE_CUSTOMIZATION_VERSION, parts };
+  return { version: CASTLE_BUILD_VERSION, coins: 0, selection, owned };
 }
 
-function sanitizeCastleColorState() {
+function sanitizeCastleBuildState() {
   if (!state.campaign || typeof state.campaign !== 'object') state.campaign = {};
-  const saved = state.campaign.castleCustomization && typeof state.campaign.castleCustomization === 'object'
-    ? state.campaign.castleCustomization
-    : { version: CASTLE_CUSTOMIZATION_VERSION, parts: {} };
-  const next = getDefaultCastleCustomization();
-  next.version = Number(saved.version) || CASTLE_CUSTOMIZATION_VERSION;
-  const sourceParts = saved.parts && typeof saved.parts === 'object' ? saved.parts : {};
-  Object.entries(castleParts).forEach(([partId, partDef]) => {
-    const src = sourceParts[partId] || {};
-    next.parts[partId] = {
-      color: normalizeColorHex(src.color, partDef.defaultColor),
-      texture: CASTLE_TEXTURE_PRESETS[src.texture] ? src.texture : partDef.defaultTexture
-    };
-  });
-  state.campaign.castleCustomization = next;
-}
+  const fallback = getDefaultCastleBuild();
+  const saved = state.campaign.castleBuild && typeof state.campaign.castleBuild === 'object' ? state.campaign.castleBuild : {};
+  const migrated = fallback;
+  migrated.version = Number(saved.version) || CASTLE_BUILD_VERSION;
+  migrated.coins = Math.max(0, Number(saved.coins) || 0);
 
+  const srcSelection = saved.selection && typeof saved.selection === 'object' ? saved.selection : {};
+  const srcOwned = saved.owned && typeof saved.owned === 'object' ? saved.owned : {};
+
+  Object.keys(castleParts).forEach(partId => {
+    const variant = Number(srcSelection[partId]);
+    migrated.selection[partId] = Number.isFinite(variant) ? Math.max(0, Math.min(CASTLE_VARIANTS_PER_PART - 1, variant)) : 0;
+    const ownedMap = srcOwned[partId] && typeof srcOwned[partId] === 'object' ? srcOwned[partId] : {};
+    migrated.owned[partId] = { 0: true };
+    Object.keys(ownedMap).forEach(variantKey => {
+      const parsed = Number(variantKey);
+      if (!Number.isInteger(parsed) || parsed < 0 || parsed >= CASTLE_VARIANTS_PER_PART) return;
+      if (ownedMap[variantKey]) migrated.owned[partId][parsed] = true;
+    });
+    if (!migrated.owned[partId][migrated.selection[partId]]) migrated.selection[partId] = 0;
+  });
+
+  state.campaign.castleBuild = migrated;
+  delete state.campaign.castleCustomization;
+}
 
 function resolveCastlePartTarget(partId) {
   if (partId?.startsWith('tower_') || partId === 'tower') return ['tower_1', 'tower_2', 'tower_3', 'tower_4'];
@@ -1433,57 +1427,65 @@ function resolveCastlePartTarget(partId) {
   return [partId];
 }
 
-function getSelectedPartConfig(partId) {
-  const defaults = getDefaultCastleCustomization().parts;
-  if (partId === 'tower') return state.campaign.castleCustomization.parts.tower_1 || defaults.tower_1;
-  if (partId === 'roof') return state.campaign.castleCustomization.parts.roof_1 || defaults.roof_1;
-  return state.campaign.castleCustomization.parts[partId] || defaults[partId];
+function getSelectedPartVariantConfig(partId) {
+  const defaults = getDefaultCastleBuild().selection;
+  if (partId === 'tower') return { variant: state.campaign.castleBuild.selection.tower_1 ?? defaults.tower_1 ?? 0 };
+  if (partId === 'roof') return { variant: state.campaign.castleBuild.selection.roof_1 ?? defaults.roof_1 ?? 0 };
+  return { variant: state.campaign.castleBuild.selection[partId] ?? defaults[partId] ?? 0 };
 }
 
-function applyCastleColorsToModel() {
+function applyCastleBuildToModel() {
   if (!objectiveEntities.castle) return;
   Object.keys(castleParts).forEach(partId => {
-    objectiveVisuals.applyCastlePartCustomization(partId, state.campaign.castleCustomization.parts[partId]);
+    objectiveVisuals.applyCastlePartVariant(partId, state.campaign.castleBuild.selection[partId] || 0);
   });
 }
 
-function setCastlePartCustomization(partId, colorHex, textureKey) {
+function setCastlePartVariantSelection(partId, variantId) {
   const targets = resolveCastlePartTarget(partId);
   if (!targets.length) return false;
+  const safeVariant = Math.max(0, Math.min(CASTLE_VARIANTS_PER_PART - 1, Number(variantId) || 0));
   let applied = false;
-  state.campaign.castleCustomization.version = CASTLE_CUSTOMIZATION_VERSION;
+  state.campaign.castleBuild.version = CASTLE_BUILD_VERSION;
   targets.forEach(targetId => {
-    const part = castleParts[targetId];
-    if (!part) return;
-    const current = state.campaign.castleCustomization.parts[targetId] || {};
-    const next = {
-      color: normalizeColorHex(colorHex || current.color, part.defaultColor),
-      texture: CASTLE_TEXTURE_PRESETS[textureKey || current.texture] ? (textureKey || current.texture) : part.defaultTexture
-    };
-    state.campaign.castleCustomization.parts[targetId] = next;
-    applied = objectiveVisuals.applyCastlePartCustomization(targetId, next) || applied;
+    if (!castleParts[targetId]) return;
+    if (!state.campaign.castleBuild.owned[targetId]?.[safeVariant]) return;
+    state.campaign.castleBuild.selection[targetId] = safeVariant;
+    applied = objectiveVisuals.applyCastlePartVariant(targetId, safeVariant) || applied;
   });
   saveCampaign();
   return applied;
 }
 
-function resetCastleColors() {
-  state.campaign.castleCustomization = getDefaultCastleCustomization();
-  applyCastleColorsToModel();
+function purchaseCastleVariant(partId, variantId) {
+  const targets = resolveCastlePartTarget(partId).filter(id => castleParts[id]);
+  const safeVariant = Math.max(0, Math.min(CASTLE_VARIANTS_PER_PART - 1, Number(variantId) || 0));
+  if (safeVariant === 0 || !targets.length) return true;
+  const alreadyOwned = targets.every(id => !!state.campaign.castleBuild.owned[id]?.[safeVariant]);
+  if (alreadyOwned) return true;
+  if ((state.campaign.castleBuild.coins || 0) < CASTLE_VARIANT_COST) return false;
+  state.campaign.castleBuild.coins = Math.max(0, (state.campaign.castleBuild.coins || 0) - CASTLE_VARIANT_COST);
+  targets.forEach(id => {
+    state.campaign.castleBuild.owned[id] = state.campaign.castleBuild.owned[id] || { 0: true };
+    state.campaign.castleBuild.owned[id][safeVariant] = true;
+    state.campaign.castleBuild.selection[id] = safeVariant;
+    objectiveVisuals.applyCastlePartVariant(id, safeVariant);
+  });
+  saveCampaign();
+  return true;
+}
+
+function resetCastleBuild() {
+  const defaults = getDefaultCastleBuild();
+  Object.keys(castleParts).forEach(partId => {
+    state.campaign.castleBuild.selection[partId] = defaults.selection[partId];
+  });
+  applyCastleBuildToModel();
   saveCampaign();
 }
 
-function randomizeCastleColors() {
-  const next = getDefaultCastleCustomization();
-  const ids = Object.keys(castleParts);
-  ids.forEach((partId, idx) => {
-    const base = next.parts[partId];
-    base.color = CASTLE_RANDOM_SEQUENCE[idx % CASTLE_RANDOM_SEQUENCE.length];
-    base.texture = CASTLE_TEXTURE_KEYS[idx % CASTLE_TEXTURE_KEYS.length];
-  });
-  state.campaign.castleCustomization = next;
-  applyCastleColorsToModel();
-  saveCampaign();
+function randomizeCastleBuild() {
+  return resetCastleBuild();
 }
 
 function getTowerUnlockLevel(key) {
@@ -1681,7 +1683,7 @@ function sanitizeCampaignState() {
   state.campaign.selectedWorld = Math.max(1, Math.min(4, Number(state.campaign.selectedWorld) || 1));
   state.campaign.selectedLevel = Math.max(1, Math.min(6, Number(state.campaign.selectedLevel) || 1));
   state.campaign.unlockedLevel = Math.max(1, Math.min(24, Number(state.campaign.unlockedLevel) || 1));
-  sanitizeCastleColorState();
+  sanitizeCastleBuildState();
 }
 
 function setCampaignSelectionToLatestPlayable() {
@@ -1762,15 +1764,13 @@ function showPage(pageName) {
   if (pageName === 'endless') buildModeWorldSelect(ui.endlessWorldSelect, 'endless');
   if (pageName === 'challenge') buildModeWorldSelect(ui.challengeWorldSelect, 'challenge');
   if (pageName === 'castle') {
-    const current = getSelectedPartConfig(state.selectedCastlePart);
-    state.selectedCastleColor = current.color;
-    state.selectedCastleTexture = current.texture;
-    buildCastlePalette();
-    buildCastleTextureList();
+    updateCastleCoinLabel();
     updateCastlePartList();
     updateCastleSelectionText();
     initCastlePreview();
-    syncPreviewFromSave();
+    syncPreviewFromBuild();
+  } else {
+    closeCastleVariantModal();
   }
 }
 
@@ -2024,7 +2024,7 @@ function spawnWave() {
   state.buildPhase = false;
   if (state.wave % 5 === 0) ui.bossWarning.classList.remove('hidden');
   syncProgressUnlocks();
-  sanitizeCastleColorState();
+  sanitizeCastleBuildState();
   initDock();
   initAbilities();
   refreshWavePreview();
@@ -2048,13 +2048,14 @@ function handleLevelComplete() {
   if (rewards.unlockTower) unlockTower(rewards.unlockTower);
   Object.keys(abilities).forEach(k => { if (state.currentLevel >= getAbilityUnlockLevel(k)) unlockAbility(k); });
   state.campaign.completed[state.currentLevel] = true;
+  state.campaign.castleBuild.coins = Math.max(0, (state.campaign.castleBuild.coins || 0) + 1);
   if (state.currentLevel >= 24) state.campaign.finalBossUnlocked = true;
   state.campaign.unlockedLevel = Math.max(state.campaign.unlockedLevel || 1, state.currentLevel + 1);
   refreshProgressionAndUnlockUI({ persist: true });
   setCampaignSelectionToLatestPlayable();
   saveCampaign();
   ui.levelCompleteSummary.textContent = `World ${(Math.floor((state.currentLevel-1)/6)+1)} Level ${((state.currentLevel-1)%6)+1} abgeschlossen: ${state.levelWaves}/${state.levelWaves} Wellen.`;
-  ui.levelRewards.innerHTML = `<div>+${rewards.credits} Credits</div><div>+${rewards.tokens} Upgrade-Punkte</div>${rewards.unlockTower ? `<div>Freigeschalteter Turm: ${towerDefs[rewards.unlockTower].name}</div>` : ''}<div>${state.currentLevel>=24?'Final Boss Mode freigeschaltet!':''}</div>`;
+  ui.levelRewards.innerHTML = `<div>+${rewards.credits} Credits</div><div>+${rewards.tokens} Upgrade-Punkte</div><div>+1 Coin (Castle)</div>${rewards.unlockTower ? `<div>Freigeschalteter Turm: ${towerDefs[rewards.unlockTower].name}</div>` : ''}<div>${state.currentLevel>=24?'Final Boss Mode freigeschaltet!':''}</div>`;
   ui.levelCompleteModal.classList.remove('hidden');
   resetCineCam(false);
   state.paused = true;
@@ -3048,8 +3049,66 @@ const castlePreview = {
 function updateCastleSelectionText() {
   if (!ui.castleSelectionStatus) return;
   const partId = state.selectedCastlePart;
-  const cfg = getSelectedPartConfig(partId);
-  ui.castleSelectionStatus.textContent = `Teil: ${castleParts[partId]?.label || partId} · Farbe: ${cfg.color} · Textur: ${cfg.texture}`;
+  const cfg = getSelectedPartVariantConfig(partId);
+  ui.castleSelectionStatus.textContent = `Teil: ${castleParts[resolveCastlePartTarget(partId)[0]]?.label || partId} · Variante: ${cfg.variant}`;
+}
+
+function updateCastleCoinLabel() {
+  if (!ui.castleCoins) return;
+  ui.castleCoins.textContent = `Coins: ${Math.max(0, Number(state.campaign.castleBuild?.coins) || 0)}`;
+}
+
+function buildCastleVariantModal(partId) {
+  if (!ui.castleVariantCards || !ui.castleVariantTitle) return;
+  state.activeCastleVariantPart = partId;
+  ui.castleVariantTitle.textContent = `Varianten · ${partId}`;
+  ui.castleVariantCards.innerHTML = '';
+  for (let variantId = 0; variantId < CASTLE_VARIANTS_PER_PART; variantId++) {
+    const card = document.createElement('article');
+    card.className = 'castleVariantCard';
+    const targets = resolveCastlePartTarget(partId);
+    const owned = targets.every(id => !!state.campaign.castleBuild.owned[id]?.[variantId]);
+    const current = getSelectedPartVariantConfig(partId).variant;
+    const status = owned ? 'Owned' : `Cost: ${CASTLE_VARIANT_COST} Coin`;
+    card.innerHTML = `<div class="castleVariantPreview">${partId} · V${variantId}</div><div class="tiny">${status}</div>`;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btnSecondary';
+    if (owned) {
+      btn.textContent = current === variantId ? 'Selected' : 'Select';
+      btn.disabled = current === variantId;
+      btn.onclick = () => {
+        setCastlePartVariantSelection(partId, variantId);
+        updateCastleSelectionText();
+        updateCastlePartList();
+        syncPreviewFromBuild();
+        buildCastleVariantModal(partId);
+      };
+    } else {
+      btn.textContent = 'Buy';
+      btn.disabled = (state.campaign.castleBuild.coins || 0) < CASTLE_VARIANT_COST;
+      btn.onclick = () => {
+        if (!purchaseCastleVariant(partId, variantId)) return showToast('Nicht genug Coins', false);
+        updateCastleCoinLabel();
+        updateCastleSelectionText();
+        updateCastlePartList();
+        syncPreviewFromBuild();
+        buildCastleVariantModal(partId);
+      };
+    }
+    card.appendChild(btn);
+    ui.castleVariantCards.appendChild(card);
+  }
+}
+
+function openCastleVariantModal(partId) {
+  if (!ui.castleVariantModal) return;
+  buildCastleVariantModal(partId);
+  ui.castleVariantModal.classList.remove('hidden');
+}
+
+function closeCastleVariantModal() {
+  ui.castleVariantModal?.classList.add('hidden');
 }
 
 function updateCastlePartList() {
@@ -3067,55 +3126,15 @@ function updateCastlePartList() {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'levelBtn' + (partId === state.selectedCastlePart ? ' active' : '');
-    btn.textContent = label;
+    const selected = getSelectedPartVariantConfig(partId);
+    btn.textContent = `${label} · V${selected.variant}`;
     btn.onclick = () => {
       state.selectedCastlePart = partId;
-      const selected = getSelectedPartConfig(partId);
-      state.selectedCastleColor = selected.color;
-      state.selectedCastleTexture = selected.texture;
-      buildCastlePalette();
-      buildCastleTextureList();
       updateCastlePartList();
       updateCastleSelectionText();
+      openCastleVariantModal(partId);
     };
     ui.castlePartList.appendChild(btn);
-  });
-}
-
-function buildCastlePalette() {
-  if (!ui.castlePalette) return;
-  ui.castlePalette.innerHTML = '';
-  const picker = document.createElement('input');
-  picker.type = 'color';
-  picker.className = 'castleColorPicker';
-  picker.value = normalizeColorHex(state.selectedCastleColor);
-  picker.setAttribute('aria-label', 'Freie Farbauswahl für Burgteil');
-  picker.oninput = () => {
-    const color = normalizeColorHex(picker.value, state.selectedCastleColor);
-    state.selectedCastleColor = color;
-    setCastlePartCustomization(state.selectedCastlePart, color, state.selectedCastleTexture);
-    updateCastleSelectionText();
-    syncPreviewFromSave();
-  };
-  ui.castlePalette.appendChild(picker);
-}
-
-function buildCastleTextureList() {
-  if (!ui.castleTextureList) return;
-  ui.castleTextureList.innerHTML = '';
-  CASTLE_TEXTURE_KEYS.forEach(textureKey => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'levelBtn' + (textureKey === state.selectedCastleTexture ? ' active' : '');
-    btn.textContent = textureKey;
-    btn.onclick = () => {
-      state.selectedCastleTexture = textureKey;
-      setCastlePartCustomization(state.selectedCastlePart, state.selectedCastleColor, textureKey);
-      buildCastleTextureList();
-      updateCastleSelectionText();
-      syncPreviewFromSave();
-    };
-    ui.castleTextureList.appendChild(btn);
   });
 }
 
@@ -3152,11 +3171,11 @@ function initCastlePreview() {
   tick();
 }
 
-function syncPreviewFromSave() {
+function syncPreviewFromBuild() {
   const previewCastle = castlePreview.meshRoot;
-  if (!previewCastle?.applyPartCustomization) return;
+  if (!previewCastle?.applyPartVariant) return;
   Object.keys(castleParts).forEach(partId => {
-    previewCastle.applyPartCustomization(partId, state.campaign.castleCustomization.parts[partId]);
+    previewCastle.applyPartVariant(partId, state.campaign.castleBuild.selection[partId] || 0);
   });
 }
 
@@ -3409,9 +3428,8 @@ ui.sellBtn.onclick = () => {
   state.selectedTower = null;
 };
 ui.pauseBtn.onclick = () => { state.paused = true; ui.pauseMenu.classList.remove('hidden'); };
-ui.castleResetBtn.onclick = () => { resetCastleColors(); showPage('castle'); showToast('Burgfarben zurückgesetzt'); };
-ui.castleRandomizeBtn.onclick = () => { randomizeCastleColors(); showPage('castle'); showToast('Burgfarben randomisiert'); };
 ui.resumeBtn.onclick = () => { state.paused = false; ui.pauseMenu.classList.add('hidden'); };
+ui.castleVariantCloseBtn.onclick = () => closeCastleVariantModal();
 
 function closeTransientPanels() {
   state.selectedTower = null;
@@ -3477,7 +3495,7 @@ function start(mode) {
   else if (mode === 'boss') rebuildWorldForMode(4);
   ui.bossWarning.classList.add('hidden');
   refreshProgressionAndUnlockUI({ refreshInGameDock: true });
-  sanitizeCastleColorState();
+  sanitizeCastleBuildState();
   refreshWavePreview();
   unifiedOverview(false);
 }
@@ -3570,7 +3588,7 @@ if ('serviceWorker' in navigator) {
 }
 
 function assertRequiredDomNodes() {
-  const required = ['mainMenu','campaignWorldSelect','campaignLevelSelect','playCampaign','playEndless','playChallenge','playCampaignStart','playEndlessStart','playChallengeStart','metaTree','unlockList','upgradePointsLabel','finalBossUnlock','playFinalBoss','openCastle','openUpgrades','openUnlockSettings','endlessWorldSelect','challengeWorldSelect','castlePalette','castleTextureList','castlePartList','castleSelectionStatus','castlePreview','castleResetBtn','castleRandomizeBtn'];
+  const required = ['mainMenu','campaignWorldSelect','campaignLevelSelect','playCampaign','playEndless','playChallenge','playCampaignStart','playEndlessStart','playChallengeStart','metaTree','unlockList','upgradePointsLabel','finalBossUnlock','playFinalBoss','openCastle','openUpgrades','openUnlockSettings','endlessWorldSelect','challengeWorldSelect','castlePartList','castleSelectionStatus','castlePreview','castleCoins','castleVariantModal','castleVariantTitle','castleVariantCards','castleVariantCloseBtn'];
   const missing = required.filter(key => !ui[key]);
   if (missing.length) throw new Error(`Missing required DOM nodes: ${missing.join(', ')}`);
 }
