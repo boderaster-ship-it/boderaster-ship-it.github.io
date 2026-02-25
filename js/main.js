@@ -1522,6 +1522,52 @@ function syncProgressUnlocks() {
   });
 }
 
+function renderUnlockProgressionUI() {
+  ui.finalBossUnlock.textContent = state.campaign.finalBossUnlocked
+    ? 'Final Boss Unlocked: Defeat the Apex Enemy'
+    : 'Final Boss gesperrt: Schließe alle 24 Kampagnenlevel ab';
+  ui.playFinalBoss.classList.toggle('hidden', !state.campaign.finalBossUnlocked);
+
+  const towerRows = Object.keys(towerDefs).map(k => {
+    const unlockLevel = getTowerUnlockLevel(k);
+    const status = isTowerUnlocked(k) ? 'Freigeschaltet' : 'Gesperrt';
+    return `<div>${towerDefs[k].icon} ${towerDefs[k].name} — ${status} · ab Level ${unlockLevel}</div>`;
+  });
+  const abilityRows = Object.keys(abilities).map(k => {
+    const unlockLevel = getAbilityUnlockLevel(k);
+    const status = isAbilityUnlocked(k) ? 'Freigeschaltet' : 'Gesperrt';
+    return `<div>${abilities[k].icon} ${abilities[k].name} — ${status} · ab Level ${unlockLevel}</div>`;
+  });
+  const builderStatus = isTowerBuilderUnlocked() ? 'Freigeschaltet' : 'Gesperrt';
+  const builderRow = `<div>🧩 Turm-Editor — ${builderStatus} · ab Level ${TOWER_BUILDER_UNLOCK_LEVEL}</div>`;
+  ui.unlockList.innerHTML = [
+    '<div><strong>Waffen</strong></div>',
+    ...towerRows,
+    '<div><strong>Power-ups</strong></div>',
+    ...abilityRows,
+    '<div><strong>Spezial</strong></div>',
+    builderRow
+  ].join('');
+}
+
+function refreshProgressionAndUnlockUI({ persist = false, refreshInGameDock = false } = {}) {
+  sanitizeCampaignState();
+  syncProgressUnlocks();
+  buildMeta();
+  renderUnlockProgressionUI();
+
+  if (refreshInGameDock && state.gameStarted) {
+    initDock();
+    initAbilities();
+  }
+
+  if (persist) {
+    saveMeta();
+    saveCampaign();
+    saveUnlocks();
+  }
+}
+
 function isTowerUnlocked(key) {
   return (state.meta.unlockedTowers || []).includes(key);
 }
@@ -1682,28 +1728,7 @@ function buildCampaignMenu() {
     if (state.campaign.selectedLevel === lvl) btn.classList.add('active');
     ui.campaignLevelSelect.appendChild(btn);
   }
-  ui.finalBossUnlock.textContent = state.campaign.finalBossUnlocked ? 'Final Boss Unlocked: Defeat the Apex Enemy' : 'Final Boss gesperrt: Schließe alle 24 Kampagnenlevel ab';
-  ui.playFinalBoss.classList.toggle('hidden', !state.campaign.finalBossUnlocked);
-  const towerRows = Object.keys(towerDefs).map(k => {
-    const unlockLevel = getTowerUnlockLevel(k);
-    const status = isTowerUnlocked(k) ? 'Freigeschaltet' : 'Gesperrt';
-    return `<div>${towerDefs[k].icon} ${towerDefs[k].name} — ${status} · ab Level ${unlockLevel}</div>`;
-  });
-  const abilityRows = Object.keys(abilities).map(k => {
-    const unlockLevel = getAbilityUnlockLevel(k);
-    const status = isAbilityUnlocked(k) ? 'Freigeschaltet' : 'Gesperrt';
-    return `<div>${abilities[k].icon} ${abilities[k].name} — ${status} · ab Level ${unlockLevel}</div>`;
-  });
-  const builderStatus = isTowerBuilderUnlocked() ? 'Freigeschaltet' : 'Gesperrt';
-  const builderRow = `<div>🧩 Turm-Editor — ${builderStatus} · ab Level ${TOWER_BUILDER_UNLOCK_LEVEL}</div>`;
-  ui.unlockList.innerHTML = [
-    '<div><strong>Waffen</strong></div>',
-    ...towerRows,
-    '<div><strong>Power-ups</strong></div>',
-    ...abilityRows,
-    '<div><strong>Spezial</strong></div>',
-    builderRow
-  ].join('');
+  renderUnlockProgressionUI();
 }
 
 function buildModeWorldSelect(container, modeKey) {
@@ -1730,6 +1755,9 @@ function buildModeWorldSelect(container, modeKey) {
 function showPage(pageName) {
   activeMenuPage = pageName;
   menuPages.forEach(page => page.classList.toggle('hidden', page.dataset.page !== pageName));
+  if (pageName === 'unlockSettings' || pageName === 'upgrades' || pageName === 'campaign') {
+    refreshProgressionAndUnlockUI();
+  }
   if (pageName === 'campaign') buildCampaignMenu();
   if (pageName === 'endless') buildModeWorldSelect(ui.endlessWorldSelect, 'endless');
   if (pageName === 'challenge') buildModeWorldSelect(ui.challengeWorldSelect, 'challenge');
@@ -2022,18 +2050,16 @@ function handleLevelComplete() {
   state.campaign.completed[state.currentLevel] = true;
   if (state.currentLevel >= 24) state.campaign.finalBossUnlocked = true;
   state.campaign.unlockedLevel = Math.max(state.campaign.unlockedLevel || 1, state.currentLevel + 1);
-  syncProgressUnlocks();
+  refreshProgressionAndUnlockUI({ persist: true });
   setCampaignSelectionToLatestPlayable();
-  saveMeta();
   saveCampaign();
-  saveUnlocks();
   ui.levelCompleteSummary.textContent = `World ${(Math.floor((state.currentLevel-1)/6)+1)} Level ${((state.currentLevel-1)%6)+1} abgeschlossen: ${state.levelWaves}/${state.levelWaves} Wellen.`;
   ui.levelRewards.innerHTML = `<div>+${rewards.credits} Credits</div><div>+${rewards.tokens} Upgrade-Punkte</div>${rewards.unlockTower ? `<div>Freigeschalteter Turm: ${towerDefs[rewards.unlockTower].name}</div>` : ''}<div>${state.currentLevel>=24?'Final Boss Mode freigeschaltet!':''}</div>`;
   ui.levelCompleteModal.classList.remove('hidden');
   resetCineCam(false);
   state.paused = true;
   buildCampaignMenu();
-  buildMeta();
+  refreshProgressionAndUnlockUI();
 }
 
 const towerVisuals = (() => {
@@ -3409,6 +3435,7 @@ ui.menuBtn.onclick = () => {
   setCampaignSelectionToLatestPlayable();
   saveCampaign();
   showPage('home');
+  refreshProgressionAndUnlockUI();
   ui.mainMenu.classList.remove('hidden');
 };
 
@@ -3449,10 +3476,8 @@ function start(mode) {
   else if (mode === 'challenge') rebuildWorldForMode(getActiveWorldId());
   else if (mode === 'boss') rebuildWorldForMode(4);
   ui.bossWarning.classList.add('hidden');
-  syncProgressUnlocks();
+  refreshProgressionAndUnlockUI({ refreshInGameDock: true });
   sanitizeCastleColorState();
-  initDock();
-  initAbilities();
   refreshWavePreview();
   unifiedOverview(false);
 }
@@ -3491,6 +3516,7 @@ ui.continueBtn.onclick = () => {
   setCampaignSelectionToLatestPlayable();
   saveCampaign();
   showPage('home');
+  refreshProgressionAndUnlockUI();
   ui.mainMenu.classList.remove('hidden');
   state.gameStarted = false;
 };
@@ -3554,15 +3580,12 @@ updateViewport();
 function bootstrapMenu() {
   try {
     assertRequiredDomNodes();
-    sanitizeCampaignState();
-    syncProgressUnlocks();
-    saveMeta();
-    saveUnlocks();
+    refreshProgressionAndUnlockUI({ persist: true });
     setCampaignSelectionToLatestPlayable();
     saveCampaign();
     validateCampaignDefinitions();
-    buildMeta();
     showPage('home');
+    refreshProgressionAndUnlockUI();
     initDock();
     initAbilities();
     refreshWavePreview();
