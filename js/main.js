@@ -1349,112 +1349,241 @@ function buildEnvironmentProps() {
   }
 }
 
-function makeEnemyMaterial(color, opts = {}) {
-  const mat = new THREE.MeshStandardMaterial({
-    color,
-    roughness: opts.roughness ?? 0.48,
-    metalness: opts.metalness ?? 0.42,
-    emissive: opts.emissive ?? 0x121820,
-    emissiveIntensity: opts.emissiveIntensity ?? 0.16,
-    transparent: !!opts.transparent,
-    opacity: opts.opacity ?? 1
-  });
-  mat.flatShading = true;
+const enemyMaterialPresets = {
+  stone: {
+    body: new THREE.MeshStandardMaterial({ color: 0x6f655b, roughness: 0.92, metalness: 0.06, emissive: 0x1a1714, emissiveIntensity: 0.08, flatShading: true }),
+    panel: new THREE.MeshStandardMaterial({ color: 0x8f8374, roughness: 0.86, metalness: 0.08, emissive: 0x241f19, emissiveIntensity: 0.1, flatShading: true }),
+    dark: new THREE.MeshStandardMaterial({ color: 0x2f2a24, roughness: 0.9, metalness: 0.12, emissive: 0x11100e, emissiveIntensity: 0.06, flatShading: true }),
+    core: new THREE.MeshStandardMaterial({ color: 0xc7ab8d, roughness: 0.52, metalness: 0.18, emissive: 0xb57f4d, emissiveIntensity: 0.2, flatShading: true }),
+    shell: new THREE.MeshStandardMaterial({ color: 0x9bc2e9, transparent: true, opacity: 0.16, roughness: 0.2, metalness: 0.14, emissive: 0x6da5df, emissiveIntensity: 0.3, flatShading: true }),
+    addon: new THREE.MeshStandardMaterial({ color: 0x7a6a59, roughness: 0.88, metalness: 0.1, emissive: 0x181310, emissiveIntensity: 0.08, flatShading: true }),
+    vfx: new THREE.MeshBasicMaterial({ color: 0xd7a577 })
+  },
+  ice: {
+    body: new THREE.MeshStandardMaterial({ color: 0x8fc6df, roughness: 0.38, metalness: 0.22, emissive: 0x1b2a35, emissiveIntensity: 0.16, flatShading: true }),
+    panel: new THREE.MeshStandardMaterial({ color: 0xc6e5fa, roughness: 0.3, metalness: 0.24, emissive: 0x2a5472, emissiveIntensity: 0.2, flatShading: true }),
+    dark: new THREE.MeshStandardMaterial({ color: 0x274252, roughness: 0.62, metalness: 0.2, emissive: 0x142430, emissiveIntensity: 0.1, flatShading: true }),
+    core: new THREE.MeshStandardMaterial({ color: 0xb8f0ff, roughness: 0.2, metalness: 0.42, emissive: 0x8ce8ff, emissiveIntensity: 0.4, flatShading: true }),
+    shell: new THREE.MeshStandardMaterial({ color: 0xc6ebff, transparent: true, opacity: 0.18, roughness: 0.12, metalness: 0.22, emissive: 0x9adfff, emissiveIntensity: 0.42, flatShading: true }),
+    addon: new THREE.MeshStandardMaterial({ color: 0xa7ddff, roughness: 0.26, metalness: 0.22, emissive: 0x6fb9e5, emissiveIntensity: 0.2, flatShading: true }),
+    vfx: new THREE.MeshBasicMaterial({ color: 0x8be4ff })
+  },
+  lava: {
+    body: new THREE.MeshStandardMaterial({ color: 0x493028, roughness: 0.82, metalness: 0.12, emissive: 0x311912, emissiveIntensity: 0.18, flatShading: true }),
+    panel: new THREE.MeshStandardMaterial({ color: 0x6a4330, roughness: 0.76, metalness: 0.16, emissive: 0x4a2719, emissiveIntensity: 0.24, flatShading: true }),
+    dark: new THREE.MeshStandardMaterial({ color: 0x251a18, roughness: 0.88, metalness: 0.12, emissive: 0x160d0b, emissiveIntensity: 0.12, flatShading: true }),
+    core: new THREE.MeshStandardMaterial({ color: 0xff9058, roughness: 0.24, metalness: 0.46, emissive: 0xff5d2d, emissiveIntensity: 0.55, flatShading: true }),
+    shell: new THREE.MeshStandardMaterial({ color: 0xffbf8a, transparent: true, opacity: 0.12, roughness: 0.1, metalness: 0.26, emissive: 0xff7a3d, emissiveIntensity: 0.45, flatShading: true }),
+    addon: new THREE.MeshStandardMaterial({ color: 0x7a4f33, roughness: 0.7, metalness: 0.22, emissive: 0xd34f22, emissiveIntensity: 0.34, flatShading: true }),
+    vfx: new THREE.MeshBasicMaterial({ color: 0xff8c46 })
+  },
+  void: {
+    body: new THREE.MeshStandardMaterial({ color: 0x22253a, roughness: 0.44, metalness: 0.56, emissive: 0x151827, emissiveIntensity: 0.22, flatShading: true }),
+    panel: new THREE.MeshStandardMaterial({ color: 0x343a5a, roughness: 0.36, metalness: 0.6, emissive: 0x24294f, emissiveIntensity: 0.26, flatShading: true }),
+    dark: new THREE.MeshStandardMaterial({ color: 0x131522, roughness: 0.58, metalness: 0.44, emissive: 0x0a0b14, emissiveIntensity: 0.12, flatShading: true }),
+    core: new THREE.MeshStandardMaterial({ color: 0x7ce0ff, roughness: 0.16, metalness: 0.74, emissive: 0x54b8ff, emissiveIntensity: 0.58, flatShading: true }),
+    shell: new THREE.MeshStandardMaterial({ color: 0x95b5ff, transparent: true, opacity: 0.16, roughness: 0.08, metalness: 0.38, emissive: 0x79afff, emissiveIntensity: 0.5, flatShading: true }),
+    addon: new THREE.MeshStandardMaterial({ color: 0x3b4767, roughness: 0.42, metalness: 0.62, emissive: 0x335ea7, emissiveIntensity: 0.3, flatShading: true }),
+    vfx: new THREE.MeshBasicMaterial({ color: 0x69d7ff })
+  }
+};
+
+const enemyAddonLibrary = {
+  plates: new THREE.BoxGeometry(0.3, 0.14, 0.24),
+  spikes: new THREE.ConeGeometry(0.12, 0.32, 5),
+  rings: new THREE.TorusGeometry(0.26, 0.05, 6, 16),
+  horns: new THREE.ConeGeometry(0.1, 0.28, 6),
+  shards: new THREE.TetrahedronGeometry(0.16, 0),
+  vents: new THREE.BoxGeometry(0.18, 0.08, 0.14),
+  coreNode: new THREE.OctahedronGeometry(0.14, 0),
+  shoulderPads: new THREE.BoxGeometry(0.24, 0.12, 0.22)
+};
+
+const enemyVisualPresets = {
+  1: {
+    runner: { baseStyle: 'stone', addons: [{ type: 'plates', slot: 'top', scale: [1.1, 1, 1] }, { type: 'horns', slot: 'back', rot: [Math.PI, 0, 0] }], emissive: { color: 0xd29a68, intensity: 0.12 } },
+    tank: { baseStyle: 'stone', addons: [{ type: 'shoulderPads', slot: 'sides', spread: 0.75 }, { type: 'plates', slot: 'front', scale: [1.25, 1.1, 1.3] }, { type: 'vents', slot: 'back', count: 2 }], emissive: { color: 0xbe8356, intensity: 0.16 } },
+    shielded: { baseStyle: 'stone', addons: [{ type: 'plates', slot: 'front', scale: [1.1, 1.2, 1.2] }, { type: 'spikes', slot: 'top', count: 2 }], emissive: { color: 0xc98d65, intensity: 0.14 } },
+    flyer: { baseStyle: 'stone', addons: [{ type: 'shards', slot: 'sides', spread: 0.72 }, { type: 'plates', slot: 'top', scale: [0.9, 0.8, 1.2] }], emissive: { color: 0xd0a076, intensity: 0.15 } }
+  },
+  2: {
+    runner: { baseStyle: 'ice', addons: [{ type: 'spikes', slot: 'top', count: 3 }, { type: 'shards', slot: 'back' }], emissive: { color: 0x89e7ff, intensity: 0.24 } },
+    tank: { baseStyle: 'ice', addons: [{ type: 'spikes', slot: 'sides', spread: 0.78 }, { type: 'plates', slot: 'front', scale: [1.2, 1, 1.1] }, { type: 'coreNode', slot: 'top', y: 0.25 }], emissive: { color: 0x9fefff, intensity: 0.28 } },
+    shielded: { baseStyle: 'ice', addons: [{ type: 'rings', slot: 'front', rot: [Math.PI / 2, 0, 0] }, { type: 'spikes', slot: 'top', count: 2 }], emissive: { color: 0x8fe2ff, intensity: 0.3 } },
+    flyer: { baseStyle: 'ice', addons: [{ type: 'shards', slot: 'sides', spread: 0.84 }, { type: 'coreNode', slot: 'front', z: 0.24 }], emissive: { color: 0x96f0ff, intensity: 0.3 } }
+  },
+  3: {
+    runner: { baseStyle: 'lava', addons: [{ type: 'vents', slot: 'sides', spread: 0.5 }, { type: 'coreNode', slot: 'back' }], emissive: { color: 0xff7a3e, intensity: 0.4 } },
+    tank: { baseStyle: 'lava', addons: [{ type: 'plates', slot: 'top', scale: [1.3, 0.9, 1.2] }, { type: 'vents', slot: 'back', count: 3 }, { type: 'spikes', slot: 'front', count: 2 }], emissive: { color: 0xff6e2e, intensity: 0.48 } },
+    shielded: { baseStyle: 'lava', addons: [{ type: 'rings', slot: 'back', rot: [Math.PI / 2, 0, 0] }, { type: 'vents', slot: 'top', count: 2 }], emissive: { color: 0xff7f47, intensity: 0.42 } },
+    flyer: { baseStyle: 'lava', addons: [{ type: 'shards', slot: 'sides', spread: 0.68 }, { type: 'coreNode', slot: 'top', y: 0.18 }], emissive: { color: 0xff8f56, intensity: 0.44 } }
+  },
+  4: {
+    runner: { baseStyle: 'void', addons: [{ type: 'rings', slot: 'top', rot: [Math.PI / 2, 0, 0], scale: [1.1, 1.1, 1.1] }, { type: 'shards', slot: 'back' }], emissive: { color: 0x6cd8ff, intensity: 0.36 } },
+    tank: { baseStyle: 'void', addons: [{ type: 'rings', slot: 'top', rot: [Math.PI / 2, 0, 0], scale: [1.35, 1.35, 1.35] }, { type: 'shoulderPads', slot: 'sides', spread: 0.82 }, { type: 'coreNode', slot: 'front', z: 0.3 }], emissive: { color: 0x69d0ff, intensity: 0.42 } },
+    shielded: { baseStyle: 'void', addons: [{ type: 'rings', slot: 'front', rot: [Math.PI / 2, 0, 0] }, { type: 'shards', slot: 'top', count: 2 }], emissive: { color: 0x7be2ff, intensity: 0.4 } },
+    flyer: { baseStyle: 'void', addons: [{ type: 'rings', slot: 'sides', spread: 0.7, rot: [0, Math.PI / 2, 0] }, { type: 'coreNode', slot: 'front', z: 0.24 }], emissive: { color: 0x67ddff, intensity: 0.4 } }
+  }
+};
+
+const enemyTintScratch = new THREE.Color();
+const enemyBaseTintScratch = new THREE.Color();
+
+function makeEnemyMaterial(style, role) {
+  const mat = enemyMaterialPresets[style][role].clone();
+  mat.userData = { enemyDynamic: true, baseEmissive: mat.emissive?.clone?.() || null, baseIntensity: mat.emissiveIntensity || 0 };
   return mat;
 }
 
-function createEnemyMesh(def, boss = false) {
+function getEnemySlotOffset(slot, def, cfg = {}) {
+  const s = def.size;
+  if (slot === 'top') return new THREE.Vector3(0, s * 0.48 + (cfg.y || 0), cfg.z || 0);
+  if (slot === 'front') return new THREE.Vector3(cfg.x || 0, s * 0.1 + (cfg.y || 0), s * 0.7 + (cfg.z || 0));
+  if (slot === 'back') return new THREE.Vector3(cfg.x || 0, s * 0.12 + (cfg.y || 0), -s * 0.72 + (cfg.z || 0));
+  return new THREE.Vector3((cfg.x || 0), s * 0.12 + (cfg.y || 0), cfg.z || 0);
+}
+
+function createEnemyAddon(def, style, addonCfg) {
+  const addonGroup = new THREE.Group();
+  const geo = enemyAddonLibrary[addonCfg.type];
+  if (!geo) return addonGroup;
+  const count = addonCfg.count || (addonCfg.slot === 'sides' ? 2 : 1);
+  for (let i = 0; i < count; i++) {
+    const mesh = new THREE.Mesh(geo, enemyMaterialPresets[style].addon);
+    const side = i === 0 ? -1 : 1;
+    const spread = addonCfg.spread || 0.65;
+    if (addonCfg.slot === 'sides') mesh.position.set(side * def.size * spread, def.size * 0.12, addonCfg.z || 0);
+    else mesh.position.copy(getEnemySlotOffset(addonCfg.slot, def, addonCfg));
+    if (addonCfg.type === 'horns' && addonCfg.slot !== 'sides') mesh.position.x += side * def.size * 0.22;
+    mesh.rotation.set(addonCfg.rot?.[0] || 0, addonCfg.rot?.[1] || 0, addonCfg.rot?.[2] || 0);
+    if (addonCfg.scale) mesh.scale.set(addonCfg.scale[0], addonCfg.scale[1], addonCfg.scale[2]);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    addonGroup.add(mesh);
+  }
+  return addonGroup;
+}
+
+function createEnemyBaseMesh(def, style, boss = false) {
   const g = new THREE.Group();
   const bodyScale = boss ? 1.34 : 1;
-  const bodyMat = makeEnemyMaterial(def.color, { roughness: 0.5, metalness: 0.38, emissive: 0x132030, emissiveIntensity: 0.14 });
-  const panelMat = makeEnemyMaterial(def.accents || 0xd6e0f3, { roughness: 0.36, metalness: 0.55, emissive: def.accents || 0x8fb5e8, emissiveIntensity: 0.2 });
-  const darkMat = makeEnemyMaterial(0x252a36, { roughness: 0.66, metalness: 0.22, emissive: 0x0f1117, emissiveIntensity: 0.08 });
-  const coreMat = makeEnemyMaterial(def.accents || 0xaad9ff, { roughness: 0.3, metalness: 0.62, emissive: def.accents || 0xaad9ff, emissiveIntensity: 0.38 });
-
+  const bodyMat = makeEnemyMaterial(style, 'body');
+  const panelMat = makeEnemyMaterial(style, 'panel');
+  const darkMat = makeEnemyMaterial(style, 'dark');
+  const coreMat = makeEnemyMaterial(style, 'core');
   if (def.type === 'runner') {
     const torso = new THREE.Mesh(new THREE.CapsuleGeometry(def.size * 0.42 * bodyScale, def.size * 0.84 * bodyScale, 4, 8), bodyMat);
-    torso.rotation.x = Math.PI * 0.08;
-    torso.castShadow = true;
-    g.add(torso);
+    torso.rotation.x = Math.PI * 0.08; g.add(torso);
     const visor = new THREE.Mesh(new THREE.BoxGeometry(def.size * 0.52 * bodyScale, def.size * 0.22 * bodyScale, def.size * 0.34 * bodyScale), coreMat);
-    visor.position.set(0, def.size * 0.22 * bodyScale, def.size * 0.44 * bodyScale);
-    g.add(visor);
+    visor.position.set(0, def.size * 0.22 * bodyScale, def.size * 0.44 * bodyScale); g.add(visor);
     for (let i = 0; i < 2; i++) {
       const side = i === 0 ? -1 : 1;
       const leg = new THREE.Mesh(new THREE.CylinderGeometry(def.size * 0.09 * bodyScale, def.size * 0.11 * bodyScale, def.size * 0.88 * bodyScale, 6), darkMat);
-      leg.position.set(side * def.size * 0.2 * bodyScale, -def.size * 0.34 * bodyScale, 0);
-      leg.castShadow = true;
-      g.add(leg);
+      leg.position.set(side * def.size * 0.2 * bodyScale, -def.size * 0.34 * bodyScale, 0); g.add(leg);
       const kneePlate = new THREE.Mesh(new THREE.BoxGeometry(def.size * 0.16 * bodyScale, def.size * 0.12 * bodyScale, def.size * 0.16 * bodyScale), panelMat);
-      kneePlate.position.set(side * def.size * 0.2 * bodyScale, -def.size * 0.06 * bodyScale, def.size * 0.16 * bodyScale);
-      g.add(kneePlate);
+      kneePlate.position.set(side * def.size * 0.2 * bodyScale, -def.size * 0.06 * bodyScale, def.size * 0.16 * bodyScale); g.add(kneePlate);
     }
-    const rearFin = new THREE.Mesh(new THREE.ConeGeometry(def.size * 0.16 * bodyScale, def.size * 0.5 * bodyScale, 5), panelMat);
-    rearFin.position.set(0, def.size * 0.1 * bodyScale, -def.size * 0.52 * bodyScale);
-    rearFin.rotation.x = Math.PI;
-    g.add(rearFin);
   } else if (def.type === 'tank' || boss) {
     const hull = new THREE.Mesh(new THREE.BoxGeometry(def.size * 1.78 * bodyScale, def.size * 0.82 * bodyScale, def.size * 1.55 * bodyScale), bodyMat);
-    hull.position.y = def.size * 0.08 * bodyScale;
-    hull.castShadow = true;
-    g.add(hull);
+    hull.position.y = def.size * 0.08 * bodyScale; g.add(hull);
     const topArmor = new THREE.Mesh(new THREE.BoxGeometry(def.size * 1.3 * bodyScale, def.size * 0.4 * bodyScale, def.size * 1.02 * bodyScale), panelMat);
-    topArmor.position.set(0, def.size * 0.46 * bodyScale, -def.size * 0.04 * bodyScale);
-    topArmor.castShadow = true;
-    g.add(topArmor);
+    topArmor.position.set(0, def.size * 0.46 * bodyScale, -def.size * 0.04 * bodyScale); g.add(topArmor);
     const core = new THREE.Mesh(new THREE.OctahedronGeometry(def.size * 0.32 * bodyScale, 0), coreMat);
-    core.position.set(0, def.size * 0.38 * bodyScale, def.size * 0.54 * bodyScale);
-    g.add(core);
-    for (let i = 0; i < 3; i++) {
-      const vent = new THREE.Mesh(new THREE.BoxGeometry(def.size * 0.28 * bodyScale, def.size * 0.08 * bodyScale, def.size * 0.18 * bodyScale), darkMat);
-      vent.position.set((i - 1) * def.size * 0.46 * bodyScale, def.size * 0.18 * bodyScale, -def.size * 0.68 * bodyScale);
-      g.add(vent);
-    }
+    core.position.set(0, def.size * 0.38 * bodyScale, def.size * 0.54 * bodyScale); g.add(core);
     for (let i = 0; i < 2; i++) {
       const side = i === 0 ? -1 : 1;
       const tread = new THREE.Mesh(new THREE.BoxGeometry(def.size * 0.42 * bodyScale, def.size * 0.42 * bodyScale, def.size * 1.46 * bodyScale), darkMat);
-      tread.position.set(side * def.size * 0.98 * bodyScale, -def.size * 0.04 * bodyScale, 0);
-      tread.castShadow = true;
-      g.add(tread);
+      tread.position.set(side * def.size * 0.98 * bodyScale, -def.size * 0.04 * bodyScale, 0); g.add(tread);
     }
   } else if (def.type === 'shielded') {
     const chassis = new THREE.Mesh(new THREE.CylinderGeometry(def.size * 0.5 * bodyScale, def.size * 0.64 * bodyScale, def.size * 1.08 * bodyScale, 7), bodyMat);
-    chassis.rotation.z = Math.PI / 2;
-    chassis.castShadow = true;
-    g.add(chassis);
+    chassis.rotation.z = Math.PI / 2; g.add(chassis);
     const face = new THREE.Mesh(new THREE.BoxGeometry(def.size * 0.88 * bodyScale, def.size * 0.6 * bodyScale, def.size * 0.28 * bodyScale), panelMat);
-    face.position.set(0, def.size * 0.08 * bodyScale, def.size * 0.5 * bodyScale);
-    g.add(face);
+    face.position.set(0, def.size * 0.08 * bodyScale, def.size * 0.5 * bodyScale); g.add(face);
     const core = new THREE.Mesh(new THREE.OctahedronGeometry(def.size * 0.26 * bodyScale, 0), coreMat);
-    core.position.set(0, def.size * 0.16 * bodyScale, def.size * 0.58 * bodyScale);
-    g.add(core);
-    const backPack = new THREE.Mesh(new THREE.BoxGeometry(def.size * 0.65 * bodyScale, def.size * 0.44 * bodyScale, def.size * 0.5 * bodyScale), darkMat);
-    backPack.position.set(0, def.size * 0.1 * bodyScale, -def.size * 0.44 * bodyScale);
-    g.add(backPack);
-    const shell = new THREE.Mesh(new THREE.SphereGeometry(def.size * 1.38 * bodyScale, 10, 8), makeEnemyMaterial(0x7db6ff, { transparent: true, opacity: 0.18, roughness: 0.16, metalness: 0.14, emissive: 0x7db6ff, emissiveIntensity: 0.42 }));
-    shell.name = 'shieldShell';
-    g.add(shell);
+    core.position.set(0, def.size * 0.16 * bodyScale, def.size * 0.58 * bodyScale); g.add(core);
+    const shell = new THREE.Mesh(new THREE.SphereGeometry(def.size * 1.38 * bodyScale, 10, 8), makeEnemyMaterial(style, 'shell'));
+    shell.name = 'shieldShell'; g.add(shell);
   } else if (def.flying) {
-    const cockpit = new THREE.Mesh(new THREE.OctahedronGeometry(def.size * 0.58 * bodyScale, 0), bodyMat);
-    cockpit.castShadow = true;
-    g.add(cockpit);
+    const cockpit = new THREE.Mesh(new THREE.OctahedronGeometry(def.size * 0.58 * bodyScale, 0), bodyMat); g.add(cockpit);
     const sensor = new THREE.Mesh(new THREE.SphereGeometry(def.size * 0.2 * bodyScale, 8, 6), coreMat);
-    sensor.position.set(0, 0, def.size * 0.46 * bodyScale);
-    g.add(sensor);
+    sensor.position.set(0, 0, def.size * 0.46 * bodyScale); g.add(sensor);
     for (let i = 0; i < 2; i++) {
       const side = i === 0 ? -1 : 1;
       const wing = new THREE.Mesh(new THREE.BoxGeometry(def.size * 0.16 * bodyScale, def.size * 0.06 * bodyScale, def.size * 1.6 * bodyScale), panelMat);
-      wing.position.set(side * def.size * 0.58 * bodyScale, 0, 0);
-      wing.rotation.x = Math.PI * 0.18;
-      g.add(wing);
-      const thruster = new THREE.Mesh(new THREE.ConeGeometry(def.size * 0.11 * bodyScale, def.size * 0.4 * bodyScale, 6), darkMat);
-      thruster.position.set(side * def.size * 0.48 * bodyScale, -def.size * 0.02 * bodyScale, -def.size * 0.62 * bodyScale);
-      thruster.rotation.x = Math.PI;
-      g.add(thruster);
+      wing.position.set(side * def.size * 0.58 * bodyScale, 0, 0); wing.rotation.x = Math.PI * 0.18; g.add(wing);
     }
   }
-  g.traverse(part => { if (part.isMesh) part.castShadow = true; });
+  g.traverse(part => { if (part.isMesh) { part.castShadow = true; part.receiveShadow = true; } });
   return g;
+}
+
+const bossFactory = {
+  1: (def, performanceMode) => {
+    const style = 'stone';
+    const root = new THREE.Group();
+    root.add(createEnemyBaseMesh(def, style, true));
+    root.add(createEnemyAddon(def, style, { type: 'plates', slot: 'top', scale: [1.6, 1.2, 1.5] }));
+    root.add(createEnemyAddon(def, style, { type: 'shoulderPads', slot: 'sides', spread: 1 }));
+    return root;
+  },
+  2: (def, performanceMode) => {
+    const style = 'ice';
+    const root = new THREE.Group();
+    root.add(createEnemyBaseMesh(def, style, true));
+    root.add(createEnemyAddon(def, style, { type: 'spikes', slot: 'top', count: 4 }));
+    root.add(createEnemyAddon(def, style, { type: 'shards', slot: 'sides', spread: 1 }));
+    return root;
+  },
+  3: (def, performanceMode) => {
+    const style = 'lava';
+    const root = new THREE.Group();
+    root.add(createEnemyBaseMesh(def, style, true));
+    root.add(createEnemyAddon(def, style, { type: 'vents', slot: 'back', count: 4 }));
+    root.add(createEnemyAddon(def, style, { type: 'spikes', slot: 'front', count: 3 }));
+    return root;
+  },
+  4: (def, performanceMode) => {
+    const style = 'void';
+    const root = new THREE.Group();
+    root.add(createEnemyBaseMesh(def, style, true));
+    const orbiter = new THREE.Group();
+    const ringA = new THREE.Mesh(enemyAddonLibrary.rings, enemyMaterialPresets.void.addon);
+    const ringB = new THREE.Mesh(enemyAddonLibrary.rings, enemyMaterialPresets.void.addon);
+    ringA.rotation.x = Math.PI / 2;
+    ringB.rotation.y = Math.PI / 2;
+    ringA.scale.setScalar(1.8);
+    ringB.scale.setScalar(1.45);
+    orbiter.add(ringA, ringB);
+    if (!performanceMode) root.add(orbiter);
+    root.add(createEnemyAddon(def, style, { type: 'coreNode', slot: 'top', y: 0.3, scale: [1.6, 1.6, 1.6] }));
+    root.userData.bossOrbit = orbiter;
+    return root;
+  }
+};
+
+function createBossVisual(worldId, def, performanceMode) {
+  const buildBoss = bossFactory[worldId] || bossFactory[1];
+  return buildBoss(def, performanceMode);
+}
+
+function createEnemyMesh(def, worldId, boss = false) {
+  const preset = enemyVisualPresets[worldId]?.[def.type] || enemyVisualPresets[1].runner;
+  if (boss) return createBossVisual(worldId, def, ui.perfToggle.checked);
+  const root = new THREE.Group();
+  const baseMesh = createEnemyBaseMesh(def, preset.baseStyle, false);
+  const addonsGroup = new THREE.Group();
+  const vfxGroup = new THREE.Group();
+  preset.addons.forEach(addon => addonsGroup.add(createEnemyAddon(def, preset.baseStyle, addon)));
+  if (!ui.perfToggle.checked) {
+    const core = new THREE.Mesh(enemyAddonLibrary.coreNode, enemyMaterialPresets[preset.baseStyle].vfx);
+    core.position.copy(getEnemySlotOffset('top', def, { y: 0.16 }));
+    core.scale.setScalar(0.6);
+    vfxGroup.add(core);
+  }
+  root.add(baseMesh, addonsGroup, vfxGroup);
+  root.userData = { kind: 'enemyVisual', baseMesh, addonsGroup, vfxGroup, preset };
+  return root;
 }
 
 function getHealthBar() {
@@ -2368,7 +2497,7 @@ function spawnEnemy(boss = false) {
   const keys = Object.keys(enemyArchetypes);
   const archetype = boss ? 'tank' : keys[Math.floor(Math.random() * keys.length)];
   const def = enemyArchetypes[archetype];
-  const mesh = createEnemyMesh(def, boss);
+  const mesh = createEnemyMesh(def, worldId, boss);
   mesh.castShadow = true;
   world.add(mesh);
   const healthBar = getHealthBar();
@@ -2982,11 +3111,18 @@ function animate(now) {
     if (wasFrozen && e.freeze <= 0.01) emitParticleBurst(e.mesh.position.clone(), { color: 0xbfefff, count: 8, spread: 2.1, life: 0.26, y: 0.22 });
     e.mesh.scale.setScalar((e.boss ? 1.45 : 1) * pulse * hitScale);
     e.mesh.rotation.set(pitch, pathYaw + roll, roll * 0.7);
+    const pulseOrbit = e.mesh.userData?.bossOrbit;
+    if (pulseOrbit && pulseOrbit.children.length) {
+      pulseOrbit.rotation.y += simDt * 0.65;
+      pulseOrbit.rotation.x = Math.sin(now * 0.0015 + e.motionPhase) * 0.2;
+    }
     e.mesh.traverse(part => {
-      if (part.material?.emissive) {
+      if (part.material?.emissive && part.material.userData?.enemyDynamic) {
         const em = e.hitFlash > 0 ? 0xffd8b1 : (e.poison > 0 ? 0x88ff55 : (e.freeze > 0 ? 0x8edbff : (e.shield > 0 ? 0x7f8cff : 0x18232d)));
-        part.material.emissive.setHex(em);
-        part.material.emissiveIntensity = e.hitFlash > 0 ? 0.55 : (e.flying ? 0.25 : 0.18);
+        const baseEm = part.material.userData.baseEmissive;
+        enemyTintScratch.setHex(em).lerp(baseEm || enemyBaseTintScratch.setHex(0x18232d), 0.45);
+        part.material.emissive.copy(enemyTintScratch);
+        part.material.emissiveIntensity = (e.hitFlash > 0 ? 0.55 : (e.flying ? 0.25 : 0.18)) + (part.material.userData.baseIntensity || 0) * 0.35;
       }
       if (part.name === 'shieldShell') {
         part.visible = e.shield > 0;
