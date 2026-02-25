@@ -319,3 +319,58 @@ button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; co
     right: calc(env(safe-area-inset-right) + clamp(8px, calc(12px * var(--hudScale)), 18px));
   }
 }
+
+.tutorialOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 22;
+  pointer-events: auto;
+}
+
+.tutorialBackdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 8, 14, 0.72);
+}
+
+.tutorialHighlight {
+  position: absolute;
+  border: 2px solid rgba(136, 222, 255, 0.95);
+  border-radius: 12px;
+  box-shadow: 0 0 0 1px rgba(198, 240, 255, 0.7), 0 0 16px rgba(84, 200, 255, 0.45);
+  pointer-events: none;
+}
+
+.tutorialCard {
+  position: absolute;
+  width: min(calc(var(--vwPx) * 0.9px), 420px);
+  background: linear-gradient(160deg, rgba(20, 34, 54, 0.98), rgba(9, 17, 30, 0.98));
+  border: 1px solid rgba(106, 169, 240, 0.62);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.42);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.tutorialHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.tutorialHeader h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+#tutorialText {
+  margin: 8px 0 10px;
+  line-height: 1.4;
+  font-size: 14px;
+}
+
+.tutorialActions {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
