@@ -418,56 +418,210 @@ const objectiveVisuals = (() => {
     },
     castleMaterialCache: new Map(),
     castlePartGeometries: {
-      gate: new THREE.BoxGeometry(0.34, 0.46, 0.1),
-      banner: new THREE.BoxGeometry(0.08, 0.58, 0.02),
-      crest: new THREE.BoxGeometry(0.2, 0.12, 0.08),
-      trim: new THREE.TorusGeometry(0.28, 0.03, 8, 16)
+      block: new THREE.BoxGeometry(1, 1, 1),
+      slab: new THREE.BoxGeometry(1, 0.2, 1),
+      pillar: new THREE.CylinderGeometry(0.12, 0.14, 1, 8),
+      tower: new THREE.CylinderGeometry(0.24, 0.28, 1, 12),
+      prismTower: new THREE.CylinderGeometry(0.26, 0.3, 1, 6),
+      roofCone: new THREE.ConeGeometry(0.34, 0.52, 12),
+      roofPyramid: new THREE.ConeGeometry(0.4, 0.46, 4),
+      roofDome: new THREE.SphereGeometry(0.3, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.58),
+      archRing: new THREE.TorusGeometry(0.18, 0.04, 8, 14, Math.PI),
+      trimRing: new THREE.TorusGeometry(0.28, 0.03, 8, 16),
+      spike: new THREE.ConeGeometry(0.06, 0.18, 8),
+      bannerPole: new THREE.CylinderGeometry(0.03, 0.03, 0.64, 6),
+      bannerCloth: new THREE.BoxGeometry(0.19, 0.36, 0.02),
+      buttress: new THREE.BoxGeometry(0.12, 0.26, 0.18)
     }
   };
 
-  function getCastleVariantMaterial(partId, variantId) {
-    const colors = [0x9ea3ab, 0x7082a9, 0x82c091, 0xd9a066, 0xd97575];
-    const key = `${partId}|${variantId}`;
-    if (shared.castleMaterialCache.has(key)) return shared.castleMaterialCache.get(key);
-    const material = new THREE.MeshStandardMaterial({
-      color: colors[Math.max(0, Math.min(colors.length - 1, variantId))],
-      roughness: 0.68,
-      metalness: partId.includes('roof') || partId.includes('tower') ? 0.24 : 0.14,
-      emissive: 0x0a0d12,
-      emissiveIntensity: variantId * 0.02
-    });
-    shared.castleMaterialCache.set(key, material);
+  const castleStylePresets = {
+    stone: { color: 0x9fa4ae, roughness: 0.84, metalness: 0.06, emissive: 0x0d1016, emissiveIntensity: 0.04 },
+    brick: { color: 0xa56f5f, roughness: 0.74, metalness: 0.1, emissive: 0x150b09, emissiveIntensity: 0.03 },
+    metal: { color: 0x8e959f, roughness: 0.38, metalness: 0.72, emissive: 0x1a1d26, emissiveIntensity: 0.08 },
+    ice: { color: 0x8ec3e7, roughness: 0.28, metalness: 0.16, emissive: 0x1f3e63, emissiveIntensity: 0.14 },
+    lava: { color: 0x7f4a3e, roughness: 0.56, metalness: 0.12, emissive: 0xff6a2b, emissiveIntensity: 0.17 },
+    dark: { color: 0x353742, roughness: 0.64, metalness: 0.22, emissive: 0x121527, emissiveIntensity: 0.1 }
+  };
+
+  const variantStyleById = ['stone', 'brick', 'metal', 'ice', 'lava'];
+
+  function getCastleStyleMaterial(styleKey = 'stone') {
+    const safeStyle = castleStylePresets[styleKey] ? styleKey : 'stone';
+    if (shared.castleMaterialCache.has(safeStyle)) return shared.castleMaterialCache.get(safeStyle);
+    const style = castleStylePresets[safeStyle];
+    const material = new THREE.MeshStandardMaterial(style);
+    shared.castleMaterialCache.set(safeStyle, material);
     return material;
   }
 
-  function createVariantBuilders(partId, baseGeometry, basePosition, isRoof = false) {
-    return Array.from({ length: CASTLE_VARIANTS_PER_PART }, (_, variantId) => () => {
+  function addPartMesh(group, geometry, styleKey, position, scale = [1, 1, 1], rotation = [0, 0, 0]) {
+    const mesh = new THREE.Mesh(geometry, getCastleStyleMaterial(styleKey));
+    mesh.position.set(position[0], position[1], position[2]);
+    mesh.scale.set(scale[0], scale[1], scale[2]);
+    mesh.rotation.set(rotation[0], rotation[1], rotation[2]);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    group.add(mesh);
+    return mesh;
+  }
+
+  function createPartVariantBuilders(buildVariant) {
+    return Array.from({ length: CASTLE_VARIANTS_PER_PART }, (_, variantId) => () => buildVariant(variantId));
+  }
+
+  function createWallVariants() {
+    return createPartVariantBuilders(variantId => {
       const group = new THREE.Group();
-      const mat = getCastleVariantMaterial(partId, variantId);
-      const core = new THREE.Mesh(baseGeometry, mat);
-      const scaleMul = 1 + variantId * 0.05;
-      core.scale.set(isRoof ? 1 + variantId * 0.02 : scaleMul, 1 + variantId * 0.04, isRoof ? 1 + variantId * 0.02 : scaleMul);
-      core.position.copy(basePosition);
-      group.add(core);
-      if (variantId > 0) {
-        const crest = new THREE.Mesh(shared.castlePartGeometries.crest, mat);
-        crest.position.set(basePosition.x, basePosition.y + (isRoof ? 0.24 : 0.32), basePosition.z);
-        crest.scale.setScalar(0.85 + variantId * 0.12);
-        group.add(crest);
-      }
-      if (variantId > 2) {
-        const trim = new THREE.Mesh(shared.castlePartGeometries.trim, mat);
-        trim.position.set(basePosition.x, basePosition.y + (isRoof ? 0.14 : 0.2), basePosition.z);
-        trim.rotation.x = -Math.PI / 2;
-        trim.scale.setScalar(0.8 + variantId * 0.04);
-        group.add(trim);
-      }
-      group.traverse(obj => {
-        if (obj.isMesh) {
-          obj.castShadow = true;
-          obj.receiveShadow = true;
+      const style = variantStyleById[variantId] || 'stone';
+      addPartMesh(group, shared.castlePartGeometries.tower, style, [0, 0.26, 0], [1.42, 0.5, 1.42]);
+      if (variantId === 0) {
+        for (let i = 0; i < 8; i++) {
+          const t = (i / 8) * Math.PI * 2;
+          addPartMesh(group, shared.castlePartGeometries.block, style, [Math.cos(t) * 0.78, 0.58, Math.sin(t) * 0.78], [0.18, 0.16, 0.22], [0, t, 0]);
         }
-      });
+      } else if (variantId === 1) {
+        addPartMesh(group, shared.castlePartGeometries.block, style, [0, 0.56, 0], [1.25, 0.28, 1.25]);
+        addPartMesh(group, shared.castlePartGeometries.trimRing, 'dark', [0, 0.66, 0], [1.4, 1, 1.4], [-Math.PI / 2, 0, 0]);
+      } else if (variantId === 2) {
+        addPartMesh(group, shared.castlePartGeometries.prismTower, style, [0, 0.52, 0], [1.25, 0.66, 1.25]);
+        for (let i = 0; i < 6; i++) {
+          const t = (i / 6) * Math.PI * 2;
+          addPartMesh(group, shared.castlePartGeometries.buttress, 'dark', [Math.cos(t) * 0.82, 0.22, Math.sin(t) * 0.82], [0.9, 0.95, 1], [0, t, 0]);
+        }
+      } else if (variantId === 3) {
+        addPartMesh(group, shared.castlePartGeometries.block, style, [0, 0.42, 0], [1.36, 0.56, 1.36]);
+        for (let i = 0; i < 4; i++) {
+          const t = (Math.PI / 2) * i + Math.PI / 4;
+          addPartMesh(group, shared.castlePartGeometries.spike, 'ice', [Math.cos(t) * 0.74, 0.76, Math.sin(t) * 0.74], [1.4, 1.2, 1.4]);
+        }
+      } else {
+        addPartMesh(group, shared.castlePartGeometries.block, style, [0, 0.5, 0], [1.18, 0.5, 1.18]);
+        addPartMesh(group, shared.castlePartGeometries.trimRing, 'lava', [0, 0.48, 0], [1.6, 1, 1.6], [-Math.PI / 2, 0, 0]);
+      }
+      return group;
+    });
+  }
+
+  function createKeepVariants() {
+    return createPartVariantBuilders(variantId => {
+      const group = new THREE.Group();
+      const style = variantStyleById[variantId] || 'stone';
+      if (variantId === 0) {
+        addPartMesh(group, shared.castlePartGeometries.block, style, [0, 0.92, 0], [1.04, 1.06, 1.04]);
+      } else if (variantId === 1) {
+        addPartMesh(group, shared.castlePartGeometries.block, style, [0, 0.82, 0], [1.24, 0.9, 1.08]);
+        addPartMesh(group, shared.castlePartGeometries.block, style, [0, 1.3, 0], [0.78, 0.36, 0.78]);
+      } else if (variantId === 2) {
+        addPartMesh(group, shared.castlePartGeometries.prismTower, style, [0, 0.96, 0], [1.45, 1.2, 1.45]);
+        addPartMesh(group, shared.castlePartGeometries.trimRing, 'dark', [0, 1.32, 0], [1.18, 1, 1.18], [-Math.PI / 2, 0, 0]);
+      } else if (variantId === 3) {
+        addPartMesh(group, shared.castlePartGeometries.block, style, [0, 0.84, 0], [1.08, 1, 1.08]);
+        addPartMesh(group, shared.castlePartGeometries.roofDome, 'ice', [0, 1.38, 0], [1.3, 1.05, 1.3]);
+      } else {
+        addPartMesh(group, shared.castlePartGeometries.block, style, [0, 0.9, 0], [1.12, 1.14, 1.12]);
+        for (let i = 0; i < 4; i++) {
+          const t = (Math.PI / 2) * i + Math.PI / 4;
+          addPartMesh(group, shared.castlePartGeometries.spike, 'lava', [Math.cos(t) * 0.48, 1.58, Math.sin(t) * 0.48], [1.2, 1.55, 1.2]);
+        }
+      }
+      return group;
+    });
+  }
+
+  function createGateVariants() {
+    return createPartVariantBuilders(variantId => {
+      const group = new THREE.Group();
+      const style = variantStyleById[variantId] || 'stone';
+      addPartMesh(group, shared.castlePartGeometries.block, style, [0, 0.54, 0.54], [0.58, 0.56, 0.24]);
+      if (variantId === 0) {
+        addPartMesh(group, shared.castlePartGeometries.archRing, 'dark', [0, 0.66, 0.66], [1, 1, 1], [Math.PI / 2, 0, 0]);
+      } else if (variantId === 1) {
+        addPartMesh(group, shared.castlePartGeometries.block, 'dark', [0, 0.44, 0.67], [0.34, 0.34, 0.08]);
+        addPartMesh(group, shared.castlePartGeometries.block, style, [-0.24, 0.56, 0.54], [0.18, 0.58, 0.22]);
+        addPartMesh(group, shared.castlePartGeometries.block, style, [0.24, 0.56, 0.54], [0.18, 0.58, 0.22]);
+      } else if (variantId === 2) {
+        addPartMesh(group, shared.castlePartGeometries.trimRing, 'metal', [0, 0.56, 0.64], [0.95, 1, 0.95], [Math.PI / 2, 0, 0]);
+        addPartMesh(group, shared.castlePartGeometries.block, 'metal', [0, 0.64, 0.54], [0.62, 0.12, 0.26]);
+      } else if (variantId === 3) {
+        addPartMesh(group, shared.castlePartGeometries.block, 'ice', [0, 0.58, 0.54], [0.62, 0.64, 0.22]);
+        addPartMesh(group, shared.castlePartGeometries.archRing, 'ice', [0, 0.74, 0.66], [1.05, 1, 1.05], [Math.PI / 2, 0, 0]);
+      } else {
+        addPartMesh(group, shared.castlePartGeometries.block, 'lava', [0, 0.62, 0.54], [0.66, 0.72, 0.22]);
+        addPartMesh(group, shared.castlePartGeometries.block, 'dark', [0, 0.58, 0.67], [0.36, 0.48, 0.08]);
+      }
+      return group;
+    });
+  }
+
+  function createTowerVariants(position) {
+    return createPartVariantBuilders(variantId => {
+      const group = new THREE.Group();
+      const style = variantStyleById[variantId] || 'stone';
+      const px = position.x;
+      const pz = position.z;
+      if (variantId === 0) {
+        addPartMesh(group, shared.castlePartGeometries.tower, style, [px, 0.86, pz], [0.95, 0.92, 0.95]);
+      } else if (variantId === 1) {
+        addPartMesh(group, shared.castlePartGeometries.block, style, [px, 0.84, pz], [0.46, 0.92, 0.46]);
+        addPartMesh(group, shared.castlePartGeometries.block, 'dark', [px, 1.28, pz], [0.54, 0.12, 0.54]);
+      } else if (variantId === 2) {
+        addPartMesh(group, shared.castlePartGeometries.prismTower, style, [px, 0.88, pz], [0.95, 1, 0.95]);
+      } else if (variantId === 3) {
+        addPartMesh(group, shared.castlePartGeometries.tower, style, [px, 0.82, pz], [1.08, 0.86, 1.08]);
+        addPartMesh(group, shared.castlePartGeometries.trimRing, 'ice', [px, 1.18, pz], [0.9, 1, 0.9], [-Math.PI / 2, 0, 0]);
+      } else {
+        addPartMesh(group, shared.castlePartGeometries.block, style, [px, 0.92, pz], [0.42, 1.08, 0.42]);
+        addPartMesh(group, shared.castlePartGeometries.spike, 'lava', [px, 1.46, pz], [1.3, 1.5, 1.3]);
+      }
+      return group;
+    });
+  }
+
+  function createRoofVariants(position) {
+    return createPartVariantBuilders(variantId => {
+      const group = new THREE.Group();
+      const style = variantStyleById[variantId] || 'stone';
+      const px = position.x;
+      const pz = position.z;
+      if (variantId === 0) {
+        addPartMesh(group, shared.castlePartGeometries.roofCone, style, [px, 1.52, pz], [1, 1, 1]);
+      } else if (variantId === 1) {
+        addPartMesh(group, shared.castlePartGeometries.roofPyramid, style, [px, 1.5, pz], [0.9, 1.04, 0.9], [0, Math.PI / 4, 0]);
+      } else if (variantId === 2) {
+        addPartMesh(group, shared.castlePartGeometries.roofDome, style, [px, 1.5, pz], [1.1, 1.02, 1.1]);
+        addPartMesh(group, shared.castlePartGeometries.spike, 'metal', [px, 1.74, pz], [1, 0.86, 1]);
+      } else if (variantId === 3) {
+        addPartMesh(group, shared.castlePartGeometries.roofCone, style, [px, 1.54, pz], [0.82, 1.18, 0.82]);
+        addPartMesh(group, shared.castlePartGeometries.trimRing, 'ice', [px, 1.36, pz], [0.72, 1, 0.72], [-Math.PI / 2, 0, 0]);
+      } else {
+        addPartMesh(group, shared.castlePartGeometries.roofPyramid, style, [px, 1.54, pz], [0.82, 1.22, 0.82], [0, Math.PI / 4, 0]);
+        addPartMesh(group, shared.castlePartGeometries.spike, 'lava', [px, 1.78, pz], [0.9, 0.9, 0.9]);
+      }
+      return group;
+    });
+  }
+
+  function createBannerVariants() {
+    return createPartVariantBuilders(variantId => {
+      const group = new THREE.Group();
+      const style = variantStyleById[variantId] || 'stone';
+      addPartMesh(group, shared.castlePartGeometries.bannerPole, 'dark', [0, 1.62, 0.46], [1, 1, 1], [0, 0, 0.1]);
+      if (variantId === 0) {
+        addPartMesh(group, shared.castlePartGeometries.bannerCloth, style, [0.1, 1.62, 0.46], [0.9, 1.08, 1]);
+      } else if (variantId === 1) {
+        addPartMesh(group, shared.castlePartGeometries.bannerCloth, style, [0.11, 1.7, 0.46], [0.8, 0.76, 1]);
+        addPartMesh(group, shared.castlePartGeometries.bannerCloth, style, [0.11, 1.42, 0.46], [0.78, 0.56, 1]);
+      } else if (variantId === 2) {
+        addPartMesh(group, shared.castlePartGeometries.bannerCloth, style, [0.08, 1.64, 0.46], [0.66, 1.2, 1], [0, 0.08, 0]);
+        addPartMesh(group, shared.castlePartGeometries.trimRing, 'metal', [0.02, 1.8, 0.46], [0.38, 1, 0.38], [0, Math.PI / 2, 0]);
+      } else if (variantId === 3) {
+        addPartMesh(group, shared.castlePartGeometries.bannerCloth, style, [0.11, 1.64, 0.46], [0.8, 0.95, 1], [0, 0.13, 0]);
+        addPartMesh(group, shared.castlePartGeometries.spike, 'ice', [0.02, 1.95, 0.46], [1.05, 1.05, 1.05]);
+      } else {
+        addPartMesh(group, shared.castlePartGeometries.bannerCloth, style, [0.11, 1.64, 0.46], [0.86, 1.14, 1], [0, -0.12, 0]);
+        addPartMesh(group, shared.castlePartGeometries.block, 'dark', [0.03, 1.42, 0.46], [0.16, 0.16, 0.08]);
+      }
       return group;
     });
   }
@@ -478,17 +632,24 @@ const objectiveVisuals = (() => {
   });
 
   const castlePartsRegistry = {
-    wall: { variants: createVariantBuilders('wall', shared.castleBaseGeom, new THREE.Vector3(0, 0.25, 0)) },
-    keep: { variants: createVariantBuilders('keep', shared.castleKeepGeom, new THREE.Vector3(0, 0.95, 0)) },
-    gate: { variants: createVariantBuilders('gate', shared.castlePartGeometries.gate, new THREE.Vector3(0, 0.52, 0.54)) },
-    banner: { variants: createVariantBuilders('banner', shared.castlePartGeometries.banner, new THREE.Vector3(0, 1.58, 0.46)) }
+    wall: { variants: createWallVariants() },
+    keep: { variants: createKeepVariants() },
+    gate: { variants: createGateVariants() },
+    banner: { variants: createBannerVariants() }
   };
 
   towerPositions.forEach((pos, idx) => {
     const towerId = `tower_${idx + 1}`;
     const roofId = `roof_${idx + 1}`;
-    castlePartsRegistry[towerId] = { variants: createVariantBuilders(towerId, shared.castleTowerGeom, new THREE.Vector3(pos.x, 0.86, pos.z)) };
-    castlePartsRegistry[roofId] = { variants: createVariantBuilders(roofId, shared.castleRoofGeom, new THREE.Vector3(pos.x, 1.52, pos.z), true) };
+    castlePartsRegistry[towerId] = { variants: createTowerVariants(pos) };
+    castlePartsRegistry[roofId] = { variants: createRoofVariants(pos) };
+  });
+
+  Object.keys(castleParts).forEach(partId => {
+    const variants = castlePartsRegistry[partId]?.variants;
+    if (!variants || variants.length !== CASTLE_VARIANTS_PER_PART) {
+      console.warn(`[Castle] Invalid variant registry for ${partId}; expected ${CASTLE_VARIANTS_PER_PART}.`);
+    }
   });
 
   function getPathDirection(path, fromStart = true) {
