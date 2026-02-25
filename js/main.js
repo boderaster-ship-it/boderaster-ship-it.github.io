@@ -3777,7 +3777,7 @@ ui.cancelBuildBtn.onclick = () => {
 ui.startWaveBtn.onclick = () => {
   if (!state.buildPhase) return;
   if (state.mode === 'campaign' && state.wave >= state.levelWaves) return;
-  const minTowers = state.mode === 'campaign' ? (campaignDefs[Math.min(state.currentLevel,24)-1]?.recommendedTowers || 1) : 1;
+  const minTowers = 1;
   if (state.towers.length < minTowers) {
     showToast(`Dieses Level benötigt mindestens ${minTowers} Türme.`, false);
     return;
