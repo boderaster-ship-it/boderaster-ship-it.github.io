@@ -381,12 +381,6 @@ syncProgressUnlocks();
 sanitizeCastleBuildState();
 
 const board = { w: 16, h: 16, tile: 1.12, blocked: new Set(), path: [...worldPaths[1][1]] };
-const playfieldBounds = {
-  minX: -board.w * board.tile * 0.5,
-  maxX: board.w * board.tile * 0.5,
-  minZ: -board.tile * 0.5,
-  maxZ: (board.h - 0.5) * board.tile
-};
 let pathCellSet = new Set(board.path.map(([x, z]) => `${x},${z}`));
 const GROUND_Y = 0;
 
@@ -431,17 +425,6 @@ scene.add(sky);
 
 const world = new THREE.Group();
 scene.add(world);
-const pathGroup = new THREE.Group();
-pathGroup.name = 'pathGroup';
-const playfieldGroup = new THREE.Group();
-playfieldGroup.name = 'playfieldGroup';
-const worldEnvironmentGroup = new THREE.Group();
-worldEnvironmentGroup.name = 'worldEnvironmentGroup';
-const towerGroup = new THREE.Group();
-towerGroup.name = 'towerGroup';
-const enemyGroup = new THREE.Group();
-enemyGroup.name = 'enemyGroup';
-world.add(pathGroup, playfieldGroup, worldEnvironmentGroup, towerGroup, enemyGroup);
 
 const objectiveVisuals = (() => {
   const shared = {
@@ -931,27 +914,23 @@ function syncObjectiveVisuals(worldId, levelId) {
   objectiveEntities.castle?.group?.removeFromParent();
   objectiveEntities.spawnPoint = objectiveVisuals.createSpawnPoint(worldId, levelId, board.path, cellToWorld);
   objectiveEntities.castle = objectiveVisuals.createCastle(worldId, levelId, board.path, cellToWorld);
-  if (objectiveEntities.spawnPoint) playfieldGroup.add(objectiveEntities.spawnPoint);
-  if (objectiveEntities.castle?.group) playfieldGroup.add(objectiveEntities.castle.group);
+  if (objectiveEntities.spawnPoint) world.add(objectiveEntities.spawnPoint);
+  if (objectiveEntities.castle?.group) world.add(objectiveEntities.castle.group);
   applyCastleBuildToModel();
 }
 
 const terrain = buildTerrain();
-terrain.userData.preserveResources = true;
-worldEnvironmentGroup.add(terrain);
+world.add(terrain);
 buildPath();
 syncObjectiveVisuals(1, 1);
 
 const ghost = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 1.25, 10), new THREE.MeshStandardMaterial({ color: 0x57ffa3, transparent: true, opacity: 0.45 }));
 ghost.visible = false;
-ghost.userData.preserveResources = true;
 const hoverTile = new THREE.Mesh(new THREE.BoxGeometry(board.tile * 0.94, 0.04, board.tile * 0.94), new THREE.MeshStandardMaterial({ color: 0x57ffa3, emissive: 0x1a5f3f, emissiveIntensity: 0.35, transparent: true, opacity: 0.4 }));
 hoverTile.visible = false;
-hoverTile.userData.preserveResources = true;
 const rangeRing = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.03, 48), new THREE.MeshBasicMaterial({ color: 0x57ffa3, transparent: true, opacity: 0.34, side: THREE.DoubleSide }));
 rangeRing.rotation.x = -Math.PI / 2;
 rangeRing.visible = false;
-rangeRing.userData.preserveResources = true;
 const blockedCross = new THREE.Group();
 const crossMat = new THREE.MeshBasicMaterial({ color: 0xff667a, transparent: true, opacity: 0.75 });
 const crossA = new THREE.Mesh(new THREE.BoxGeometry(board.tile * 0.66, 0.028, 0.08), crossMat);
@@ -960,15 +939,13 @@ crossA.rotation.y = Math.PI / 4;
 crossB.rotation.y = -Math.PI / 4;
 blockedCross.add(crossA, crossB);
 blockedCross.visible = false;
-blockedCross.userData.preserveResources = true;
 const boardPlane = new THREE.Mesh(
   new THREE.PlaneGeometry(board.w * board.tile, board.h * board.tile),
   new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide })
 );
 boardPlane.rotation.x = -Math.PI / 2;
 boardPlane.position.set(0, GROUND_Y + 0.18, board.h * board.tile * 0.5 - board.tile * 0.5);
-boardPlane.userData.preserveResources = true;
-playfieldGroup.add(boardPlane, ghost, hoverTile, rangeRing, blockedCross);
+world.add(boardPlane, ghost, hoverTile, rangeRing, blockedCross);
 
 const buildPads = new Map();
 const obstacleCells = new Map();
@@ -986,7 +963,6 @@ let hoverVisualState = { valid: true, pulse: 0 };
 
 buildBuildZonePads();
 buildEnvironmentProps();
-buildWorldEnvironment(1);
 
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
@@ -1143,8 +1119,6 @@ function applyWorldTheme(worldId) {
   hemi.groundColor.setHex(worldId === 3 ? 0x5e3a2c : 0x6f9269);
   dir.color.setHex(theme.sun || 0xfff5dd);
   dir.intensity = theme.sunIntensity || 1.6;
-  dir.shadow.intensity = worldId === 3 ? 0.38 : 0.46;
-  dir.shadow.normalBias = worldId === 2 ? 0.035 : 0.025;
   rimLight.color.setHex(worldId === 3 ? 0x8cb9ff : 0xa7cdff);
   rimLight.intensity = worldId === 3 ? 0.34 : 0.42;
   fillLight.color.setHex(worldId === 2 ? 0xffe4c7 : 0xffd1a4);
@@ -1154,15 +1128,12 @@ function applyWorldTheme(worldId) {
 function rebuildWorldForCampaign() {
   const def = getSelectedCampaignDef();
   setBoardPath(worldPaths[def.world][def.levelInWorld]);
-  clearGroup(pathGroup);
-  clearGroup(playfieldGroup);
-  clearGroup(worldEnvironmentGroup);
-  worldEnvironmentGroup.add(terrain);
+  while (world.children.length) world.remove(world.children[0]);
+  world.add(terrain);
   buildPath();
   buildEnvironmentProps();
-  buildWorldEnvironment(def.world);
   syncObjectiveVisuals(def.world, def.levelInWorld);
-  playfieldGroup.add(boardPlane, ghost, hoverTile, rangeRing, blockedCross);
+  world.add(boardPlane, ghost, hoverTile, rangeRing, blockedCross);
   buildPads.clear();
   buildBuildZonePads();
   applyWorldTheme(def.world);
@@ -1171,15 +1142,12 @@ function rebuildWorldForCampaign() {
 function rebuildWorldForMode(worldId = 1) {
   const safeWorld = Math.max(1, Math.min(4, Number(worldId) || 1));
   setBoardPath(worldPaths[safeWorld][1]);
-  clearGroup(pathGroup);
-  clearGroup(playfieldGroup);
-  clearGroup(worldEnvironmentGroup);
-  worldEnvironmentGroup.add(terrain);
+  while (world.children.length) world.remove(world.children[0]);
+  world.add(terrain);
   buildPath();
   buildEnvironmentProps();
-  buildWorldEnvironment(safeWorld);
   syncObjectiveVisuals(safeWorld, 1);
-  playfieldGroup.add(boardPlane, ghost, hoverTile, rangeRing, blockedCross);
+  world.add(boardPlane, ghost, hoverTile, rangeRing, blockedCross);
   buildPads.clear();
   buildBuildZonePads();
   applyWorldTheme(safeWorld);
@@ -1292,133 +1260,6 @@ function buildTerrain() {
   return mesh;
 }
 
-
-function worldOutsidePlayfield(x, z, margin = board.tile * 0.75) {
-  return x < (playfieldBounds.minX - margin)
-    || x > (playfieldBounds.maxX + margin)
-    || z < (playfieldBounds.minZ - margin)
-    || z > (playfieldBounds.maxZ + margin);
-}
-
-function buildOuterTerrain(worldId) {
-  const ringMargin = 11;
-  const seg = board.w + ringMargin * 2;
-  const sizeW = (board.w + ringMargin * 2) * board.tile;
-  const sizeH = (board.h + ringMargin * 2) * board.tile;
-  const geom = new THREE.PlaneGeometry(sizeW, sizeH, seg, seg);
-  const pos = geom.attributes.position;
-  const seed = worldId * 97;
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i);
-    const z = pos.getY(i);
-    if (!worldOutsidePlayfield(x, z, board.tile * 1.1)) continue;
-    const nx = x / (board.tile * (board.w + ringMargin));
-    const nz = z / (board.tile * (board.h + ringMargin));
-    const low = Math.sin((nx * 1.7 + seed * 0.003) * Math.PI * 2) * Math.cos((nz * 1.5 - seed * 0.002) * Math.PI * 2);
-    const mid = Math.cos((nx * 3.1 - nz * 2.2 + seed * 0.004) * Math.PI);
-    let h = low * 0.32 + mid * 0.18;
-    if (worldId === 2) h = h * 0.5 + Math.sin((nx + nz) * Math.PI * 5) * 0.04;
-    if (worldId === 3) h = h * 0.74 + Math.sin((nx * 7 - nz * 6) * Math.PI) * 0.06;
-    if (worldId === 4) h = h * 0.58;
-    pos.setZ(i, h);
-  }
-  pos.needsUpdate = true;
-  geom.computeVertexNormals();
-  const mats = {
-    1: new THREE.MeshStandardMaterial({ color: 0x5c6f52, roughness: 0.98, metalness: 0.02, flatShading: true }),
-    2: new THREE.MeshStandardMaterial({ color: 0xa8c5d8, roughness: 0.86, metalness: 0.12, flatShading: true }),
-    3: new THREE.MeshStandardMaterial({ color: 0x4f2d22, roughness: 0.92, metalness: 0.06, emissive: 0x2d160f, emissiveIntensity: 0.18, flatShading: true }),
-    4: new THREE.MeshStandardMaterial({ color: 0x2a3045, roughness: 0.8, metalness: 0.18, flatShading: true })
-  };
-  const mesh = new THREE.Mesh(geom, mats[worldId] || mats[1]);
-  mesh.rotation.x = -Math.PI / 2;
-  mesh.position.set(0, GROUND_Y - 0.05, board.h * board.tile * 0.5 - board.tile * 0.5);
-  mesh.castShadow = false;
-  mesh.receiveShadow = true;
-  mesh.userData.isOuterTerrain = true;
-  return mesh;
-}
-
-function addWorldDecoration(worldId) {
-  const sharedRockMat = new THREE.MeshStandardMaterial({ color: 0x5e5750, roughness: 0.92, metalness: 0.04, flatShading: true });
-  const iceMat = new THREE.MeshStandardMaterial({ color: 0xb9e4ff, roughness: 0.28, metalness: 0.18, emissive: 0x6ab9f2, emissiveIntensity: 0.16, flatShading: true });
-  const lavaMat = new THREE.MeshStandardMaterial({ color: 0x5f3828, roughness: 0.88, metalness: 0.08, emissive: 0x9e3f1f, emissiveIntensity: 0.2, flatShading: true });
-  const voidMat = new THREE.MeshStandardMaterial({ color: 0x323b5a, roughness: 0.56, metalness: 0.34, emissive: 0x2a3f77, emissiveIntensity: 0.28, flatShading: true });
-  const count = ui.perfToggle.checked ? 24 : 44;
-  const minRadius = board.w * board.tile * 0.58;
-  const maxRadius = board.w * board.tile * 1.02;
-  for (let i = 0; i < count; i++) {
-    const t = (i / count) * Math.PI * 2;
-    const radius = minRadius + (maxRadius - minRadius) * (0.35 + Math.abs(Math.sin(i * 4.71)) * 0.65);
-    const x = Math.cos(t) * radius;
-    const z = Math.sin(t) * radius + board.h * board.tile * 0.5 - board.tile * 0.5;
-    if (!worldOutsidePlayfield(x, z)) continue;
-    const g = new THREE.Group();
-    g.position.set(x, GROUND_Y + 0.04, z);
-    g.rotation.y = t + (i % 3) * 0.22;
-
-    if (worldId === 1) {
-      g.add(new THREE.Mesh(new THREE.DodecahedronGeometry(0.28 + (i % 4) * 0.06, 0), sharedRockMat));
-      if (i % 2 === 0) {
-        const b = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.12, 0.24), sharedRockMat);
-        b.position.y = 0.14;
-        g.add(b);
-      }
-    } else if (worldId === 2) {
-      const c = new THREE.Mesh(new THREE.ConeGeometry(0.14 + (i % 3) * 0.04, 0.5 + (i % 2) * 0.2, 5), iceMat);
-      c.position.y = 0.26;
-      g.add(c);
-      if (i % 5 === 0) g.add(new THREE.Mesh(new THREE.SphereGeometry(0.16, 6, 5), new THREE.MeshStandardMaterial({ color: 0xe1f4ff, roughness: 0.75, metalness: 0.02 })));
-    } else if (worldId === 3) {
-      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.52, 6), lavaMat);
-      spike.position.y = 0.26;
-      g.add(spike);
-      if (!ui.perfToggle.checked && i % 6 === 0) {
-        const vent = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 0.1, 8), new THREE.MeshBasicMaterial({ color: 0xff8d47 }));
-        vent.position.y = 0.07;
-        g.add(vent);
-      }
-    } else {
-      const shard = new THREE.Mesh(new THREE.TetrahedronGeometry(0.22 + (i % 2) * 0.08, 0), voidMat);
-      shard.position.y = 0.2 + (i % 4) * 0.06;
-      g.add(shard);
-      if (!ui.perfToggle.checked && i % 7 === 0) {
-        const orbiter = new THREE.Mesh(new THREE.OctahedronGeometry(0.08, 0), new THREE.MeshBasicMaterial({ color: 0x87bfff }));
-        orbiter.position.set(0.22, 0.26, 0);
-        g.userData.orbiter = orbiter;
-        g.add(orbiter);
-      }
-    }
-
-    g.traverse(m => {
-      if (!m.isMesh) return;
-      m.castShadow = false;
-      m.receiveShadow = true;
-    });
-    worldEnvironmentGroup.add(g);
-  }
-}
-
-function buildWorldEnvironment(worldId) {
-  const outerTerrain = buildOuterTerrain(worldId);
-  worldEnvironmentGroup.add(outerTerrain);
-  addWorldDecoration(worldId);
-}
-
-function clearGroup(group) {
-  while (group.children.length) {
-    const child = group.children[group.children.length - 1];
-    group.remove(child);
-    if (child.userData?.preserveResources) continue;
-    child.traverse?.(node => {
-      if (!node.isMesh) return;
-      if (node.geometry) node.geometry.dispose?.();
-      const mats = Array.isArray(node.material) ? node.material : [node.material];
-      mats.forEach(m => m?.dispose?.());
-    });
-  }
-}
-
 function createPathStripGeometry(pathCells, width = board.tile * 0.86) {
   const centers = pathCells.map(([x, z]) => cellToWorld(x, z));
   const left = [];
@@ -1475,7 +1316,7 @@ function buildPath() {
   shoulders.position.y = -0.004;
   road.receiveShadow = true;
   shoulders.receiveShadow = true;
-  pathGroup.add(shoulders, road);
+  world.add(shoulders, road);
 }
 
 function buildBuildZonePads() {
@@ -1493,7 +1334,7 @@ function buildBuildZonePads() {
       ring.rotation.x = -Math.PI / 2;
       pad.receiveShadow = true;
       buildPads.set(key, { pad, ring });
-      playfieldGroup.add(pad, ring);
+      world.add(pad, ring);
     }
   }
 }
@@ -1544,7 +1385,7 @@ function buildEnvironmentProps() {
         obstacle.add(rock, ember);
       }
       obstacle.traverse(m => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
-      playfieldGroup.add(obstacle);
+      world.add(obstacle);
       obstacleCells.set(key, obstacle);
     }
   }
@@ -2940,8 +2781,8 @@ function makeTower(type, cell, customCfg = null) {
   g.castShadow = true;
   const blobShadow = createBlobShadow(0.62, 0.32);
   blobShadow.position.copy(p).setY(GROUND_Y + 0.02);
-  towerGroup.add(blobShadow);
-  towerGroup.add(g);
+  world.add(blobShadow);
+  world.add(g);
   return { type, cell, level: 1, cooldown: 0, mesh: g, baseGroup, headGroup, barrel, core, branch: 'none', custom: customCfg, displayName: customCfg ? customCfg.name : d.name, blobShadow, pulsePhase: Math.random() * Math.PI * 2 };
 }
 
@@ -2952,7 +2793,7 @@ function spawnEnemy(boss = false) {
   const def = enemyArchetypes[archetype];
   const mesh = createEnemyMesh(def, worldId, boss);
   mesh.castShadow = true;
-  enemyGroup.add(mesh);
+  world.add(mesh);
   const healthBar = getHealthBar();
   const isFinalBoss = state.mode === 'boss' && boss;
   const hpMult = worldId === 4 ? 1.42 : worldId === 3 ? 1.25 : worldId === 2 ? 1.12 : 1;
@@ -2965,7 +2806,7 @@ function spawnEnemy(boss = false) {
   const immunities = worldEnemyImmunities[worldId] || worldEnemyImmunities[1];
   const shadowRadius = def.flying ? def.size * 0.92 : def.size * 1.22;
   const blobShadow = createBlobShadow(shadowRadius, def.flying ? 0.22 : 0.34);
-  enemyGroup.add(blobShadow);
+  world.add(blobShadow);
   tutorialEngine.onEnemySpawn(def.type);
   if (boss) tutorialEngine.onBossSpawn(worldId);
   const enemy = {
@@ -3469,12 +3310,6 @@ function animate(now) {
 
   const simDt = dt * state.gameSpeed;
   if (objectiveEntities.spawnPoint) objectiveVisuals.updateSpawn(objectiveEntities.spawnPoint, simDt, now);
-  for (let i = 0; i < worldEnvironmentGroup.children.length; i++) {
-    const node = worldEnvironmentGroup.children[i];
-    if (node.userData?.isOuterTerrain || node.userData?.preserveResources) continue;
-    node.rotation.y += 0.02 * simDt;
-    if (node.userData?.orbiter) node.userData.orbiter.rotation.y += 0.9 * simDt;
-  }
   state.particlesFrame = 0;
   for (const k of Object.keys(state.abilityCooldowns)) state.abilityCooldowns[k] = Math.max(0, state.abilityCooldowns[k] - simDt);
 
@@ -3505,8 +3340,8 @@ function animate(now) {
       spawnDeathFx(e);
       releaseHealthBar(e.healthBar);
       e.mesh.visible = false;
-      if (e.blobShadow) enemyGroup.remove(e.blobShadow);
-      enemyGroup.remove(e.mesh);
+      if (e.blobShadow) world.remove(e.blobShadow);
+      world.remove(e.mesh);
       state.enemies.splice(i, 1);
       continue;
     }
@@ -3526,8 +3361,8 @@ function animate(now) {
       saveStats();
       state.enemies.splice(i, 1);
       releaseHealthBar(e.healthBar);
-      if (e.blobShadow) enemyGroup.remove(e.blobShadow);
-      enemyGroup.remove(e.mesh);
+      if (e.blobShadow) world.remove(e.blobShadow);
+      world.remove(e.mesh);
       if (state.lives <= 0) {
         state.paused = true;
         resetCineCam(false);
@@ -4107,7 +3942,7 @@ function clearObstacle(cellKey) {
   const c = kind === 'tree' ? 0xc29162 : kind === 'ice' ? 0xb8ebff : 0xff8a4a;
   emitParticleBurst(base, { color: c, count: 14, spread: 3.2, life: 0.45, y: 0.2 });
   state.effects.push({ pos: base.clone(), life: 0.45, color: c, radius: 1.8 });
-  playfieldGroup.remove(obs);
+  world.remove(obs);
   obstacleCells.delete(cellKey);
   saveClearedObstacleCell(cellKey);
   syncBuildPads();
@@ -4292,8 +4127,8 @@ ui.sellBtn.onclick = () => {
   state.money += Math.round(baseCost * 0.65);
   board.blocked.delete(`${t.cell[0]},${t.cell[1]}`);
   syncBuildPads();
-  towerGroup.remove(t.mesh);
-  if (t.blobShadow) towerGroup.remove(t.blobShadow);
+  world.remove(t.mesh);
+  if (t.blobShadow) world.remove(t.blobShadow);
   state.towers = state.towers.filter(x => x !== t);
   state.selectedTower = null;
 };
@@ -4344,8 +4179,8 @@ function start(mode) {
   state.wave = 0;
   state.inWave = false;
   state.buildPhase = true;
-  state.towers.forEach(t => { towerGroup.remove(t.mesh); if (t.blobShadow) towerGroup.remove(t.blobShadow); });
-  state.enemies.forEach(e => { releaseHealthBar(e.healthBar); if (e.blobShadow) enemyGroup.remove(e.blobShadow); enemyGroup.remove(e.mesh); });
+  state.towers.forEach(t => { world.remove(t.mesh); if (t.blobShadow) world.remove(t.blobShadow); });
+  state.enemies.forEach(e => { releaseHealthBar(e.healthBar); if (e.blobShadow) world.remove(e.blobShadow); world.remove(e.mesh); });
   state.towers = [];
   state.enemies = [];
   state.projectiles = [];
@@ -4406,11 +4241,7 @@ ui.cineCamBtn.onclick = () => {
   }
 };
 ui.speedBtn.onclick = () => { state.gameSpeed = state.gameSpeed >= 4 ? 1 : state.gameSpeed + 1; };
-ui.perfToggle?.addEventListener('change', () => {
-  if (ui.perfToggle.checked) tutorialEngine.runTutorial('performance_mode_intro');
-  if (state.mode === 'campaign') rebuildWorldForCampaign();
-  else rebuildWorldForMode(getActiveWorldId());
-});
+ui.perfToggle?.addEventListener('change', () => { if (ui.perfToggle.checked) tutorialEngine.runTutorial('performance_mode_intro'); });
 
 ui.continueBtn.onclick = () => {
   resetCineCam(false);
