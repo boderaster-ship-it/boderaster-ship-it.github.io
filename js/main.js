@@ -77,6 +77,7 @@ const ui = {
   openCastle: document.getElementById('openCastle'),
   openUpgrades: document.getElementById('openUpgrades'),
   openUnlockSettings: document.getElementById('openUnlockSettings'),
+  openMotAnleitung: document.getElementById('openMotAnleitung'),
   metaTree: document.getElementById('metaTree'),
   audioToggle: document.getElementById('audioToggle'),
   shakeToggle: document.getElementById('shakeToggle'),
@@ -2153,6 +2154,12 @@ const tutorialRegistry = {
       { title: 'Optionen', text: 'Audio, Shake und Leistungsmodus kannst du hier anpassen.', anchorSelector: '.settings' }
     ]
   },
+  mot_anleitung_page: {
+    version: 1,
+    steps: [
+      { title: 'MOT Anleitung', text: 'Hier kannst du das gesamte Tutorial jederzeit auf Deutsch nachlesen.' }
+    ]
+  },
   builder_unlocked_level18: {
     version: 1,
     steps: [
@@ -2293,6 +2300,7 @@ const tutorialEngine = {
     if (pageId === 'castle') this.runTutorial('first_open_castle_page');
     if (pageId === 'upgrades') this.runTutorial('first_open_upgrades_page');
     if (pageId === 'unlockSettings') this.runTutorial('first_open_unlocks_settings_page');
+    if (pageId === 'motAnleitung') this.runTutorial('mot_anleitung_page');
   },
   onLevelStart(mode, worldId, levelId) {
     if (mode === 'campaign' && worldId === 1 && levelId === 1) this.runTutorial('onboarding_level1', { allowSkip: true });
@@ -4161,6 +4169,7 @@ ui.playChallenge.onclick = () => showPage('challenge');
 ui.openCastle.onclick = () => showPage('castle');
 ui.openUpgrades.onclick = () => showPage('upgrades');
 ui.openUnlockSettings.onclick = () => showPage('unlockSettings');
+ui.openMotAnleitung.onclick = () => showPage('motAnleitung');
 ui.playCampaignStart.onclick = () => {
   const w = Number(state.campaign.selectedWorld) || 1;
   const l = Number(state.campaign.selectedLevel) || 1;
@@ -4248,7 +4257,7 @@ if ('serviceWorker' in navigator) {
 }
 
 function assertRequiredDomNodes() {
-  const required = ['mainMenu','campaignWorldSelect','campaignLevelSelect','playCampaign','playEndless','playChallenge','playCampaignStart','playEndlessStart','playChallengeStart','metaTree','unlockList','upgradePointsLabel','finalBossUnlock','playFinalBoss','openCastle','openUpgrades','openUnlockSettings','endlessWorldSelect','challengeWorldSelect','castlePartList','castleSelectionStatus','castlePreview','castleCoins','castleVariantModal','castleVariantTitle','castleVariantCards','castleVariantCloseBtn','tutorialOverlay','tutorialBackdrop','tutorialHighlight','tutorialCard','tutorialTitle','tutorialText','tutorialCounter','tutorialBackBtn','tutorialSkipBtn','tutorialNextBtn','tutorialCloseBtn'];
+  const required = ['mainMenu','campaignWorldSelect','campaignLevelSelect','playCampaign','playEndless','playChallenge','playCampaignStart','playEndlessStart','playChallengeStart','metaTree','unlockList','upgradePointsLabel','finalBossUnlock','playFinalBoss','openCastle','openUpgrades','openUnlockSettings','openMotAnleitung','endlessWorldSelect','challengeWorldSelect','castlePartList','castleSelectionStatus','castlePreview','castleCoins','castleVariantModal','castleVariantTitle','castleVariantCards','castleVariantCloseBtn','tutorialOverlay','tutorialBackdrop','tutorialHighlight','tutorialCard','tutorialTitle','tutorialText','tutorialCounter','tutorialBackBtn','tutorialSkipBtn','tutorialNextBtn','tutorialCloseBtn'];
   const missing = required.filter(key => !ui[key]);
   if (missing.length) throw new Error(`Missing required DOM nodes: ${missing.join(', ')}`);
 }
