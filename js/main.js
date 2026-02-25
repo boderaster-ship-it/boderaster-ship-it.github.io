@@ -136,7 +136,8 @@ const towerDefs = {
   laser: { icon: '🔷', name: 'Arc Prism', cost: 85, damage: 9, range: 6.4, rate: 0.25, color: 0x6fffe9, projectile: 'bolt' },
   missile: { icon: '🚀', name: 'Skyhammer', cost: 120, damage: 28, range: 7.1, rate: 1.2, color: 0xffd166, projectile: 'missile', aoe: 2.6 },
   cryo: { icon: '❄️', name: 'Frost Coil', cost: 90, damage: 6, range: 5.8, rate: 0.55, color: 0x9bf6ff, projectile: 'ice', slow: 0.45 },
-  flame: { icon: '🔥', name: 'Pyre', cost: 105, damage: 4, range: 4.4, rate: 0.12, color: 0xff8c42, projectile: 'flame', burn: 1.4 }
+  flame: { icon: '🔥', name: 'Pyre', cost: 105, damage: 4, range: 4.4, rate: 0.12, color: 0xff8c42, projectile: 'flame', burn: 1.4 },
+  machinegun: { icon: '🗼', name: 'Machine Gun Tower', cost: 110, damage: 7, range: 6.1, rate: 0.09, color: 0xbdd4ff, projectile: 'bullet' }
 };
 
 
@@ -211,11 +212,19 @@ const abilities = {
         }
       });
     }
+  },
+  combatDrone: {
+    name: 'Combat Drone',
+    icon: '🚁',
+    cd: 36,
+    text: 'Sucht Frontgegner, umkreist ihn und wirft Granaten (15 s aktiv)',
+    delayedCooldown: true,
+    use: () => activateCombatDrone()
   }
 };
 
-const towerUnlockOrder = ['laser', 'missile', 'cryo'];
-const abilityUnlockOrder = ['overclock', 'poison', 'nuke'];
+const towerUnlockOrder = ['laser', 'missile', 'cryo', null, null, null, 'machinegun'];
+const abilityUnlockOrder = ['overclock', 'poison', 'nuke', 'combatDrone'];
 const TOWER_BUILDER_UNLOCK_LEVEL = 18;
 
 const metaDefs = [
@@ -224,6 +233,7 @@ const metaDefs = [
   { key: 'upMissile', icon: towerDefs.missile.icon, name: 'Skyhammer-Upgrade', tower: 'missile', affects: 'Skyhammer-Schaden', desc: 'Erhöht den Schaden des Skyhammer.', unit: '%', perLevel: 10 },
   { key: 'upCryo', icon: towerDefs.cryo.icon, name: 'Frost-Coil-Upgrade', tower: 'cryo', affects: 'Frost-Coil-Schaden', desc: 'Erhöht den Schaden der Frost Coil.', unit: '%', perLevel: 10 },
   { key: 'upFlame', icon: towerDefs.flame.icon, name: 'Pyre-Upgrade', tower: 'flame', affects: 'Pyre-Schaden', desc: 'Erhöht den Schaden der Pyre.', unit: '%', perLevel: 10 },
+  { key: 'upMachinegun', icon: towerDefs.machinegun.icon, name: 'Machine-Gun-Upgrade', tower: 'machinegun', affects: 'Machine-Gun-Schaden', desc: 'Erhöht den Schaden des Machine Gun Tower.', unit: '%', perLevel: 10 },
   { key: 'econ', icon: '💰', name: 'Versorgungslager', affects: 'Startguthaben', desc: 'Beginne jedes Level mit zusätzlichem Guthaben.', unit: 'Credits', perLevel: 45 }
 ];
 
@@ -324,7 +334,7 @@ const state = {
   selectedTower: null,
   buildMode: false,
   hoverCell: null,
-  abilityCooldowns: { freeze: 0, nuke: 0, overclock: 0, poison: 0 },
+  abilityCooldowns: {},
   paused: false,
   gameSpeed: 1,
   betweenWaveCountdown: 0,
@@ -376,6 +386,11 @@ state.campaign.selectedLevel = Number(state.campaign.selectedLevel) || 1;
 state.campaign.finalBossUnlocked = !!state.campaign.finalBossUnlocked;
 state.campaign.bossCompleted = !!state.campaign.bossCompleted;
 state.campaign.clearedObstacles = state.campaign.clearedObstacles || {};
+
+state.abilityCooldowns = state.abilityCooldowns || {};
+Object.keys(abilities).forEach(key => {
+  state.abilityCooldowns[key] = Math.max(0, Number(state.abilityCooldowns[key]) || 0);
+});
 
 syncProgressUnlocks();
 sanitizeCastleBuildState();
@@ -1985,6 +2000,7 @@ function randomizeCastleBuild() {
 
 function getTowerUnlockLevel(key) {
   if (key === 'flame') return 1;
+  if (key === 'machinegun') return 21;
   const idx = towerUnlockOrder.indexOf(key);
   return idx >= 0 ? (idx + 1) * 3 : 1;
 }
@@ -2716,7 +2732,7 @@ function initAbilities() {
     btn.onclick = () => {
       if (state.abilityCooldowns[k] > 0 || state.buildPhase || !state.inWave) return;
       a.use();
-      state.abilityCooldowns[k] = a.cd;
+      if (!a.delayedCooldown) state.abilityCooldowns[k] = a.cd;
       state.stats.powerUpsUsed += 1;
       saveStats();
     };
@@ -2795,7 +2811,7 @@ function handleLevelComplete() {
   state.campaign.castleBuild.coins = Math.max(0, (state.campaign.castleBuild.coins || 0) + 1);
   if (state.currentLevel >= 24) state.campaign.finalBossUnlocked = true;
   state.campaign.unlockedLevel = Math.max(state.campaign.unlockedLevel || 1, state.currentLevel + 1);
-  refreshProgressionAndUnlockUI({ persist: true });
+  refreshProgressionAndUnlockUI({ persist: true, refreshInGameDock: true });
   setCampaignSelectionToLatestPlayable();
   saveCampaign();
   ui.levelCompleteSummary.textContent = `World ${(Math.floor((state.currentLevel-1)/6)+1)} Level ${((state.currentLevel-1)%6)+1} abgeschlossen: ${state.levelWaves}/${state.levelWaves} Wellen.`;
@@ -2889,7 +2905,7 @@ function makeTower(type, cell, customCfg = null) {
   const base = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.55, 0.55, 14), mats.housingMaterial);
   const core = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.42, 10), mats.energyMaterial);
   core.position.y = 0.46;
-  const barrelGeo = type === 'laser' ? new THREE.CylinderGeometry(0.08, 0.08, 0.9, 10) : type === 'missile' ? new THREE.ConeGeometry(0.13, 0.9, 10) : type === 'cryo' ? new THREE.BoxGeometry(0.12, 0.3, 0.82) : type === 'flame' ? new THREE.TorusGeometry(0.22, 0.06, 8, 16) : new THREE.BoxGeometry(0.16, 0.16, 0.9);
+  const barrelGeo = type === 'laser' ? new THREE.CylinderGeometry(0.08, 0.08, 0.9, 10) : type === 'missile' ? new THREE.ConeGeometry(0.13, 0.9, 10) : type === 'cryo' ? new THREE.BoxGeometry(0.12, 0.3, 0.82) : type === 'flame' ? new THREE.TorusGeometry(0.22, 0.06, 8, 16) : type === 'machinegun' ? new THREE.CylinderGeometry(0.075, 0.075, 0.95, 10) : new THREE.BoxGeometry(0.16, 0.16, 0.9);
   const barrel = new THREE.Mesh(barrelGeo, mats.metalMaterial);
   barrel.position.set(0, 0.62, 0.22);
   baseGroup.add(base);
@@ -3010,6 +3026,7 @@ function logProjectileFire(p, kind) {
 
 const projectileAssetCache = {
   shellGeo: new THREE.SphereGeometry(0.11, 12, 10),
+  bulletGeo: new THREE.CylinderGeometry(0.022, 0.03, 0.23, 8),
   shellShineGeo: new THREE.SphereGeometry(0.065, 10, 8),
   arrowShaftGeo: new THREE.CylinderGeometry(0.02, 0.02, 0.4, 8),
   arrowHeadGeo: new THREE.ConeGeometry(0.055, 0.15, 8),
@@ -3042,6 +3059,14 @@ function configureProjectileMesh(p, kind, colorHex) {
     if (kind === 'shell') {
       addProjectilePart(p.mesh, new THREE.Mesh(projectileAssetCache.shellGeo, projectileAssetCache.coreMat.clone()), 'proj-main', kind);
       addProjectilePart(p.mesh, new THREE.Mesh(projectileAssetCache.shellShineGeo, projectileAssetCache.softGlowMat.clone()), 'proj-highlight', kind);
+    } else if (kind === 'bullet') {
+      const body = new THREE.Mesh(projectileAssetCache.bulletGeo, projectileAssetCache.coreMat.clone());
+      body.rotation.x = Math.PI / 2;
+      addProjectilePart(p.mesh, body, 'proj-main', kind);
+      const trail = new THREE.Mesh(projectileAssetCache.glowGeo, projectileAssetCache.softGlowMat.clone());
+      trail.scale.set(0.75, 0.55, 0.55);
+      trail.position.z = -0.06;
+      addProjectilePart(p.mesh, trail, 'proj-trail', kind);
     } else if (kind === 'bolt') {
       const shaft = new THREE.Mesh(projectileAssetCache.arrowShaftGeo, projectileAssetCache.accentMat.clone());
       shaft.rotation.x = Math.PI / 2;
@@ -3109,7 +3134,8 @@ function getTowerMetaDamageBonus(type) {
     laser: 'upLaser',
     missile: 'upMissile',
     cryo: 'upCryo',
-    flame: 'upFlame'
+    flame: 'upFlame',
+    machinegun: 'upMachinegun'
   };
   const key = map[type];
   if (!key) return 1;
@@ -3132,10 +3158,10 @@ function fireTower(tower, enemy) {
   p.aoe = d.aoe || 0;
   p.slow = d.slow || 0;
   p.custom = customStats || null;
-  const yOffset = d.projectile === 'missile' ? 0.78 : d.projectile === 'flame' ? 0.72 : 0.6;
+  const yOffset = d.projectile === 'missile' ? 0.78 : d.projectile === 'flame' ? 0.72 : d.projectile === 'bullet' ? 0.66 : 0.6;
   p.pos = tower.mesh.position.clone().add(new THREE.Vector3(0, yOffset, 0));
   p.target = enemy;
-  p.speed = d.projectile === 'missile' ? 8.5 : d.projectile === 'flame' ? 11 : d.projectile === 'beam' ? 22 : 14;
+  p.speed = d.projectile === 'missile' ? 8.5 : d.projectile === 'flame' ? 11 : d.projectile === 'beam' ? 22 : d.projectile === 'bullet' ? 21 : 14;
   p.mesh.position.copy(p.pos);
   configureProjectileMesh(p, d.projectile, d.color);
   p.mesh.scale.setScalar(1);
@@ -3232,6 +3258,76 @@ function launchAbilityStorm(kind, color, config = {}) {
   });
 }
 
+function createCombatDroneMesh() {
+  const drone = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), new THREE.MeshStandardMaterial({ color: 0xa8b6cc, metalness: 0.7, roughness: 0.35 }));
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), new THREE.MeshBasicMaterial({ color: 0x8de8ff, toneMapped: false }));
+  drone.add(body, core);
+  const armGeo = new THREE.BoxGeometry(0.46, 0.03, 0.04);
+  const arm = new THREE.Mesh(armGeo, new THREE.MeshStandardMaterial({ color: 0x6f7f95, metalness: 0.45, roughness: 0.4 }));
+  drone.add(arm);
+  for (const side of [-1, 1]) {
+    const rotor = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.01, 14), new THREE.MeshBasicMaterial({ color: 0xd4f2ff, transparent: true, opacity: 0.48, side: THREE.DoubleSide, toneMapped: false }));
+    rotor.rotation.x = Math.PI / 2;
+    rotor.position.set(0.23 * side, 0.06, 0);
+    drone.add(rotor);
+  }
+  drone.castShadow = true;
+  return drone;
+}
+
+function launchSkyhammerGrenade(origin, enemy) {
+  if (!enemy?.mesh?.parent) return;
+  const def = towerDefs.missile;
+  const p = getProjectile();
+  p.alive = true;
+  p.damage = def.damage * getTowerMetaDamageBonus('missile');
+  p.aoe = def.aoe || 0;
+  p.slow = 0;
+  p.custom = null;
+  p.pos = origin.clone();
+  p.target = enemy;
+  p.speed = 8.5;
+  p.mesh.position.copy(p.pos);
+  configureProjectileMesh(p, 'missile', def.color);
+  p.mesh.scale.setScalar(0.92);
+  p.spin = Math.random() * Math.PI * 2;
+  p.damageType = 'explosive';
+  logProjectileFire(p, 'missile');
+  state.projectiles.push(p);
+  state.effects.push({ pos: p.pos.clone(), life: 0.12, color: def.color, radius: 0.6 });
+}
+
+function clearActiveCombatDrone({ startCooldown = false } = {}) {
+  for (let i = state.effects.length - 1; i >= 0; i--) {
+    const fx = state.effects[i];
+    if (fx.kind !== 'combatDrone') continue;
+    if (fx.mesh?.parent) fx.mesh.parent.remove(fx.mesh);
+    if (startCooldown) state.abilityCooldowns.combatDrone = Math.max(state.abilityCooldowns.combatDrone || 0, abilities.combatDrone.cd);
+    state.effects.splice(i, 1);
+  }
+}
+
+function activateCombatDrone() {
+  if (!state.gameStarted || !state.inWave || state.buildPhase) return;
+  if (state.effects.some(fx => fx.kind === 'combatDrone')) return;
+  const launchPos = (objectiveEntities.castle?.group?.position || cellToWorld(board.path[board.path.length - 1][0], board.path[board.path.length - 1][1])).clone();
+  const mesh = createCombatDroneMesh();
+  mesh.position.copy(launchPos).setY(launchPos.y + 1.1);
+  world.add(mesh);
+  state.effects.push({
+    kind: 'combatDrone',
+    mesh,
+    life: 15,
+    orbitRadius: 0.95,
+    orbitSpeed: 2.4,
+    orbitAngle: Math.random() * Math.PI * 2,
+    grenadeTimer: 0.1,
+    grenadeInterval: 0.72,
+    moveSpeed: 7.8
+  });
+}
+
 function placeTowerAt(cell) {
   const key = `${cell[0]},${cell[1]}`;
   if (!isValidPlacementCell(cell)) return false;
@@ -3291,11 +3387,12 @@ function updateUI() {
   if (state.selectedTower) {
     const d = state.selectedTower.custom ? { name: state.selectedTower.displayName, damage: state.selectedTower.custom.stats.damage, range: state.selectedTower.custom.stats.range, rate: state.selectedTower.custom.stats.rate } : towerDefs[state.selectedTower.type];
     const lvl = state.selectedTower.level;
-    const next = { damage: Math.round(d.damage * (lvl + 1)), rate: Math.max(0.12, d.rate - 0.07 * lvl).toFixed(2) };
+    const minRate = state.selectedTower.type === 'machinegun' ? 0.045 : 0.12;
+    const next = { damage: Math.round(d.damage * (lvl + 1)), rate: Math.max(minRate, d.rate - 0.07 * lvl).toFixed(2) };
     ui.selectionPanel.classList.remove('hidden');
     ui.selectedName.textContent = `${d.name} Lv.${lvl} [${state.selectedTower.branch}]`;
-    ui.selectedStats.textContent = `DMG ${Math.round(d.damage * lvl)} | RNG ${(d.range + 0.45 * (lvl - 1)).toFixed(1)} | CD ${Math.max(0.12, d.rate - 0.07 * (lvl - 1)).toFixed(2)}`;
-    ui.upgradeDiff.innerHTML = `<span class="deltaUp">+${next.damage - Math.round(d.damage * lvl)} Schaden</span> · <span class="deltaUp">Visueller Rang +</span> · <span class="deltaDown">-${(Math.max(0.12, d.rate - 0.07 * (lvl - 1)) - next.rate).toFixed(2)}s Abklingzeit</span>`;
+    ui.selectedStats.textContent = `DMG ${Math.round(d.damage * lvl)} | RNG ${(d.range + 0.45 * (lvl - 1)).toFixed(1)} | CD ${Math.max(minRate, d.rate - 0.07 * (lvl - 1)).toFixed(2)}`;
+    ui.upgradeDiff.innerHTML = `<span class="deltaUp">+${next.damage - Math.round(d.damage * lvl)} Schaden</span> · <span class="deltaUp">Visueller Rang +</span> · <span class="deltaDown">-${(Math.max(minRate, d.rate - 0.07 * (lvl - 1)) - next.rate).toFixed(2)}s Abklingzeit</span>`;
   } else {
     ui.selectionPanel.classList.add('hidden');
   }
@@ -3612,7 +3709,8 @@ function animate(now) {
     if (target && t.cooldown <= 0 && state.inWave) {
       fireTower(t, target);
       const baseRate = t.custom ? t.custom.stats.rate : towerDefs[t.type].rate;
-      t.cooldown = Math.max(0.12, baseRate - (t.level - 1) * 0.07);
+      const minCooldown = t.type === 'machinegun' ? 0.045 : 0.12;
+      t.cooldown = Math.max(minCooldown, baseRate - (t.level - 1) * 0.07);
     }
   }
 
@@ -3763,6 +3861,45 @@ function animate(now) {
           fx.head = null;
         }
         emitParticleBurst(fx.target.clone(), { color: fx.color, count: 12, spread: 1.2, life: 0.32, y: 0.34 });
+        state.effects.splice(i, 1);
+      }
+      continue;
+    }
+
+    if (fx.kind === 'combatDrone') {
+      fx.life -= simDt;
+      const target = findFrontMostEnemy();
+      const castlePos = (objectiveEntities.castle?.group?.position || cellToWorld(board.path[board.path.length - 1][0], board.path[board.path.length - 1][1])).clone();
+      const hoverBase = 1.05 + Math.sin(now * 0.009) * 0.07;
+      if (target?.mesh?.parent) {
+        fx.orbitAngle += simDt * fx.orbitSpeed;
+        const enemyPos = target.mesh.position.clone();
+        const desired = enemyPos.clone().add(new THREE.Vector3(Math.cos(fx.orbitAngle) * fx.orbitRadius, hoverBase + 0.3, Math.sin(fx.orbitAngle) * fx.orbitRadius));
+        const toDesired = desired.sub(fx.mesh.position);
+        const step = Math.min(1, (fx.moveSpeed * simDt) / Math.max(0.001, toDesired.length()));
+        fx.mesh.position.addScaledVector(toDesired, step);
+        fx.mesh.lookAt(enemyPos.clone().setY(enemyPos.y + 0.3));
+        fx.grenadeTimer -= simDt;
+        if (fx.grenadeTimer <= 0) {
+          fx.grenadeTimer = fx.grenadeInterval;
+          const dropOrigin = fx.mesh.position.clone();
+          dropOrigin.y = Math.max(dropOrigin.y - 0.12, enemyPos.y + 0.22);
+          launchSkyhammerGrenade(dropOrigin, target);
+          emitParticleBurst(dropOrigin, { color: 0xffd166, count: 5, spread: 0.25, life: 0.22, y: 0.08 });
+        }
+      } else {
+        const fallback = castlePos.clone().setY(castlePos.y + hoverBase);
+        const toBase = fallback.sub(fx.mesh.position);
+        const step = Math.min(1, (fx.moveSpeed * simDt) / Math.max(0.001, toBase.length()));
+        fx.mesh.position.addScaledVector(toBase, step);
+      }
+      const rotorPulse = 0.88 + Math.sin(now * 0.05) * 0.16;
+      fx.mesh.children.forEach(part => {
+        if (part.geometry?.type === 'CylinderGeometry') part.scale.set(rotorPulse, 1, rotorPulse);
+      });
+      if (fx.life <= 0) {
+        if (fx.mesh?.parent) fx.mesh.parent.remove(fx.mesh);
+        state.abilityCooldowns.combatDrone = Math.max(state.abilityCooldowns.combatDrone || 0, abilities.combatDrone.cd);
         state.effects.splice(i, 1);
       }
       continue;
@@ -4277,7 +4414,11 @@ ui.sellBtn.onclick = () => {
   state.towers = state.towers.filter(x => x !== t);
   state.selectedTower = null;
 };
-ui.pauseBtn.onclick = () => { state.paused = true; ui.pauseMenu.classList.remove('hidden'); };
+ui.pauseBtn.onclick = () => {
+  clearActiveCombatDrone({ startCooldown: true });
+  state.paused = true;
+  ui.pauseMenu.classList.remove('hidden');
+};
 ui.resumeBtn.onclick = () => { state.paused = false; ui.pauseMenu.classList.add('hidden'); };
 ui.castleVariantCloseBtn.onclick = () => closeCastleVariantModal();
 
@@ -4298,6 +4439,7 @@ function closeTransientPanels() {
 ui.menuBtn.onclick = () => {
   state.paused = true;
   state.gameStarted = false;
+  clearActiveCombatDrone();
   resetCineCam(false);
   closeTransientPanels();
   setCampaignSelectionToLatestPlayable();
@@ -4329,6 +4471,7 @@ function start(mode) {
   state.towers = [];
   state.enemies = [];
   state.projectiles = [];
+  clearActiveCombatDrone();
   state.effects = [];
   board.blocked.clear();
   ui.obstaclePanel.classList.add('hidden');
@@ -4396,6 +4539,7 @@ ui.continueBtn.onclick = () => {
   showPage('home');
   refreshProgressionAndUnlockUI();
   ui.mainMenu.classList.remove('hidden');
+  clearActiveCombatDrone();
   state.gameStarted = false;
 };
 
@@ -4458,7 +4602,7 @@ updateViewport();
 function bootstrapMenu() {
   try {
     assertRequiredDomNodes();
-    refreshProgressionAndUnlockUI({ persist: true });
+    refreshProgressionAndUnlockUI({ persist: true, refreshInGameDock: true });
     setCampaignSelectionToLatestPlayable();
     saveCampaign();
     validateCampaignDefinitions();
