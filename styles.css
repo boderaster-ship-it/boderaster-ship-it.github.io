@@ -183,9 +183,12 @@ button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; co
   overflow: hidden;
 }
 .castlePreview canvas { width: 100% !important; height: 100% !important; display: block; }
-.castlePalette { display: grid; grid-template-columns: 1fr; gap: 6px; }
-.castleColorPicker { width: 100%; min-height: 42px; border-radius: 10px; border: 1px solid rgba(230,245,255,0.5); background: transparent; }
-.castleTextureList, .castlePartList { display: grid; gap: 6px; }
+.castlePartList { display: grid; gap: 6px; }
+.castleCoins { padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(142, 210, 255, 0.45); background: rgba(16, 40, 64, 0.72); font-weight: 700; }
+.castleVariantSheet { width: min(720px, 92vw); max-height: 80vh; overflow: auto; }
+.castleVariantCards { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin-top: 10px; }
+.castleVariantCard { display: grid; gap: 6px; border: 1px solid rgba(120, 182, 236, 0.4); border-radius: 10px; padding: 8px; background: rgba(17, 36, 58, 0.7); }
+.castleVariantPreview { min-height: 62px; border-radius: 8px; display: grid; place-items: center; border: 1px dashed rgba(164, 217, 255, 0.4); background: radial-gradient(circle at 30% 20%, rgba(93, 137, 183, 0.35), rgba(11, 24, 39, 0.8)); font-size: 12px; text-transform: uppercase; }
 
 .menuPageActions {
   display: grid;

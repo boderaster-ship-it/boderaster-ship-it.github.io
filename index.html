@@ -95,24 +95,28 @@
           <h2>Castle</h2>
           <div class="castleCustomizerLayout">
             <section class="castleColumn">
-              <h3>Farbe</h3>
-              <div id="castlePalette" class="castlePalette"></div>
-              <h3>Textur</h3>
-              <div id="castleTextureList" class="castleTextureList"></div>
+              <h3>Build</h3>
+              <div class="tiny">Wähle ein Bauteil und kaufe Varianten mit Coins.</div>
+              <div id="castleCoins" class="castleCoins">Coins: 0</div>
             </section>
             <section class="castlePreviewColumn">
               <div id="castlePreview" class="castlePreview"></div>
-              <div id="castleSelectionStatus" class="tiny">Teil: wall · Farbe: #9EA3AB · Textur: stone</div>
+              <div id="castleSelectionStatus" class="tiny">Teil: wall · Variante: 0</div>
             </section>
             <section class="castleColumn">
               <h3>Bauteile</h3>
               <div id="castlePartList" class="castlePartList"></div>
-              <div class="menuPageActions">
-                <button id="castleResetBtn" class="btnSecondary">Reset</button>
-                <button id="castleRandomizeBtn" class="btnSecondary">Randomize</button>
-              </div>
             </section>
           </div>
+          <section id="castleVariantModal" class="modal hidden">
+            <div class="sheet castleVariantSheet">
+              <h3 id="castleVariantTitle">Varianten</h3>
+              <div id="castleVariantCards" class="castleVariantCards"></div>
+              <div class="menuPageActions">
+                <button id="castleVariantCloseBtn" class="btnSecondary">Close</button>
+              </div>
+            </div>
+          </section>
         </section>
 
         <section class="menuPage hidden" data-page="campaign">
