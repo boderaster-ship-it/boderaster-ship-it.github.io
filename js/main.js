@@ -2471,6 +2471,11 @@ function closeBuilder() {
   ui.towerBuilderModal.classList.add('hidden');
 }
 
+function closeTowerSelectionPanel() {
+  state.selectedTower = null;
+  ui.selectionPanel.classList.add('hidden');
+}
+
 function initDock() {
   ui.towerDock.innerHTML = '';
   Object.entries(towerDefs).forEach(([key, d]) => {
@@ -2482,6 +2487,7 @@ function initDock() {
     btn.onclick = () => {
       state.selectedTowerType = key;
       state.buildMode = true;
+      closeTowerSelectionPanel();
       ui.buildPanel.classList.remove('hidden');
       ui.buildTitle.textContent = `${d.icon} ${d.name} (${d.cost}¢)`;
       updateDock();
@@ -4012,6 +4018,12 @@ canvas.addEventListener('wheel', e => {
   if (cam.cine.active) cam.cine.userDistOffset += e.deltaY * 0.0028;
 }, { passive: true });
 
+document.addEventListener('pointerdown', e => {
+  if (!state.selectedTower || ui.selectionPanel.classList.contains('hidden')) return;
+  if (ui.selectionPanel.contains(e.target)) return;
+  closeTowerSelectionPanel();
+}, true);
+
 
 ui.builderCancelBtn.onclick = () => closeBuilder();
 ui.builderConfirmBtn.onclick = () => {
@@ -4020,6 +4032,7 @@ ui.builderConfirmBtn.onclick = () => {
   state.activeBuild = cfg;
   state.selectedTowerType = 'custom';
   state.buildMode = true;
+  closeTowerSelectionPanel();
   ui.buildPanel.classList.remove('hidden');
   ui.buildTitle.textContent = `🧩 ${cfg.name} (${cfg.cost}¢)`;
   closeBuilder();
