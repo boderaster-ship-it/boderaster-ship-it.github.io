@@ -435,12 +435,6 @@ const fillLight = new THREE.DirectionalLight(0xffd5ab, 0.28);
 fillLight.position.set(6, 5, -4);
 scene.add(fillLight);
 
-const sky = new THREE.Mesh(
-  new THREE.SphereGeometry(190, 32, 24),
-  new THREE.MeshBasicMaterial({ color: 0xc8e7ff, side: THREE.BackSide })
-);
-scene.add(sky);
-
 const world = new THREE.Group();
 scene.add(world);
 
@@ -1123,9 +1117,7 @@ function setBoardPath(path) {
 function applyWorldTheme(worldId) {
   const theme = worldThemes[worldId] || worldThemes[1];
   worldVisuals.activeWorld = worldId;
-  if (worldVisuals.backgroundTexture) worldVisuals.backgroundTexture.dispose();
-  worldVisuals.backgroundTexture = createWorldBackgroundTexture(theme, worldId);
-  scene.background = worldVisuals.backgroundTexture;
+  setWorldBackground(worldId);
   buildWorldAmbientLayer(worldId);
   scene.fog = new THREE.Fog(theme.fog, 38, theme.fogFar || (worldId === 4 ? 105 : 130));
   if (terrain?.userData?.topMaterial) {
@@ -1141,7 +1133,6 @@ function applyWorldTheme(worldId) {
     sideMaterial.needsUpdate = true;
     bottomMaterial.needsUpdate = true;
   }
-  sky.material.color.setHex(theme.sky || theme.bg);
   hemi.color.setHex(theme.ambient || 0xd9efff);
   hemi.groundColor.setHex(worldId === 3 ? 0x5e3a2c : 0x6f9269);
   dir.color.setHex(theme.sun || 0xfff5dd);
@@ -1150,6 +1141,16 @@ function applyWorldTheme(worldId) {
   rimLight.intensity = worldId === 3 ? 0.34 : 0.42;
   fillLight.color.setHex(worldId === 2 ? 0xffe4c7 : 0xffd1a4);
   fillLight.intensity = worldId === 3 ? 0.22 : 0.3;
+}
+
+function setWorldBackground(worldId) {
+  const theme = worldThemes[worldId] || worldThemes[1];
+  if (worldVisuals.backgroundTexture) {
+    worldVisuals.backgroundTexture.dispose();
+    worldVisuals.backgroundTexture = null;
+  }
+  worldVisuals.backgroundTexture = createWorldBackgroundTexture(theme, worldId);
+  scene.background = worldVisuals.backgroundTexture;
 }
 
 function rebuildWorldForCampaign() {
