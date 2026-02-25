@@ -122,6 +122,8 @@ const ui = {
   tutorialCloseBtn: document.getElementById('tutorialCloseBtn')
 };
 
+const PAUSE_MENU_RESTORE_KEY = 'aegis-pause-menu-pending';
+
 const menuPages = Array.from(document.querySelectorAll('.menuPage'));
 let activeMenuPage = 'home';
 
@@ -4415,11 +4417,17 @@ ui.sellBtn.onclick = () => {
   state.selectedTower = null;
 };
 ui.pauseBtn.onclick = () => {
+  if (!state.gameStarted) return;
   clearActiveCombatDrone({ startCooldown: true });
   state.paused = true;
   ui.pauseMenu.classList.remove('hidden');
+  localStorage.setItem(PAUSE_MENU_RESTORE_KEY, '1');
 };
-ui.resumeBtn.onclick = () => { state.paused = false; ui.pauseMenu.classList.add('hidden'); };
+ui.resumeBtn.onclick = () => {
+  state.paused = false;
+  ui.pauseMenu.classList.add('hidden');
+  localStorage.removeItem(PAUSE_MENU_RESTORE_KEY);
+};
 ui.castleVariantCloseBtn.onclick = () => closeCastleVariantModal();
 
 function closeTransientPanels() {
@@ -4447,6 +4455,7 @@ ui.menuBtn.onclick = () => {
   showPage('home');
   refreshProgressionAndUnlockUI();
   ui.mainMenu.classList.remove('hidden');
+  localStorage.removeItem(PAUSE_MENU_RESTORE_KEY);
 };
 
 function start(mode) {
@@ -4481,6 +4490,12 @@ function start(mode) {
   state.betweenWaveCountdown = 0;
   state.gameStarted = true;
   ui.mainMenu.classList.add('hidden');
+  const shouldOpenPauseOnStart = localStorage.getItem(PAUSE_MENU_RESTORE_KEY) === '1';
+  if (shouldOpenPauseOnStart) {
+    clearActiveCombatDrone({ startCooldown: true });
+    state.paused = true;
+    ui.pauseMenu.classList.remove('hidden');
+  }
   resetCineCam(false);
   if (mode === 'campaign') rebuildWorldForCampaign();
   else if (mode === 'endless') rebuildWorldForMode(getActiveWorldId());
@@ -4541,6 +4556,7 @@ ui.continueBtn.onclick = () => {
   ui.mainMenu.classList.remove('hidden');
   clearActiveCombatDrone();
   state.gameStarted = false;
+  localStorage.removeItem(PAUSE_MENU_RESTORE_KEY);
 };
 
 function updateViewport() {
@@ -4567,7 +4583,30 @@ window.addEventListener('orientationchange', updateViewport);
 window.visualViewport?.addEventListener('resize', updateViewport);
 window.visualViewport?.addEventListener('scroll', updateViewport);
 
-document.addEventListener('visibilitychange', () => { if (document.hidden) state.paused = true; });
+document.addEventListener('visibilitychange', () => {
+  if (!state.gameStarted) return;
+  if (document.hidden) {
+    state.paused = true;
+    localStorage.setItem(PAUSE_MENU_RESTORE_KEY, '1');
+    return;
+  }
+  if (localStorage.getItem(PAUSE_MENU_RESTORE_KEY) === '1') {
+    clearActiveCombatDrone({ startCooldown: true });
+    state.paused = true;
+    ui.pauseMenu.classList.remove('hidden');
+  }
+});
+
+window.addEventListener('pagehide', () => {
+  if (!state.gameStarted) return;
+  state.paused = true;
+  localStorage.setItem(PAUSE_MENU_RESTORE_KEY, '1');
+});
+
+window.addEventListener('beforeunload', () => {
+  if (!state.gameStarted) return;
+  localStorage.setItem(PAUSE_MENU_RESTORE_KEY, '1');
+});
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').then(reg => {
