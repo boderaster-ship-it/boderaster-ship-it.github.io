@@ -374,3 +374,33 @@ button { border: 1px solid #4d79a8; border-radius: 10px; background: #11243a; co
   gap: 8px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.statCard {
+  border: 1px solid rgba(120, 184, 236, 0.42);
+  border-radius: 12px;
+  background: rgba(12, 27, 44, 0.78);
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.statIcon {
+  font-size: 20px;
+}
+
+.statLabel {
+  font-size: 13px;
+  color: #b7d9f6;
+}
+
+.statValue {
+  font-size: 24px;
+  font-weight: 800;
+  color: #e9f8ff;
+}
