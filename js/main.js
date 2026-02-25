@@ -969,8 +969,9 @@ const BUILD_PAD_COLORS = {
 };
 const BUILD_TAP_MOVE_PX = Math.min(34, Math.max(28, Math.round((window.devicePixelRatio || 1) * 16)));
 const TAP_MAX_MS = 320;
-const PAN_MULT = 0.00465;
-const PINCH_MULT = 0.0057;
+const PAN_MULT = 0.0093;
+const PINCH_MULT = 0.0114;
+const WHEEL_ZOOM_MULT = 0.012;
 let hoverVisualState = { valid: true, pulse: 0 };
 
 buildBuildZonePads();
@@ -4236,6 +4237,10 @@ function clearObstacle(cellKey) {
 }
 let touches = new Map();
 let touchSession = null;
+const touchPanForward = new THREE.Vector3();
+const touchPanRight = new THREE.Vector3();
+const touchPanDelta = new THREE.Vector3();
+const touchPanUp = new THREE.Vector3(0, 1, 0);
 canvas.addEventListener('pointerdown', e => {
   canvas.setPointerCapture(e.pointerId);
   touches.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now() });
@@ -4291,13 +4296,24 @@ canvas.addEventListener('pointermove', e => {
     const d = Math.hypot(a.x - b.x, a.y - b.y);
     const cx = (a.x + b.x) / 2;
     const cy = (a.y + b.y) / 2;
+    const dx = cx - g.cx;
+    const dy = cy - g.cy;
     cam.velDist += (g.d - d) * PINCH_MULT;
-    cam.panVel.x += -(cx - g.cx) * PAN_MULT;
-    cam.panVel.y += (cy - g.cy) * PAN_MULT;
+    touchPanDelta.set(0, 0, 0);
+    camera.getWorldDirection(touchPanForward);
+    touchPanForward.y = 0;
+    if (touchPanForward.lengthSq() > 1e-8) {
+      touchPanForward.normalize();
+      touchPanRight.crossVectors(touchPanForward, touchPanUp).normalize();
+      touchPanDelta.copy(touchPanRight).multiplyScalar(dx * PAN_MULT);
+      touchPanDelta.addScaledVector(touchPanForward, -dy * PAN_MULT);
+      cam.panVel.x += touchPanDelta.x;
+      cam.panVel.y += touchPanDelta.z;
+    }
     if (cam.cine.active) {
       cam.cine.userDistOffset += (g.d - d) * PINCH_MULT * 0.55;
-      cam.cine.userPanOffset.x += -(cx - g.cx) * PAN_MULT * 0.7;
-      cam.cine.userPanOffset.y += (cy - g.cy) * PAN_MULT * 0.7;
+      cam.cine.userPanOffset.x += touchPanDelta.x * 0.7;
+      cam.cine.userPanOffset.y += touchPanDelta.z * 0.7;
     }
     touches.gesture = { d, cx, cy };
     if (touchSession?.startedInBuild) {
@@ -4350,8 +4366,8 @@ canvas.addEventListener('pointercancel', e => {
 });
 canvas.addEventListener('dblclick', () => unifiedOverview(true));
 canvas.addEventListener('wheel', e => {
-  cam.velDist += e.deltaY * 0.006;
-  if (cam.cine.active) cam.cine.userDistOffset += e.deltaY * 0.0028;
+  cam.velDist += e.deltaY * WHEEL_ZOOM_MULT;
+  if (cam.cine.active) cam.cine.userDistOffset += e.deltaY * WHEEL_ZOOM_MULT * (0.0028 / 0.006);
 }, { passive: true });
 
 document.addEventListener('pointerdown', e => {
