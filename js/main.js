@@ -153,6 +153,7 @@ const abilities = {
     use: () => {
       launchAbilityStorm('freeze', 0x9ce9ff, {
         onTouch: enemy => {
+          if (enemy.immunities?.freeze) return;
           enemy.freeze = Math.max(enemy.freeze, 2.5);
         }
       });
@@ -232,6 +233,13 @@ const worldThemes = {
   2:{name:'World 2 · Ice', bg:0xcde6ff, fog:0xd8edff, terrain:0x9dbbcf, road:0x6f8ea4, edge:0xc6e1f3, ambient:0xd8edff, sun:0xe4f2ff, sunIntensity:1.25, fogFar:108, sky:0xe5f4ff, prop:'ice', vfx:'frost', intro:'Eis-Biome: gefrorene Hindernisse, kaltes Licht, Nebel.'},
   3:{name:'World 3 · Lava', bg:0x381b14, fog:0x5a2a1e, terrain:0x5f2c1f, road:0x8e5332, edge:0xd3905e, ambient:0x694033, sun:0xffb073, sunIntensity:1.95, fogFar:96, sky:0x58362d, prop:'lava', vfx:'embers', intro:'Lava-Biome: vulkanischer Boden, Asche und Hitze.'},
   4:{name:'World 4 · Convergence Arena', bg:0x67543a, fog:0x8d7b65, terrain:0x4f5944, road:0x8b7150, edge:0xc0aa86, ambient:0xb8c4ad, sun:0xffd8b0, sunIntensity:1.58, fogFar:102, sky:0x8ea8a1, prop:'hybrid', vfx:'hybrid', intro:'Finale Arena: gezielte Fusion aus Wald, Eis und Lava.'}
+};
+
+const worldEnemyImmunities = {
+  1: { freeze: false, fire: false, explosive: false },
+  2: { freeze: true, fire: false, explosive: false },
+  3: { freeze: false, fire: true, explosive: false },
+  4: { freeze: false, fire: false, explosive: true }
 };
 
 const campaignDefs = Array.from({ length: 24 }, (_, i) => {
@@ -2509,6 +2517,7 @@ function spawnEnemy(boss = false) {
   const spd = (isFinalBoss ? 0.4 : boss ? 0.62 : def.speed) + state.wave * 0.024 + (worldId===3 ? 0.08 : 0);
   const frostResist = worldId === 3 ? 0.55 : 0;
   const armor = worldId === 4 ? 0.2 + Math.min(0.4, state.wave * 0.02) : 0;
+  const immunities = worldEnemyImmunities[worldId] || worldEnemyImmunities[1];
   const shadowRadius = def.flying ? def.size * 0.92 : def.size * 1.22;
   const blobShadow = createBlobShadow(shadowRadius, def.flying ? 0.22 : 0.34);
   world.add(blobShadow);
@@ -2531,6 +2540,7 @@ function spawnEnemy(boss = false) {
     flying: !!def.flying,
     bob: Math.random() * 5,
     world: worldId,
+    immunities,
     frostResist,
     armor,
     rage: worldId===4,
@@ -2700,7 +2710,7 @@ function fireTower(tower, enemy) {
   p.spin = Math.random() * Math.PI * 2;
   logProjectileFire(p, d.projectile);
   state.projectiles.push(p);
-  p.damageType = p.kind === 'ice' ? 'ice' : p.kind === 'bolt' ? 'arc' : p.kind === 'missile' ? 'explosive' : p.kind === 'beam' ? 'beam' : p.kind === 'flame' ? 'explosive' : 'kinetic';
+  p.damageType = p.kind === 'ice' ? 'ice' : p.kind === 'bolt' ? 'arc' : p.kind === 'missile' ? 'explosive' : p.kind === 'beam' ? 'beam' : p.kind === 'flame' ? 'fire' : 'kinetic';
   if (customStats?.chain > 0) {
     const linked = state.enemies.filter(e => e !== enemy && e.mesh.position.distanceTo(enemy.mesh.position) < customStats.chainRange).slice(0, customStats.chain);
     linked.forEach(e => applyHit(e, p.damage * (0.48 + customStats.shock), customStats.slow, 0, customStats, p.damageType));
@@ -2711,6 +2721,12 @@ function fireTower(tower, enemy) {
 }
 
 function applyHit(enemy, damage, slow = 0, burn = 0, customStats = null, damageType = 'kinetic') {
+  const immunity = enemy.immunities || worldEnemyImmunities[1];
+  if ((damageType === 'explosive' && immunity.explosive) || (damageType === 'fire' && immunity.fire)) {
+    spawnImpactFx(enemy.mesh.position.clone(), damageType);
+    return;
+  }
+
   const dealt = damage * (1 - (enemy.armor || 0));
   if (enemy.shield > 0) {
     enemy.shield -= dealt;
@@ -2718,10 +2734,10 @@ function applyHit(enemy, damage, slow = 0, burn = 0, customStats = null, damageT
   } else {
     enemy.hp -= dealt;
   }
-  const freezeDur = slow > 0 ? (0.45 + slow) * (1 - (enemy.frostResist || 0)) : 0;
+  const freezeDur = slow > 0 && !immunity.freeze ? (0.45 + slow) * (1 - (enemy.frostResist || 0)) : 0;
   enemy.lastFreeze = enemy.freeze || 0;
   enemy.freeze = Math.max(enemy.freeze, freezeDur);
-  enemy.burn = Math.max(enemy.burn || 0, burn || 0);
+  enemy.burn = immunity.fire ? (enemy.burn || 0) : Math.max(enemy.burn || 0, burn || 0);
   if (customStats?.shatter && enemy.freeze > 0.2) enemy.hp -= damage * customStats.shatter;
   enemy.hitFlash = 0.16;
   updateEnemyHealthBarVisual(enemy, true);
