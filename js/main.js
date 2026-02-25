@@ -242,6 +242,13 @@ const worldEnemyImmunities = {
   4: { freeze: false, fire: false, explosive: true }
 };
 
+const worldEnemyDamageVulnerability = {
+  1: { fire: 1, ice: 1 },
+  2: { fire: 1.35, ice: 1 },
+  3: { fire: 1, ice: 1.35 },
+  4: { fire: 1.35, ice: 1.35 }
+};
+
 const campaignDefs = Array.from({ length: 24 }, (_, i) => {
   const world = Math.floor(i / 6) + 1;
   const levelInWorld = (i % 6) + 1;
@@ -2727,7 +2734,9 @@ function applyHit(enemy, damage, slow = 0, burn = 0, customStats = null, damageT
     return;
   }
 
-  const dealt = damage * (1 - (enemy.armor || 0));
+  const vulnerability = worldEnemyDamageVulnerability[enemy.world] || worldEnemyDamageVulnerability[1];
+  const elementalBonus = damageType === 'fire' ? vulnerability.fire : damageType === 'ice' ? vulnerability.ice : 1;
+  const dealt = damage * elementalBonus * (1 - (enemy.armor || 0));
   if (enemy.shield > 0) {
     enemy.shield -= dealt;
     if (enemy.shield < 0) enemy.hp += enemy.shield;
