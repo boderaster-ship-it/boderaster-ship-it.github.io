@@ -796,6 +796,7 @@ const objectiveVisuals = (() => {
     }
     const startPos = toWorld(path[0][0], path[0][1]);
     spawn.position.copy(startPos).setY(startPos.y + 0.05);
+    spawn.scale.setScalar(2);
     spawn.rotation.y = yawFromDirection(getPathDirection(path, true));
     spawn.userData = { kind: 'spawnPoint', worldId, levelId, spawnAnim };
     spawn.traverse(obj => { if (obj.isMesh) { obj.castShadow = true; obj.receiveShadow = true; } });
