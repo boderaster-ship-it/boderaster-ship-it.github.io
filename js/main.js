@@ -1158,6 +1158,8 @@ function rebuildWorldForCampaign() {
   setBoardPath(worldPaths[def.world][def.levelInWorld]);
   while (world.children.length) world.remove(world.children[0]);
   world.add(terrain);
+  islandSidesGroup = buildIslandSides(terrain.userData?.islandBounds, def.world);
+  if (islandSidesGroup) world.add(islandSidesGroup);
   buildPath();
   buildEnvironmentProps();
   syncObjectiveVisuals(def.world, def.levelInWorld);
@@ -1172,6 +1174,8 @@ function rebuildWorldForMode(worldId = 1) {
   setBoardPath(worldPaths[safeWorld][1]);
   while (world.children.length) world.remove(world.children[0]);
   world.add(terrain);
+  islandSidesGroup = buildIslandSides(terrain.userData?.islandBounds, safeWorld);
+  if (islandSidesGroup) world.add(islandSidesGroup);
   buildPath();
   buildEnvironmentProps();
   syncObjectiveVisuals(safeWorld, 1);
@@ -1206,6 +1210,131 @@ function createBlobShadowTexture(size = 96) {
 }
 
 const blobShadowTexture = createBlobShadowTexture();
+
+const islandSideAssetCache = {
+  material: null,
+  geometries: null
+};
+let islandSidesGroup = null;
+
+function seededJitter(seed) {
+  const x = Math.sin(seed * 12.9898) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+function createRockSegmentGeometry(width, height, depth, variant = 0) {
+  const geometry = new THREE.BoxGeometry(width, height, depth, 1, 1, 1);
+  const pos = geometry.attributes.position;
+  const jitter = 0.1 + variant * 0.03;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+    const signX = Math.sign(x) || 1;
+    const signZ = Math.sign(z) || 1;
+    const offsetSeed = (i + 1) * (variant + 3.7);
+    const offsetA = (seededJitter(offsetSeed) - 0.5) * jitter;
+    const offsetB = (seededJitter(offsetSeed + 9.13) - 0.5) * jitter;
+    const yFactor = y > 0 ? 0.25 : 0.55;
+    pos.setXYZ(i, x + signX * offsetA * 0.35, y + offsetB * yFactor, z + signZ * offsetA * 0.28);
+  }
+  pos.needsUpdate = true;
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function getIslandSideAssets(theme) {
+  if (!islandSideAssetCache.material) {
+    islandSideAssetCache.material = new THREE.MeshStandardMaterial({
+      color: 0x4e4f56,
+      roughness: 0.96,
+      metalness: 0.02
+    });
+  }
+  if (!islandSideAssetCache.geometries) {
+    const base = board.tile;
+    islandSideAssetCache.geometries = [
+      createRockSegmentGeometry(base * 0.95, base * 1.12, base * 0.62, 0),
+      createRockSegmentGeometry(base * 0.88, base * 1.28, base * 0.58, 1),
+      createRockSegmentGeometry(base * 1.02, base * 1.03, base * 0.7, 2),
+      createRockSegmentGeometry(base * 0.78, base * 1.34, base * 0.54, 3)
+    ];
+  }
+  const color = new THREE.Color(theme.terrain).multiplyScalar(0.42).lerp(new THREE.Color(0x4a4d55), 0.28);
+  islandSideAssetCache.material.color.copy(color);
+  return islandSideAssetCache;
+}
+
+function validateFinite(...values) {
+  return values.every(v => Number.isFinite(v) && !Number.isNaN(v));
+}
+
+function buildIslandSides(bounds, worldId = 1) {
+  try {
+    const safeWorld = Math.max(1, Math.min(4, Number(worldId) || 1));
+    const theme = worldThemes[safeWorld] || worldThemes[1];
+    const { centerX, centerZ, width, depth, topY, drop } = bounds || {};
+    if (!validateFinite(centerX, centerZ, width, depth, topY, drop)) {
+      console.warn('[IslandSides] Invalid bounds, skipping side mesh build.');
+      return null;
+    }
+
+    const assets = getIslandSideAssets(theme);
+    const group = new THREE.Group();
+    group.name = 'islandSidesGroup';
+
+    const segmentStep = board.tile * 0.98;
+    const countX = Math.max(6, Math.min(30, Math.ceil(width / segmentStep) + 2));
+    const countZ = Math.max(6, Math.min(30, Math.ceil(depth / segmentStep) + 2));
+    const edgeInset = board.tile * 0.5;
+    const topLipY = topY - board.tile * 0.62;
+    const baseY = topLipY - drop * 0.52;
+
+    const addSegment = (x, z, edgeAxis, idxSeed) => {
+      const v = seededJitter(idxSeed);
+      const geo = assets.geometries[Math.floor(v * assets.geometries.length) % assets.geometries.length];
+      const mesh = new THREE.Mesh(geo, assets.material);
+      const yOffset = (seededJitter(idxSeed + 1.3) - 0.5) * 0.3;
+      const rotJitter = (seededJitter(idxSeed + 3.9) - 0.5) * 0.3;
+      const scaleJitter = 0.9 + seededJitter(idxSeed + 6.1) * 0.2;
+      mesh.position.set(x, baseY + yOffset, z);
+      mesh.rotation.y = (edgeAxis === 'z' ? Math.PI * 0.5 : 0) + rotJitter;
+      mesh.rotation.x = (seededJitter(idxSeed + 7.7) - 0.5) * 0.1;
+      mesh.scale.set(
+        scaleJitter * (0.96 + seededJitter(idxSeed + 8.2) * 0.16),
+        1.35 + seededJitter(idxSeed + 9.4) * 0.55,
+        scaleJitter * (0.95 + seededJitter(idxSeed + 11.8) * 0.18)
+      );
+      if (!validateFinite(mesh.position.x, mesh.position.y, mesh.position.z, mesh.scale.x, mesh.scale.y, mesh.scale.z)) return;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.raycast = () => null;
+      group.add(mesh);
+    };
+
+    const startX = centerX - width * 0.5 - edgeInset;
+    const startZ = centerZ - depth * 0.5 - edgeInset;
+    const spanX = width + edgeInset * 2;
+    const spanZ = depth + edgeInset * 2;
+    for (let i = 0; i < countX; i++) {
+      const t = countX === 1 ? 0 : i / (countX - 1);
+      const x = startX + spanX * t;
+      addSegment(x, centerZ - depth * 0.5 - edgeInset, 'x', 100 + i);
+      addSegment(x, centerZ + depth * 0.5 + edgeInset, 'x', 200 + i);
+    }
+    for (let i = 0; i < countZ; i++) {
+      const t = countZ === 1 ? 0 : i / (countZ - 1);
+      const z = startZ + spanZ * t;
+      addSegment(centerX - width * 0.5 - edgeInset, z, 'z', 300 + i);
+      addSegment(centerX + width * 0.5 + edgeInset, z, 'z', 400 + i);
+    }
+
+    return group;
+  } catch (err) {
+    console.warn('[IslandSides] Build failed, continuing without side meshes.', err);
+    return null;
+  }
+}
 
 function createBlobShadow(radius = 0.7, opacity = 0.34) {
   const material = new THREE.MeshBasicMaterial({
@@ -1418,7 +1547,19 @@ function buildTerrain() {
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   mesh.position.set(0, GROUND_Y - 0.03 - islandDepth * 0.5, board.h * board.tile * 0.5 - board.tile * 0.5);
-  mesh.userData = { topMaterial, sideMaterial, bottomMaterial };
+  mesh.userData = {
+    topMaterial,
+    sideMaterial,
+    bottomMaterial,
+    islandBounds: {
+      centerX: mesh.position.x,
+      centerZ: mesh.position.z,
+      width: terrainW,
+      depth: terrainH,
+      topY: mesh.position.y + islandDepth * 0.5,
+      drop: islandDepth
+    }
+  };
   return mesh;
 }
 
