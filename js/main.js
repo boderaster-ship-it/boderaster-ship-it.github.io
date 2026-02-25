@@ -4305,7 +4305,7 @@ canvas.addEventListener('pointermove', e => {
       touchPanForward.normalize();
       touchPanRight.crossVectors(touchPanForward, touchPanUp).normalize();
       touchPanDelta.copy(touchPanRight).multiplyScalar(dx * PAN_MULT);
-      touchPanDelta.addScaledVector(touchPanForward, -dy * PAN_MULT);
+      touchPanDelta.addScaledVector(touchPanForward, dy * PAN_MULT);
       cam.panVel.x += touchPanDelta.x;
       cam.panVel.y += touchPanDelta.z;
     }
