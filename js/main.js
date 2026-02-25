@@ -105,7 +105,18 @@ const ui = {
   levelCompleteModal: document.getElementById('levelCompleteModal'),
   levelCompleteSummary: document.getElementById('levelCompleteSummary'),
   levelRewards: document.getElementById('levelRewards'),
-  continueBtn: document.getElementById('continueBtn')
+  continueBtn: document.getElementById('continueBtn'),
+  tutorialOverlay: document.getElementById('tutorialOverlay'),
+  tutorialBackdrop: document.getElementById('tutorialBackdrop'),
+  tutorialHighlight: document.getElementById('tutorialHighlight'),
+  tutorialCard: document.getElementById('tutorialCard'),
+  tutorialTitle: document.getElementById('tutorialTitle'),
+  tutorialText: document.getElementById('tutorialText'),
+  tutorialCounter: document.getElementById('tutorialCounter'),
+  tutorialBackBtn: document.getElementById('tutorialBackBtn'),
+  tutorialSkipBtn: document.getElementById('tutorialSkipBtn'),
+  tutorialNextBtn: document.getElementById('tutorialNextBtn'),
+  tutorialCloseBtn: document.getElementById('tutorialCloseBtn')
 };
 
 const menuPages = Array.from(document.querySelectorAll('.menuPage'));
@@ -329,6 +340,7 @@ const state = {
   activeBuild: null,
   builderDraft: [],
   unlocks: safeJSONParse('aegis-unlocks', { towerBuilder: false }),
+  tutorial: safeJSONParse('aegis-tutorial', { version: 1, completed: {}, seenStep: {} }),
   obstacleTap: { key: null, expires: 0 },
   selectedCastlePart: 'wall',
   activeCastleVariantPart: null
@@ -341,6 +353,10 @@ if (state.meta.unlockedAbilities.includes('repair')) {
 }
 state.meta.savedBuilds = state.meta.savedBuilds || [];
 state.unlocks = state.unlocks || { towerBuilder: false };
+state.tutorial = state.tutorial || { version: 1, completed: {}, seenStep: {} };
+state.tutorial.version = Number(state.tutorial.version) || 1;
+state.tutorial.completed = state.tutorial.completed || {};
+state.tutorial.seenStep = state.tutorial.seenStep || {};
 state.campaign = state.campaign || {};
 state.campaign.completed = state.campaign.completed || {};
 state.campaign.unlockedLevel = state.campaign.unlockedLevel || 1;
@@ -1704,6 +1720,7 @@ function showToast(text, good = true) {
 function saveMeta() { localStorage.setItem('aegis-meta', JSON.stringify(state.meta)); }
 function saveCampaign() { localStorage.setItem('aegis-campaign', JSON.stringify(state.campaign)); }
 function saveUnlocks() { localStorage.setItem('aegis-unlocks', JSON.stringify(state.unlocks)); }
+function saveTutorial() { localStorage.setItem('aegis-tutorial', JSON.stringify(state.tutorial)); }
 
 function getDefaultCastleBuild() {
   const selection = {};
@@ -1833,7 +1850,9 @@ function unlockAbility(key) {
 }
 
 function syncTowerBuilderUnlock() {
+  const hadBuilder = !!state.unlocks.towerBuilder;
   state.unlocks.towerBuilder = (state.campaign.unlockedLevel || 1) >= TOWER_BUILDER_UNLOCK_LEVEL;
+  if (!hadBuilder && state.unlocks.towerBuilder) tutorialEngine.onUnlock('towerBuilder');
 }
 
 function syncProgressUnlocks() {
@@ -2085,6 +2104,7 @@ function showPage(pageName) {
   if (pageName === 'campaign') buildCampaignMenu();
   if (pageName === 'endless') buildModeWorldSelect(ui.endlessWorldSelect, 'endless');
   if (pageName === 'challenge') buildModeWorldSelect(ui.challengeWorldSelect, 'challenge');
+  tutorialEngine.onMenuOpen(pageName);
   if (pageName === 'castle') {
     updateCastleCoinLabel();
     updateCastlePartList();
@@ -2095,6 +2115,217 @@ function showPage(pageName) {
     closeCastleVariantModal();
   }
 }
+
+
+const tutorialRegistry = {
+  onboarding_level1: {
+    version: 1,
+    allowSkip: true,
+    steps: [
+      { title: 'Willkommen', text: 'Verteidige deine Burg und halte Gegner vom Ziel fern.' },
+      { title: 'Spawn → Weg → Burg', text: 'Gegner starten am Spawn, folgen dem Pfad und greifen deine Burg an.' },
+      { title: 'Türme bauen', text: 'Wähle unten einen Turm und tippe auf ein Baufeld, um ihn zu platzieren.', anchorSelector: '#towerDock' },
+      { title: 'Credits & Kosten', text: 'Jeder Turm kostet Credits. Gewinne neue Credits durch besiegte Gegner.', anchorSelector: '#money' },
+      { title: 'Fortschritt', text: 'Nach Kampagnen-Leveln erhältst du Upgrade-Punkte, Coins und neue Freischaltungen.' },
+      { title: 'Power-Ups', text: 'Power-Ups sind im Ability-Bar verfügbar und haben Cooldowns.', anchorSelector: '#abilityBar' },
+      { title: 'Kamera & Übersicht', text: 'Mit Übersicht und CineCam steuerst du den Blick auf das Schlachtfeld.', anchorSelector: '#overviewBtn' },
+      { title: 'Viel Erfolg!', text: 'Du bist bereit. Viel Erfolg bei der Verteidigung deiner Burg!' }
+    ]
+  },
+  first_open_castle_page: {
+    version: 1,
+    steps: [
+      { title: 'Castle', text: 'Hier gestaltest du deine Burg mit Coins und Varianten.' },
+      { title: 'Bauteile', text: 'Wähle ein Bauteil, öffne Varianten und kaufe neue Looks.', anchorSelector: '#castlePartList' }
+    ]
+  },
+  first_open_upgrades_page: {
+    version: 1,
+    steps: [
+      { title: 'Upgrades', text: 'Hier investierst du Upgrade-Punkte in dauerhafte Verbesserungen.' },
+      { title: 'Upgrade-Baum', text: 'Wähle ein Upgrade für Schaden oder Ökonomie und skaliere deinen Fortschritt.', anchorSelector: '#metaTree' }
+    ]
+  },
+  first_open_unlocks_settings_page: {
+    version: 1,
+    steps: [
+      { title: 'Freischaltungen & Einstellungen', text: 'Diese Seite zeigt Tower/Ability-Freischaltungen und wichtige Optionen.' },
+      { title: 'Optionen', text: 'Audio, Shake und Leistungsmodus kannst du hier anpassen.', anchorSelector: '.settings' }
+    ]
+  },
+  builder_unlocked_level18: {
+    version: 1,
+    steps: [
+      { title: 'Turm-Editor freigeschaltet', text: 'Ab Level 18 ist der Turm-Editor aktiv.' },
+      { title: 'Custom-Builds', text: 'Öffne den Editor im Tower-Dock und kombiniere Module für eigene Türme.', anchorSelector: '#towerDock' }
+    ]
+  },
+  new_world_2_first_entry: { version: 1, steps: [{ title: 'World 2 · Ice', text: 'In World 2 sind Gegner immun gegen Freeze. Nutze andere Kontroll- und Schadenstypen.' }] },
+  new_world_3_first_entry: { version: 1, steps: [{ title: 'World 3 · Lava', text: 'In World 3 sind Gegner immun gegen Feuer. Frost ist hier besonders effektiv.' }] },
+  new_world_4_first_entry: { version: 1, steps: [{ title: 'World 4 · Convergence', text: 'Die finale Welt kombiniert hohe Panzerung und mehrere Bedrohungstypen.' }] },
+  powerups_intro: { version: 1, steps: [{ title: 'Power-Ups verfügbar', text: 'Deine freigeschalteten Fähigkeiten erscheinen in der Ability-Bar und haben Cooldowns.', anchorSelector: '#abilityBar' }] },
+  cinecam_intro: { version: 1, steps: [{ title: 'CineCam', text: 'CineCam folgt den Frontlinien. Tippe erneut, um zurück zur normalen Kamera zu wechseln.', anchorSelector: '#cineCamBtn' }] },
+  performance_mode_intro: { version: 1, steps: [{ title: 'Leistungsmodus', text: 'Der Leistungsmodus reduziert Effekte für stabilere Performance auf schwächeren Geräten.', anchorSelector: '#perfToggle' }] },
+  boss_intro_world_1: { version: 1, steps: [{ title: 'Boss nähert sich', text: 'Boss-Wellen bringen mehr HP und Druck. Spare Fähigkeiten für den Boss-Moment.' }] },
+  boss_intro_world_2: { version: 1, steps: [{ title: 'Eis-Boss', text: 'Der Boss in World 2 profitiert von Freeze-Immunität. Setze auf konstanten Schaden.' }] },
+  boss_intro_world_3: { version: 1, steps: [{ title: 'Lava-Boss', text: 'Der Boss in World 3 ist feuerresistent. Kontrolliere die Eskorte und fokussiere den Kern.' }] },
+  boss_intro_world_4: { version: 1, steps: [{ title: 'Finaler Boss', text: 'Der finale Boss hat hohe Schild- und HP-Werte. Plane Ressourcen und Cooldowns vorausschauend.' }] }
+};
+
+Object.entries(enemyArchetypes).forEach(([enemyTypeId, def]) => {
+  tutorialRegistry[`new_enemy_type_${enemyTypeId}`] = {
+    version: 1,
+    steps: [{ title: `Neuer Gegnertyp: ${enemyTypeId}`, text: enemyTypeId === 'runner' ? 'Runner sind sehr schnell, aber fragil.' : enemyTypeId === 'tank' ? 'Tanks sind langsam, aber sehr robust.' : enemyTypeId === 'shielded' ? 'Shielded-Gegner besitzen zusätzliche Schilde.' : 'Flyer bewegen sich schnell und schweben über dem Boden.' }]
+  };
+});
+
+const tutorialEngine = {
+  active: null,
+  observedEnemyTypes: new Set(),
+  observedBossByWorld: new Set(),
+  runTutorial(tutorialId, options = {}) {
+    const cfg = tutorialRegistry[tutorialId];
+    if (!cfg || !cfg.steps?.length) return false;
+    const completedVersion = state.tutorial.completed[tutorialId];
+    if (completedVersion === cfg.version) return false;
+    if (this.active?.tutorialId === tutorialId) return false;
+    if (this.active) this.finish(true);
+    const startStep = Math.max(0, Math.min(cfg.steps.length - 1, Number(state.tutorial.seenStep[tutorialId] || 0)));
+    this.active = { tutorialId, cfg, stepIndex: startStep, allowSkip: !!cfg.allowSkip || !!options.allowSkip };
+    ui.tutorialOverlay.classList.remove('hidden');
+    this.render();
+    return true;
+  },
+  finish(markCompleted = true) {
+    if (!this.active) return;
+    const { tutorialId, cfg } = this.active;
+    if (markCompleted) {
+      state.tutorial.completed[tutorialId] = cfg.version;
+      delete state.tutorial.seenStep[tutorialId];
+    } else {
+      state.tutorial.seenStep[tutorialId] = this.active.stepIndex;
+    }
+    saveTutorial();
+    ui.tutorialOverlay.classList.add('hidden');
+    ui.tutorialHighlight.classList.add('hidden');
+    this.active = null;
+  },
+  next() {
+    if (!this.active) return;
+    if (this.active.stepIndex >= this.active.cfg.steps.length - 1) {
+      this.finish(true);
+      return;
+    }
+    this.active.stepIndex += 1;
+    state.tutorial.seenStep[this.active.tutorialId] = this.active.stepIndex;
+    saveTutorial();
+    this.render();
+  },
+  back() {
+    if (!this.active) return;
+    this.active.stepIndex = Math.max(0, this.active.stepIndex - 1);
+    state.tutorial.seenStep[this.active.tutorialId] = this.active.stepIndex;
+    saveTutorial();
+    this.render();
+  },
+  placeCard(anchorRect = null) {
+    const vw = window.visualViewport?.width || window.innerWidth;
+    const vh = window.visualViewport?.height || window.innerHeight;
+    const card = ui.tutorialCard;
+    const margin = 12;
+    const cardW = Math.min(420, Math.max(260, vw - margin * 2));
+    card.style.width = `${cardW}px`;
+    const cardH = Math.min(260, Math.max(140, card.offsetHeight || 220));
+    let left = Math.max(margin, (vw - cardW) * 0.5);
+    let top = Math.max(margin, vh - cardH - margin - Math.max(0, Number(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || 0)));
+    if (anchorRect) {
+      const below = vh - anchorRect.bottom;
+      const above = anchorRect.top;
+      if (below > cardH + margin) top = Math.min(vh - cardH - margin, anchorRect.bottom + 10);
+      else if (above > cardH + margin) top = Math.max(margin, anchorRect.top - cardH - 10);
+      if (anchorRect.left + cardW + margin <= vw) left = Math.max(margin, anchorRect.left);
+      else if (anchorRect.right - cardW - margin >= 0) left = Math.min(vw - cardW - margin, anchorRect.right - cardW);
+    }
+    card.style.left = `${Math.max(margin, Math.min(vw - cardW - margin, left))}px`;
+    card.style.top = `${Math.max(margin, Math.min(vh - cardH - margin, top))}px`;
+  },
+  highlight(step) {
+    const selector = step.anchorSelector;
+    if (!selector) {
+      ui.tutorialHighlight.classList.add('hidden');
+      this.placeCard(null);
+      return;
+    }
+    const target = document.querySelector(selector);
+    if (!target) {
+      ui.tutorialHighlight.classList.add('hidden');
+      this.placeCard(null);
+      return;
+    }
+    const rect = target.getBoundingClientRect();
+    if (!rect || rect.width <= 0 || rect.height <= 0) {
+      ui.tutorialHighlight.classList.add('hidden');
+      this.placeCard(null);
+      return;
+    }
+    const pad = 6;
+    ui.tutorialHighlight.classList.remove('hidden');
+    ui.tutorialHighlight.style.left = `${Math.max(0, rect.left - pad)}px`;
+    ui.tutorialHighlight.style.top = `${Math.max(0, rect.top - pad)}px`;
+    ui.tutorialHighlight.style.width = `${rect.width + pad * 2}px`;
+    ui.tutorialHighlight.style.height = `${rect.height + pad * 2}px`;
+    this.placeCard(rect);
+  },
+  render() {
+    if (!this.active) return;
+    const step = this.active.cfg.steps[this.active.stepIndex];
+    ui.tutorialTitle.textContent = step.title;
+    ui.tutorialText.textContent = step.text;
+    ui.tutorialCounter.textContent = `${this.active.stepIndex + 1}/${this.active.cfg.steps.length}`;
+    ui.tutorialBackBtn.classList.toggle('hidden', this.active.stepIndex === 0);
+    ui.tutorialSkipBtn.classList.toggle('hidden', !this.active.allowSkip);
+    const isLast = this.active.stepIndex >= this.active.cfg.steps.length - 1;
+    ui.tutorialNextBtn.classList.toggle('hidden', isLast);
+    ui.tutorialCloseBtn.classList.toggle('hidden', !isLast);
+    this.highlight(step);
+  },
+  onMenuOpen(pageId) {
+    if (pageId === 'castle') this.runTutorial('first_open_castle_page');
+    if (pageId === 'upgrades') this.runTutorial('first_open_upgrades_page');
+    if (pageId === 'unlockSettings') this.runTutorial('first_open_unlocks_settings_page');
+  },
+  onLevelStart(mode, worldId, levelId) {
+    if (mode === 'campaign' && worldId === 1 && levelId === 1) this.runTutorial('onboarding_level1', { allowSkip: true });
+    if (mode === 'campaign' && worldId >= 2 && worldId <= 4) this.runTutorial(`new_world_${worldId}_first_entry`);
+    if (Object.keys(abilities).length && !state.tutorial.completed.powerups_intro) this.runTutorial('powerups_intro');
+  },
+  onLevelComplete(mode, worldId, levelId) {
+    if (mode === 'campaign' && (state.campaign.unlockedLevel || 1) >= TOWER_BUILDER_UNLOCK_LEVEL) this.runTutorial('builder_unlocked_level18');
+  },
+  onEnemySpawn(enemyTypeId) {
+    if (!enemyTypeId || this.observedEnemyTypes.has(enemyTypeId)) return;
+    this.observedEnemyTypes.add(enemyTypeId);
+    this.runTutorial(`new_enemy_type_${enemyTypeId}`);
+  },
+  onBossSpawn(worldId) {
+    if (this.observedBossByWorld.has(worldId)) return;
+    this.observedBossByWorld.add(worldId);
+    this.runTutorial(`boss_intro_world_${worldId}`);
+  },
+  onUnlock(unlockId) {
+    if (unlockId === 'towerBuilder') this.runTutorial('builder_unlocked_level18');
+  },
+  bindUI() {
+    ui.tutorialNextBtn.onclick = () => this.next();
+    ui.tutorialBackBtn.onclick = () => this.back();
+    ui.tutorialCloseBtn.onclick = () => this.finish(true);
+    ui.tutorialSkipBtn.onclick = () => this.finish(true);
+    ui.tutorialBackdrop.onclick = () => {};
+    window.addEventListener('resize', () => this.render());
+    window.visualViewport?.addEventListener('resize', () => this.render());
+    window.visualViewport?.addEventListener('scroll', () => this.render());
+  }
+};
 
 
 function sortedSignature(mods) {
@@ -2383,6 +2614,7 @@ function handleLevelComplete() {
   state.paused = true;
   buildCampaignMenu();
   refreshProgressionAndUnlockUI();
+  tutorialEngine.onLevelComplete('campaign', def.world, def.levelInWorld);
 }
 
 const towerVisuals = (() => {
@@ -2528,6 +2760,8 @@ function spawnEnemy(boss = false) {
   const shadowRadius = def.flying ? def.size * 0.92 : def.size * 1.22;
   const blobShadow = createBlobShadow(shadowRadius, def.flying ? 0.22 : 0.34);
   world.add(blobShadow);
+  tutorialEngine.onEnemySpawn(def.type);
+  if (boss) tutorialEngine.onBossSpawn(worldId);
   const enemy = {
     mesh,
     healthBar,
@@ -3898,6 +4132,9 @@ function start(mode) {
   else if (mode === 'endless') rebuildWorldForMode(getActiveWorldId());
   else if (mode === 'challenge') rebuildWorldForMode(getActiveWorldId());
   else if (mode === 'boss') rebuildWorldForMode(4);
+  const activeWorld = getActiveWorldId();
+  const levelInWorld = mode === 'campaign' ? (((state.currentLevel - 1) % 6) + 1) : 1;
+  tutorialEngine.onLevelStart(mode, activeWorld, levelInWorld);
   ui.bossWarning.classList.add('hidden');
   refreshProgressionAndUnlockUI({ refreshInGameDock: true });
   sanitizeCastleBuildState();
@@ -3930,9 +4167,14 @@ ui.overviewBtn.onclick = () => {
 };
 ui.cineCamBtn.onclick = () => {
   if (cam.cine.active) resetCineCam(true);
-  else enableCineCam();
+  else {
+    enableCineCam();
+    tutorialEngine.runTutorial('cinecam_intro');
+  }
 };
 ui.speedBtn.onclick = () => { state.gameSpeed = state.gameSpeed >= 4 ? 1 : state.gameSpeed + 1; };
+ui.perfToggle?.addEventListener('change', () => { if (ui.perfToggle.checked) tutorialEngine.runTutorial('performance_mode_intro'); });
+
 ui.continueBtn.onclick = () => {
   resetCineCam(false);
   closeTransientPanels();
@@ -3993,7 +4235,7 @@ if ('serviceWorker' in navigator) {
 }
 
 function assertRequiredDomNodes() {
-  const required = ['mainMenu','campaignWorldSelect','campaignLevelSelect','playCampaign','playEndless','playChallenge','playCampaignStart','playEndlessStart','playChallengeStart','metaTree','unlockList','upgradePointsLabel','finalBossUnlock','playFinalBoss','openCastle','openUpgrades','openUnlockSettings','endlessWorldSelect','challengeWorldSelect','castlePartList','castleSelectionStatus','castlePreview','castleCoins','castleVariantModal','castleVariantTitle','castleVariantCards','castleVariantCloseBtn'];
+  const required = ['mainMenu','campaignWorldSelect','campaignLevelSelect','playCampaign','playEndless','playChallenge','playCampaignStart','playEndlessStart','playChallengeStart','metaTree','unlockList','upgradePointsLabel','finalBossUnlock','playFinalBoss','openCastle','openUpgrades','openUnlockSettings','endlessWorldSelect','challengeWorldSelect','castlePartList','castleSelectionStatus','castlePreview','castleCoins','castleVariantModal','castleVariantTitle','castleVariantCards','castleVariantCloseBtn','tutorialOverlay','tutorialBackdrop','tutorialHighlight','tutorialCard','tutorialTitle','tutorialText','tutorialCounter','tutorialBackBtn','tutorialSkipBtn','tutorialNextBtn','tutorialCloseBtn'];
   const missing = required.filter(key => !ui[key]);
   if (missing.length) throw new Error(`Missing required DOM nodes: ${missing.join(', ')}`);
 }
@@ -4012,6 +4254,7 @@ function bootstrapMenu() {
     initDock();
     initAbilities();
     refreshWavePreview();
+    tutorialEngine.bindUI();
     showToast('Baue zuerst, dann tippe auf ▶️. Doppeltippen für Übersicht.');
     requestAnimationFrame(animate);
   } catch (err) {

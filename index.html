@@ -208,6 +208,24 @@
       </div>
     </section>
 
+    <section id="tutorialOverlay" class="tutorialOverlay hidden" aria-live="polite">
+      <div id="tutorialBackdrop" class="tutorialBackdrop"></div>
+      <div id="tutorialHighlight" class="tutorialHighlight hidden" aria-hidden="true"></div>
+      <article id="tutorialCard" class="tutorialCard" role="dialog" aria-modal="true" aria-labelledby="tutorialTitle">
+        <div class="tutorialHeader">
+          <h3 id="tutorialTitle">Guide</h3>
+          <span id="tutorialCounter" class="tiny">1/1</span>
+        </div>
+        <p id="tutorialText"></p>
+        <div class="tutorialActions">
+          <button id="tutorialBackBtn" class="btnSecondary">Back</button>
+          <button id="tutorialSkipBtn" class="btnSecondary hidden">Skip</button>
+          <button id="tutorialNextBtn" class="btnPrimary">Next</button>
+          <button id="tutorialCloseBtn" class="btnSecondary">Close</button>
+        </div>
+      </article>
+    </section>
+
     <button id="updateBtn" class="hidden">Update verfügbar · Tippen zum Aktualisieren</button>
     <div id="toast"></div>
   </div>
