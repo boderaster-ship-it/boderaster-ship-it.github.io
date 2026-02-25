@@ -243,10 +243,10 @@ const shiftZ = (p, d) => p.map(([x,z]) => [x, Math.max(1, Math.min(14, z + d))])
 Object.entries(worldPaths[1]).forEach(([k,v]) => { worldPaths[2][k] = mirrorX(v); worldPaths[3][k] = shiftZ(v, (Number(k)%2===0?1:-1)); worldPaths[4][k] = mirrorX(shiftZ(v, (Number(k)%2===0?-1:1))); });
 
 const worldThemes = {
-  1:{name:'World 1 · Forest', bg:0x9fd5ff, fog:0xb8d7bc, terrain:0x3f6a45, road:0x6b5a42, edge:0xa18b6c, ambient:0xcce7cf, sun:0xfff2dc, sunIntensity:1.45, fogFar:130, sky:0xc8e7ff, prop:'forest', vfx:'pollen', intro:'Wald-Biome: Bäume, Felsen und klare Tageslicht-Sicht.'},
-  2:{name:'World 2 · Ice', bg:0xcde6ff, fog:0xd8edff, terrain:0x9dbbcf, road:0x6f8ea4, edge:0xc6e1f3, ambient:0xd8edff, sun:0xe4f2ff, sunIntensity:1.25, fogFar:108, sky:0xe5f4ff, prop:'ice', vfx:'frost', intro:'Eis-Biome: gefrorene Hindernisse, kaltes Licht, Nebel.'},
-  3:{name:'World 3 · Lava', bg:0x381b14, fog:0x5a2a1e, terrain:0x5f2c1f, road:0x8e5332, edge:0xd3905e, ambient:0x694033, sun:0xffb073, sunIntensity:1.95, fogFar:96, sky:0x58362d, prop:'lava', vfx:'embers', intro:'Lava-Biome: vulkanischer Boden, Asche und Hitze.'},
-  4:{name:'World 4 · Convergence Arena', bg:0x67543a, fog:0x8d7b65, terrain:0x4f5944, road:0x8b7150, edge:0xc0aa86, ambient:0xb8c4ad, sun:0xffd8b0, sunIntensity:1.58, fogFar:102, sky:0x8ea8a1, prop:'hybrid', vfx:'hybrid', intro:'Finale Arena: gezielte Fusion aus Wald, Eis und Lava.'}
+  1:{name:'World 1 · Forest', bg:0x9fd5ff, fog:0xb8d7bc, terrain:0x3f6a45, road:0x6b5a42, edge:0xa18b6c, ambient:0xcce7cf, sun:0xfff2dc, sunIntensity:1.45, fogFar:130, sky:0xc8e7ff, prop:'forest', vfx:'pollen', intro:'Wald-Biome: Bäume, Felsen und klare Tageslicht-Sicht.', skyTop:0x69b6ff, skyHorizon:0xdaf2ff, haze:0xeaf6ff},
+  2:{name:'World 2 · Ice', bg:0xcde6ff, fog:0xd8edff, terrain:0x9dbbcf, road:0x6f8ea4, edge:0xc6e1f3, ambient:0xd8edff, sun:0xe4f2ff, sunIntensity:1.25, fogFar:108, sky:0xe5f4ff, prop:'ice', vfx:'frost', intro:'Eis-Biome: gefrorene Hindernisse, kaltes Licht, Nebel.', skyTop:0x89b7f2, skyHorizon:0xe8f6ff, haze:0xd6ebff},
+  3:{name:'World 3 · Lava', bg:0x381b14, fog:0x5a2a1e, terrain:0x5f2c1f, road:0x8e5332, edge:0xd3905e, ambient:0x694033, sun:0xffb073, sunIntensity:1.95, fogFar:96, sky:0x58362d, prop:'lava', vfx:'embers', intro:'Lava-Biome: vulkanischer Boden, Asche und Hitze.', skyTop:0x2b1719, skyHorizon:0x90412f, haze:0xc06f4e},
+  4:{name:'World 4 · Space', bg:0x090c1f, fog:0x1f2649, terrain:0x4f5944, road:0x8b7150, edge:0xc0aa86, ambient:0x9daed3, sun:0xc8d6ff, sunIntensity:1.05, fogFar:112, sky:0x121833, prop:'hybrid', vfx:'hybrid', intro:'Orbit-Biome: schwebende Plattform mit Sternenfeld und kosmischem Dunst.', skyTop:0x04060f, skyHorizon:0x27356e, haze:0x7f8fd8}
 };
 
 const worldEnemyImmunities = {
@@ -395,6 +395,7 @@ renderer.setSize(1, 1, false);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd5ff);
 scene.fog = new THREE.Fog(0xbfdff4, 45, 130);
+const worldVisuals = { backgroundTexture: null };
 const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 220);
 const cam = { yaw: 0.6, pitch: 0.98, dist: 24, target: new THREE.Vector3(0, 0, 8.2), velYaw: 0, velPitch: 0, velDist: 0, panVel: new THREE.Vector2(), transitioning: null, cine: { active: false, targetEnemy: null, travelStart: 0, travelDur: 820, pathStart: 0, pathProgress: 1, camT: 0, followOffsetT: 0.11, smoothPos: null, smoothLook: null, baseYaw: 0, basePitch: 0, baseDist: 0, userYawOffset: 0, userPitchOffset: 0, userDistOffset: 0, userPanOffset: new THREE.Vector2(), baselineTarget: new THREE.Vector3(0, 0, 8.2) } };
 
@@ -1104,15 +1105,22 @@ function setBoardPath(path) {
 
 function applyWorldTheme(worldId) {
   const theme = worldThemes[worldId] || worldThemes[1];
-  scene.background = new THREE.Color(theme.bg);
+  if (worldVisuals.backgroundTexture) worldVisuals.backgroundTexture.dispose();
+  worldVisuals.backgroundTexture = createWorldBackgroundTexture(theme, worldId);
+  scene.background = worldVisuals.backgroundTexture;
   scene.fog = new THREE.Fog(theme.fog, 38, theme.fogFar || (worldId === 4 ? 105 : 130));
-  if (terrain?.material) {
-    terrain.material.color.setHex(0xffffff);
-    if (terrain.material.map) terrain.material.map.dispose();
-    terrain.material.map = createTerrainTexture(theme);
-    terrain.material.roughness = 0.97;
-    terrain.material.metalness = 0.01;
-    terrain.material.needsUpdate = true;
+  if (terrain?.userData?.topMaterial) {
+    const { topMaterial, sideMaterial, bottomMaterial } = terrain.userData;
+    topMaterial.color.setHex(0xffffff);
+    if (topMaterial.map) topMaterial.map.dispose();
+    topMaterial.map = createTerrainTexture(theme);
+    topMaterial.roughness = 0.97;
+    topMaterial.metalness = 0.01;
+    sideMaterial.color.copy(new THREE.Color(theme.terrain).multiplyScalar(0.58));
+    bottomMaterial.color.copy(new THREE.Color(theme.terrain).multiplyScalar(0.46));
+    topMaterial.needsUpdate = true;
+    sideMaterial.needsUpdate = true;
+    bottomMaterial.needsUpdate = true;
   }
   sky.material.color.setHex(theme.sky || theme.bg);
   hemi.color.setHex(theme.ambient || 0xd9efff);
@@ -1240,23 +1248,67 @@ function createTerrainTexture(theme) {
   return texture;
 }
 
+function createWorldBackgroundTexture(theme, worldId) {
+  const size = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const gradient = ctx.createLinearGradient(0, 0, 0, size);
+  gradient.addColorStop(0, `#${new THREE.Color(theme.skyTop || theme.bg).getHexString()}`);
+  gradient.addColorStop(0.52, `#${new THREE.Color(theme.skyHorizon || theme.sky || theme.bg).getHexString()}`);
+  gradient.addColorStop(1, `#${new THREE.Color(theme.haze || theme.fog || theme.bg).getHexString()}`);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+
+  if (worldId === 4) {
+    const stars = 180;
+    for (let i = 0; i < stars; i++) {
+      const alpha = 0.3 + Math.random() * 0.7;
+      const radius = Math.random() < 0.1 ? 1.8 : 1.05;
+      const x = Math.random() * size;
+      const y = Math.random() * size * 0.74;
+      const twinkle = 180 + Math.floor(Math.random() * 75);
+      ctx.fillStyle = `rgba(${twinkle},${twinkle},255,${alpha})`;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    const nebula = ctx.createRadialGradient(size * 0.72, size * 0.36, size * 0.04, size * 0.72, size * 0.36, size * 0.44);
+    nebula.addColorStop(0, 'rgba(152, 149, 255, 0.33)');
+    nebula.addColorStop(1, 'rgba(72, 88, 180, 0)');
+    ctx.fillStyle = nebula;
+    ctx.fillRect(0, 0, size, size);
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = false;
+  return texture;
+}
+
 function buildTerrain() {
-  const extra = 14;
-  const terrainW = (board.w + extra * 2) * board.tile;
-  const terrainH = (board.h + extra * 2) * board.tile;
-  const segW = board.w + extra * 2;
-  const segH = board.h + extra * 2;
-  const geometry = new THREE.PlaneGeometry(terrainW, terrainH, segW, segH);
+  const terrainW = board.w * board.tile;
+  const terrainH = board.h * board.tile;
+  const islandDepth = board.tile * 2.75;
   const theme = worldThemes[getSelectedCampaignDef().world] || worldThemes[1];
-  const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
+  const topMaterial = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     roughness: 0.97,
     metalness: 0.01,
     map: createTerrainTexture(theme)
-  }));
-  mesh.rotation.x = -Math.PI / 2;
+  });
+  const sideMaterial = new THREE.MeshStandardMaterial({ color: new THREE.Color(theme.terrain).multiplyScalar(0.58), roughness: 0.93, metalness: 0.02 });
+  const bottomMaterial = new THREE.MeshStandardMaterial({ color: new THREE.Color(theme.terrain).multiplyScalar(0.46), roughness: 0.96, metalness: 0 });
+  const geometry = new THREE.BoxGeometry(terrainW, islandDepth, terrainH, 1, 1, 1);
+  const mats = [sideMaterial, sideMaterial, topMaterial, bottomMaterial, sideMaterial, sideMaterial];
+  const mesh = new THREE.Mesh(geometry, mats);
+  mesh.castShadow = true;
   mesh.receiveShadow = true;
-  mesh.position.set(0, GROUND_Y - 0.03, board.h * board.tile * 0.5 - board.tile * 0.5);
+  mesh.position.set(0, GROUND_Y - 0.03 - islandDepth * 0.5, board.h * board.tile * 0.5 - board.tile * 0.5);
+  mesh.userData = { topMaterial, sideMaterial, bottomMaterial };
   return mesh;
 }
 
