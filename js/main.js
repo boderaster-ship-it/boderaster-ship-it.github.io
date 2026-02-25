@@ -3555,6 +3555,9 @@ function bootstrapMenu() {
   try {
     assertRequiredDomNodes();
     sanitizeCampaignState();
+    syncProgressUnlocks();
+    saveMeta();
+    saveUnlocks();
     setCampaignSelectionToLatestPlayable();
     saveCampaign();
     validateCampaignDefinitions();
