@@ -78,6 +78,8 @@ const ui = {
   openUpgrades: document.getElementById('openUpgrades'),
   openUnlockSettings: document.getElementById('openUnlockSettings'),
   openMotAnleitung: document.getElementById('openMotAnleitung'),
+  openStatistics: document.getElementById('openStatistics'),
+  statsGrid: document.getElementById('statsGrid'),
   metaTree: document.getElementById('metaTree'),
   audioToggle: document.getElementById('audioToggle'),
   shakeToggle: document.getElementById('shakeToggle'),
@@ -342,6 +344,7 @@ const state = {
   builderDraft: [],
   unlocks: safeJSONParse('aegis-unlocks', { towerBuilder: false }),
   tutorial: safeJSONParse('aegis-tutorial', { version: 1, completed: {}, seenStep: {} }),
+  stats: safeJSONParse('aegis-stats', { enemiesKilled: 0, bossesKilled: 0, lifeLost: 0, powerUpsUsed: 0, towersBuilt: 0, towerUpgrades: 0 }),
   obstacleTap: { key: null, expires: 0 },
   selectedCastlePart: 'wall',
   activeCastleVariantPart: null
@@ -358,6 +361,13 @@ state.tutorial = state.tutorial || { version: 1, completed: {}, seenStep: {} };
 state.tutorial.version = Number(state.tutorial.version) || 1;
 state.tutorial.completed = state.tutorial.completed || {};
 state.tutorial.seenStep = state.tutorial.seenStep || {};
+state.stats = state.stats || {};
+state.stats.enemiesKilled = Math.max(0, Number(state.stats.enemiesKilled) || 0);
+state.stats.bossesKilled = Math.max(0, Number(state.stats.bossesKilled) || 0);
+state.stats.lifeLost = Math.max(0, Number(state.stats.lifeLost) || 0);
+state.stats.powerUpsUsed = Math.max(0, Number(state.stats.powerUpsUsed) || 0);
+state.stats.towersBuilt = Math.max(0, Number(state.stats.towersBuilt) || 0);
+state.stats.towerUpgrades = Math.max(0, Number(state.stats.towerUpgrades) || 0);
 state.campaign = state.campaign || {};
 state.campaign.completed = state.campaign.completed || {};
 state.campaign.unlockedLevel = state.campaign.unlockedLevel || 1;
@@ -1722,6 +1732,7 @@ function saveMeta() { localStorage.setItem('aegis-meta', JSON.stringify(state.me
 function saveCampaign() { localStorage.setItem('aegis-campaign', JSON.stringify(state.campaign)); }
 function saveUnlocks() { localStorage.setItem('aegis-unlocks', JSON.stringify(state.unlocks)); }
 function saveTutorial() { localStorage.setItem('aegis-tutorial', JSON.stringify(state.tutorial)); }
+function saveStats() { localStorage.setItem('aegis-stats', JSON.stringify(state.stats)); }
 
 function getDefaultCastleBuild() {
   const selection = {};
@@ -2096,6 +2107,25 @@ function buildModeWorldSelect(container, modeKey) {
   }
 }
 
+function renderStatistics() {
+  if (!ui.statsGrid) return;
+  const cards = [
+    { label: 'Getötete Gegner gesamt', value: state.stats.enemiesKilled, icon: '💀' },
+    { label: 'Getötete Bosse', value: state.stats.bossesKilled, icon: '👹' },
+    { label: 'Verlorenes Leben', value: state.stats.lifeLost, icon: '❤️' },
+    { label: 'Benutzte Power-Ups', value: state.stats.powerUpsUsed, icon: '⚡' },
+    { label: 'Gebaute Türme', value: state.stats.towersBuilt, icon: '🏗️' },
+    { label: 'Turm-Aufwertungen', value: state.stats.towerUpgrades, icon: '⬆️' }
+  ];
+  ui.statsGrid.innerHTML = cards.map(card => `
+    <article class="statCard">
+      <div class="statIcon" aria-hidden="true">${card.icon}</div>
+      <div class="statLabel">${card.label}</div>
+      <div class="statValue">${Math.floor(card.value)}</div>
+    </article>
+  `).join('');
+}
+
 function showPage(pageName) {
   activeMenuPage = pageName;
   menuPages.forEach(page => page.classList.toggle('hidden', page.dataset.page !== pageName));
@@ -2105,6 +2135,7 @@ function showPage(pageName) {
   if (pageName === 'campaign') buildCampaignMenu();
   if (pageName === 'endless') buildModeWorldSelect(ui.endlessWorldSelect, 'endless');
   if (pageName === 'challenge') buildModeWorldSelect(ui.challengeWorldSelect, 'challenge');
+  if (pageName === 'statistics') renderStatistics();
   tutorialEngine.onMenuOpen(pageName);
   if (pageName === 'castle') {
     updateCastleCoinLabel();
@@ -2542,6 +2573,8 @@ function initAbilities() {
       if (state.abilityCooldowns[k] > 0 || state.buildPhase || !state.inWave) return;
       a.use();
       state.abilityCooldowns[k] = a.cd;
+      state.stats.powerUpsUsed += 1;
+      saveStats();
     };
     ui.abilityBar.appendChild(btn);
   });
@@ -3063,6 +3096,8 @@ function placeTowerAt(cell) {
     state.money -= state.activeBuild.cost;
     board.blocked.add(key);
     state.towers.push(makeTower('custom', cell, state.activeBuild));
+    state.stats.towersBuilt += 1;
+    saveStats();
     state.buildMode = false;
     ghost.visible = false;
     rangeRing.visible = false;
@@ -3077,6 +3112,8 @@ function placeTowerAt(cell) {
   state.money -= def.cost;
   board.blocked.add(key);
   state.towers.push(makeTower(state.selectedTowerType, cell));
+  state.stats.towersBuilt += 1;
+  saveStats();
   state.buildMode = false;
   ghost.visible = false;
   rangeRing.visible = false;
@@ -3297,6 +3334,9 @@ function animate(now) {
     if (e.hp <= 0) {
       state.money += e.boss ? 70 : 12;
       state.meta.upgradePoints = (state.meta.upgradePoints || 0) + (e.boss ? 1 : 0);
+      state.stats.enemiesKilled += 1;
+      if (e.boss) state.stats.bossesKilled += 1;
+      saveStats();
       spawnDeathFx(e);
       releaseHealthBar(e.healthBar);
       e.mesh.visible = false;
@@ -3315,7 +3355,10 @@ function animate(now) {
     e.t += simDt * speed / (board.path.length * 0.58);
     const idx = Math.floor(e.t * (board.path.length - 1));
     if (idx >= board.path.length - 1) {
-      state.lives -= e.boss ? 4 : 1;
+      const lostLives = e.boss ? 4 : 1;
+      state.lives -= lostLives;
+      state.stats.lifeLost += lostLives;
+      saveStats();
       state.enemies.splice(i, 1);
       releaseHealthBar(e.healthBar);
       if (e.blobShadow) world.remove(e.blobShadow);
@@ -4071,6 +4114,8 @@ ui.upgradeBtn.onclick = () => {
   if (state.money < cost) return showToast('Mehr Credits benötigt', false);
   state.money -= cost;
   t.level += 1;
+  state.stats.towerUpgrades += 1;
+  saveStats();
   t.core.scale.setScalar(1 + t.level * 0.08);
   t.barrel.scale.z = 1 + t.level * 0.16;
   showToast('Aufgewertet');
@@ -4170,6 +4215,7 @@ ui.openCastle.onclick = () => showPage('castle');
 ui.openUpgrades.onclick = () => showPage('upgrades');
 ui.openUnlockSettings.onclick = () => showPage('unlockSettings');
 ui.openMotAnleitung.onclick = () => showPage('motAnleitung');
+ui.openStatistics.onclick = () => showPage('statistics');
 ui.playCampaignStart.onclick = () => {
   const w = Number(state.campaign.selectedWorld) || 1;
   const l = Number(state.campaign.selectedLevel) || 1;
