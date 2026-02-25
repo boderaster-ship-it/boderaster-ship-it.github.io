@@ -680,11 +680,27 @@ const objectiveVisuals = (() => {
     return castle;
   }
 
+  function resolvePreviewPartId(partId) {
+    if (partId === 'tower') return 'tower_1';
+    if (partId === 'roof') return 'roof_1';
+    return partId;
+  }
+
+  function createCastlePartPreviewObject(partId, variantId = 0) {
+    const resolvedPartId = resolvePreviewPartId(partId);
+    const builders = castlePartsRegistry[resolvedPartId]?.variants;
+    if (!builders?.length) return null;
+    const safeVariant = Math.max(0, Math.min(builders.length - 1, Number(variantId) || 0));
+    const previewRoot = builders[safeVariant]();
+    previewRoot.position.set(0, -0.92, 0);
+    return previewRoot;
+  }
+
   return { createSpawnPoint, createCastle, updateSpawn, applyCastlePartVariant(partId, variantId) {
     const castle = objectiveEntities.castle;
     if (!castle?.applyPartVariant) return false;
     return castle.applyPartVariant(partId, variantId);
-  } };
+  }, createCastlePartPreviewObject };
 })();
 
 const objectiveEntities = { spawnPoint: null, castle: null };
@@ -3046,6 +3062,64 @@ const castlePreview = {
   animationId: 0
 };
 
+const castlePartThumbnail = {
+  renderer: null,
+  scene: null,
+  camera: null,
+  cache: new Map(),
+  initFailed: false
+};
+
+function getCastlePartThumbnailDataUri(partId, variantId = 0) {
+  const safeVariant = Math.max(0, Math.min(CASTLE_VARIANTS_PER_PART - 1, Number(variantId) || 0));
+  const key = `${partId}|${safeVariant}`;
+  if (castlePartThumbnail.cache.has(key)) return castlePartThumbnail.cache.get(key);
+  const previewObj = objectiveVisuals.createCastlePartPreviewObject(partId, safeVariant);
+  if (!previewObj) return null;
+  if (castlePartThumbnail.initFailed) return null;
+  if (!castlePartThumbnail.renderer) {
+    try {
+      castlePartThumbnail.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+    } catch (_err) {
+      castlePartThumbnail.initFailed = true;
+      return null;
+    }
+    castlePartThumbnail.renderer.setPixelRatio(1);
+    castlePartThumbnail.renderer.setSize(96, 96, false);
+    castlePartThumbnail.scene = new THREE.Scene();
+    castlePartThumbnail.camera = new THREE.PerspectiveCamera(32, 1, 0.1, 12);
+    castlePartThumbnail.camera.position.set(0.9, 1.15, 2.5);
+    castlePartThumbnail.camera.lookAt(0, 0.1, 0);
+    const fill = new THREE.HemisphereLight(0xdff4ff, 0x283244, 1.15);
+    const keyLight = new THREE.DirectionalLight(0xffffff, 0.9);
+    keyLight.position.set(2, 3, 2);
+    castlePartThumbnail.scene.add(fill, keyLight);
+  }
+  castlePartThumbnail.scene.add(previewObj);
+  castlePartThumbnail.renderer.render(castlePartThumbnail.scene, castlePartThumbnail.camera);
+  const dataUri = castlePartThumbnail.renderer.domElement.toDataURL('image/png');
+  previewObj.removeFromParent();
+  castlePartThumbnail.cache.set(key, dataUri);
+  return dataUri;
+}
+
+function createCastlePartPreviewElement(partId, variantId, fallbackText = '') {
+  const wrap = document.createElement('div');
+  wrap.className = 'castleVariantPreview';
+  const dataUri = getCastlePartThumbnailDataUri(partId, variantId);
+  if (!dataUri) {
+    wrap.textContent = fallbackText || `${partId} · V${variantId}`;
+    return wrap;
+  }
+  const image = document.createElement('img');
+  image.className = 'castlePartThumb';
+  image.src = dataUri;
+  image.alt = `${partId} variant ${variantId}`;
+  image.loading = 'lazy';
+  wrap.appendChild(image);
+  return wrap;
+}
+
 function updateCastleSelectionText() {
   if (!ui.castleSelectionStatus) return;
   const partId = state.selectedCastlePart;
@@ -3070,7 +3144,11 @@ function buildCastleVariantModal(partId) {
     const owned = targets.every(id => !!state.campaign.castleBuild.owned[id]?.[variantId]);
     const current = getSelectedPartVariantConfig(partId).variant;
     const status = owned ? 'Owned' : `Cost: ${CASTLE_VARIANT_COST} Coin`;
-    card.innerHTML = `<div class="castleVariantPreview">${partId} · V${variantId}</div><div class="tiny">${status}</div>`;
+    card.appendChild(createCastlePartPreviewElement(partId, variantId, `${partId} · V${variantId}`));
+    const info = document.createElement('div');
+    info.className = 'tiny';
+    info.textContent = status;
+    card.appendChild(info);
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'btnSecondary';
@@ -3127,7 +3205,11 @@ function updateCastlePartList() {
     btn.type = 'button';
     btn.className = 'levelBtn' + (partId === state.selectedCastlePart ? ' active' : '');
     const selected = getSelectedPartVariantConfig(partId);
-    btn.textContent = `${label} · V${selected.variant}`;
+    btn.appendChild(createCastlePartPreviewElement(partId, selected.variant, `${label} · V${selected.variant}`));
+    const labelText = document.createElement('span');
+    labelText.className = 'tiny';
+    labelText.textContent = `${label} · V${selected.variant}`;
+    btn.appendChild(labelText);
     btn.onclick = () => {
       state.selectedCastlePart = partId;
       updateCastlePartList();
