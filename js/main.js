@@ -395,7 +395,7 @@ renderer.setSize(1, 1, false);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd5ff);
 scene.fog = new THREE.Fog(0xbfdff4, 45, 130);
-const worldVisuals = { backgroundTexture: null };
+const worldVisuals = { backgroundTexture: null, ambientLayer: null, ambientItems: [], activeWorld: 1 };
 const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 220);
 const cam = { yaw: 0.6, pitch: 0.98, dist: 24, target: new THREE.Vector3(0, 0, 8.2), velYaw: 0, velPitch: 0, velDist: 0, panVel: new THREE.Vector2(), transitioning: null, cine: { active: false, targetEnemy: null, travelStart: 0, travelDur: 820, pathStart: 0, pathProgress: 1, camT: 0, followOffsetT: 0.11, smoothPos: null, smoothLook: null, baseYaw: 0, basePitch: 0, baseDist: 0, userYawOffset: 0, userPitchOffset: 0, userDistOffset: 0, userPanOffset: new THREE.Vector2(), baselineTarget: new THREE.Vector3(0, 0, 8.2) } };
 
@@ -1105,9 +1105,11 @@ function setBoardPath(path) {
 
 function applyWorldTheme(worldId) {
   const theme = worldThemes[worldId] || worldThemes[1];
+  worldVisuals.activeWorld = worldId;
   if (worldVisuals.backgroundTexture) worldVisuals.backgroundTexture.dispose();
   worldVisuals.backgroundTexture = createWorldBackgroundTexture(theme, worldId);
   scene.background = worldVisuals.backgroundTexture;
+  buildWorldAmbientLayer(worldId);
   scene.fog = new THREE.Fog(theme.fog, 38, theme.fogFar || (worldId === 4 ? 105 : 130));
   if (terrain?.userData?.topMaterial) {
     const { topMaterial, sideMaterial, bottomMaterial } = terrain.userData;
@@ -1287,6 +1289,96 @@ function createWorldBackgroundTexture(theme, worldId) {
   texture.magFilter = THREE.LinearFilter;
   texture.generateMipmaps = false;
   return texture;
+}
+
+
+function randomAmbientEdgePosition(extent) {
+  const side = Math.floor(Math.random() * 4);
+  const pad = 1.6;
+  if (side === 0) return new THREE.Vector3(-extent, 0, (Math.random() * 2 - 1) * (extent + pad) + 8.4);
+  if (side === 1) return new THREE.Vector3(extent, 0, (Math.random() * 2 - 1) * (extent + pad) + 8.4);
+  if (side === 2) return new THREE.Vector3((Math.random() * 2 - 1) * extent, 0, -extent + 8.4 - pad);
+  return new THREE.Vector3((Math.random() * 2 - 1) * extent, 0, extent + 8.4 + pad);
+}
+
+function clearWorldAmbientLayer() {
+  if (worldVisuals.ambientLayer?.parent) worldVisuals.ambientLayer.parent.remove(worldVisuals.ambientLayer);
+  worldVisuals.ambientItems.forEach(item => {
+    item.mesh?.geometry?.dispose?.();
+    item.mesh?.material?.dispose?.();
+  });
+  worldVisuals.ambientItems = [];
+  worldVisuals.ambientLayer = null;
+}
+
+function buildWorldAmbientLayer(worldId) {
+  clearWorldAmbientLayer();
+  const group = new THREE.Group();
+  group.renderOrder = -10;
+  scene.add(group);
+  const extent = 13.6;
+
+  const spawnItem = (cfg) => {
+    const mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(cfg.size, cfg.size * (cfg.aspect || 1)),
+      new THREE.MeshBasicMaterial({
+        color: cfg.color,
+        transparent: true,
+        opacity: cfg.opacity,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      })
+    );
+    mesh.position.copy(randomAmbientEdgePosition(extent));
+    mesh.position.y = cfg.minY + Math.random() * (cfg.maxY - cfg.minY);
+    mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+    group.add(mesh);
+    worldVisuals.ambientItems.push({
+      mesh,
+      velocity: cfg.velocity.clone().add(new THREE.Vector3((Math.random() - 0.5) * cfg.jitter, (Math.random() - 0.5) * cfg.jitterY, (Math.random() - 0.5) * cfg.jitter)),
+      spin: new THREE.Vector3((Math.random() - 0.5) * cfg.spin, (Math.random() - 0.5) * cfg.spin, (Math.random() - 0.5) * cfg.spin),
+      pulse: cfg.pulse || 0,
+      baseOpacity: cfg.opacity,
+      extent,
+      wrapY: cfg.wrapY,
+      resetY: cfg.resetY,
+      scaleJitter: 0.9 + Math.random() * 0.35
+    });
+  };
+
+  if (worldId === 1) {
+    for (let i = 0; i < 24; i++) spawnItem({ color: i % 2 ? 0xdba65f : 0x85c26f, size: 0.24, aspect: 0.66, opacity: 0.2, minY: 2.8, maxY: 8.6, velocity: new THREE.Vector3(0.38, -0.14, 0.16), jitter: 0.2, jitterY: 0.06, spin: 2.4, pulse: 0.15, wrapY: 2.2, resetY: 8.6 });
+  } else if (worldId === 2) {
+    for (let i = 0; i < 36; i++) spawnItem({ color: i % 3 ? 0xf5fcff : 0xbee8ff, size: 0.17, aspect: 1, opacity: 0.16, minY: 2.4, maxY: 10.2, velocity: new THREE.Vector3(0.05, -0.42, 0.06), jitter: 0.08, jitterY: 0.02, spin: 0.9, pulse: 0.08, wrapY: 2, resetY: 10.2 });
+  } else if (worldId === 3) {
+    for (let i = 0; i < 30; i++) spawnItem({ color: i % 2 ? 0xff8a46 : 0xffd083, size: 0.2, aspect: 1.2, opacity: 0.19, minY: 1.8, maxY: 6.6, velocity: new THREE.Vector3(0.09, 0.5, 0.08), jitter: 0.13, jitterY: 0.15, spin: 2.8, pulse: 0.22, wrapY: 6.8, resetY: 1.8 });
+  } else {
+    for (let i = 0; i < 40; i++) spawnItem({ color: i % 2 ? 0x9cb6ff : 0xd8e4ff, size: 0.14, aspect: 1, opacity: 0.14, minY: 4.5, maxY: 11.4, velocity: new THREE.Vector3(0.03, 0.01, 0.02), jitter: 0.05, jitterY: 0.03, spin: 1.2, pulse: 0.25, wrapY: 11.6, resetY: 4.5 });
+  }
+
+  worldVisuals.ambientLayer = group;
+}
+
+function updateWorldAmbientLayer(dt, now) {
+  for (const item of worldVisuals.ambientItems) {
+    item.mesh.position.addScaledVector(item.velocity, dt);
+    item.mesh.rotation.x += item.spin.x * dt;
+    item.mesh.rotation.y += item.spin.y * dt;
+    item.mesh.rotation.z += item.spin.z * dt;
+    item.mesh.lookAt(camera.position);
+    const twinkle = item.pulse ? (0.8 + Math.sin(now * 0.0018 + item.mesh.position.x * 0.25 + item.mesh.position.z * 0.33) * item.pulse) : 1;
+    item.mesh.material.opacity = Math.max(0.08, item.baseOpacity * twinkle);
+    item.mesh.scale.setScalar(item.scaleJitter * (0.92 + twinkle * 0.12));
+
+    const dx = Math.abs(item.mesh.position.x);
+    const dz = Math.abs(item.mesh.position.z - 8.4);
+    const offBounds = dx > item.extent + 2 || dz > item.extent + 4;
+    const outY = (item.velocity.y < 0 && item.mesh.position.y < item.wrapY) || (item.velocity.y > 0 && item.mesh.position.y > item.wrapY);
+    if (offBounds || outY) {
+      item.mesh.position.copy(randomAmbientEdgePosition(item.extent));
+      item.mesh.position.y = item.resetY;
+    }
+  }
 }
 
 function buildTerrain() {
@@ -3355,6 +3447,7 @@ function animate(now) {
   requestAnimationFrame(animate);
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
+  updateWorldAmbientLayer(dt, now);
   if (state.paused || !state.gameStarted) {
     renderer.render(scene, camera);
     return;
