@@ -715,12 +715,16 @@ function sanitizePlayerProgress() {
     grantedRewards: raw.grantedRewards && typeof raw.grantedRewards === 'object' ? raw.grantedRewards : {}
   };
 
-  const challengeMap = new Map((Array.isArray(raw.challenges) ? raw.challenges : []).map(c => [c?.id, c]));
+  const rawChallenges = Array.isArray(raw.challenges) ? raw.challenges : [];
+  const challengeMap = new Map(rawChallenges.map(c => [c?.id, c]));
   merged.challenges = playerChallengeDefinitions.map(def => {
-    const saved = challengeMap.get(def.id) || {};
-    const progress = Math.max(0, Number(saved.progress) || 0);
-    const target = Math.max(1, Number(saved.target) || def.target);
-    const completed = !!saved.completed || progress >= target;
+    const legacyByTitle = rawChallenges.find(c => c?.title === def.title) || null;
+    const saved = challengeMap.get(def.id) || legacyByTitle || {};
+    const target = Math.max(1, Number(def.target) || 1);
+    const rewardAlreadyGranted = !!(def.rewardId && merged.grantedRewards[def.rewardId]);
+    let progress = Math.max(0, Number(saved.progress) || 0);
+    const completed = !!saved.completed || progress >= target || rewardAlreadyGranted;
+    if (completed) progress = Math.max(progress, target);
     return {
       ...createDefaultChallengeState(def),
       ...saved,
@@ -731,7 +735,7 @@ function sanitizePlayerProgress() {
       progress,
       completed,
       completionNotified: completed ? true : !!saved.completionNotified,
-      rewardClaimed: !!saved.rewardClaimed,
+      rewardClaimed: !!saved.rewardClaimed || rewardAlreadyGranted,
       rewardId: def.rewardId || null,
       rewardClaimMode: def.rewardClaimMode || 'AUTO',
       state: saved.state || def.state || 'active'
