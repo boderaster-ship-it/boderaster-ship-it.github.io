@@ -63,6 +63,7 @@
           <div class="menuHero">
             <h1>Bode Defense</h1>
             <p>Verteidige deine Burg!</p>
+            <div id="menuCoinsBadge" class="menuCoinsBadge">🪙 0</div>
           </div>
           <div class="modeCardGrid" role="group" aria-label="Spielmodi wählen">
             <button id="playCampaign" class="menuCard btnPrimary">
@@ -91,10 +92,10 @@
         </section>
 
         <section class="menuPage hidden" data-page="castle">
-          <div class="menuPageActions menuPageActionsTop">
+          <div class="menuPageHeader">
+            <h2>Castle</h2>
             <button data-nav="home" class="btnSecondary">Back to Menu</button>
           </div>
-          <h2>Castle</h2>
           <div class="castleCustomizerLayout">
             <section class="castleColumn">
               <h3>Build</h3>
@@ -122,29 +123,35 @@
         </section>
 
         <section class="menuPage hidden" data-page="campaign">
-          <h2>Kampagnenfortschritt</h2>
+          <div class="menuPageHeader">
+            <h2>Kampagnenfortschritt</h2>
+            <button data-nav="home" class="btnSecondary">Back to Menu</button>
+          </div>
+          <div class="campaignProgressTrack"><div id="campaignProgressFill"></div></div>
           <div id="campaignWorldSelect"></div>
           <div id="campaignLevelSelect"></div>
           <div id="finalBossUnlock" class="tiny"></div>
           <button id="playFinalBoss" class="hidden btnSecondary">Final Boss Mode</button>
           <div class="menuPageActions">
             <button id="playCampaignStart" class="btnPrimary">Level starten</button>
-            <button data-nav="home" class="btnSecondary">Back to Menu</button>
           </div>
         </section>
 
         <section class="menuPage hidden" data-page="upgrades">
-          <h2>Upgrades</h2>
+          <div class="menuPageHeader">
+            <h2>Upgrades</h2>
+            <button data-nav="home" class="btnSecondary">Back to Menu</button>
+          </div>
           <h3>Kommandozentrale-Upgrades</h3>
           <div id="upgradePointsLabel"></div>
           <div id="metaTree"></div>
-          <div class="menuPageActions">
-            <button data-nav="home" class="btnSecondary">Back to Menu</button>
-          </div>
         </section>
 
         <section class="menuPage hidden" data-page="unlockSettings">
-          <h2>Freischaltungen &amp; Einstellungen</h2>
+          <div class="menuPageHeader">
+            <h2>Freischaltungen &amp; Einstellungen</h2>
+            <button data-nav="home" class="btnSecondary">Back to Menu</button>
+          </div>
           <h3>Turm-Freischaltungen</h3>
           <div id="unlockList"></div>
           <h3>Einstellungen</h3>
@@ -152,9 +159,6 @@
             <label><input type="checkbox" id="audioToggle" checked /> Audio</label>
             <label><input type="checkbox" id="shakeToggle" checked /> Kameraerschütterung</label>
             <label><input type="checkbox" id="perfToggle" /> Leistungsmodus</label>
-          </div>
-          <div class="menuPageActions">
-            <button data-nav="home" class="btnSecondary">Back to Menu</button>
           </div>
         </section>
 

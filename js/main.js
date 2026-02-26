@@ -79,6 +79,8 @@ const ui = {
   openUnlockSettings: document.getElementById('openUnlockSettings'),
   openMotAnleitung: document.getElementById('openMotAnleitung'),
   openStatistics: document.getElementById('openStatistics'),
+  menuCoinsBadge: document.getElementById('menuCoinsBadge'),
+  campaignProgressFill: document.getElementById('campaignProgressFill'),
   statsGrid: document.getElementById('statsGrid'),
   metaTree: document.getElementById('metaTree'),
   audioToggle: document.getElementById('audioToggle'),
@@ -120,6 +122,21 @@ const ui = {
   tutorialSkipBtn: document.getElementById('tutorialSkipBtn'),
   tutorialNextBtn: document.getElementById('tutorialNextBtn'),
   tutorialCloseBtn: document.getElementById('tutorialCloseBtn')
+};
+
+const uiTheme = {
+  colors: {
+    primary: '#67d3ff',
+    secondary: '#8fbce8',
+    surface: 'rgba(10, 19, 34, 0.88)',
+    success: '#78ffc4',
+    danger: '#ff94ae',
+    text: '#eaf6ff'
+  },
+  spacing: { xs: 6, sm: 10, md: 14, lg: 18 },
+  typography: { title: '800 clamp(24px, 6.5vw, 30px) Inter, sans-serif', body: '700 14px Inter, sans-serif' },
+  borderRadius: { sm: 10, md: 14, lg: 20, pill: 999 },
+  shadow: { soft: '0 10px 26px rgba(0,0,0,.34)', strong: '0 16px 40px rgba(0,0,0,.45)' }
 };
 
 const menuPages = Array.from(document.querySelectorAll('.menuPage'));
@@ -253,10 +270,10 @@ const shiftZ = (p, d) => p.map(([x,z]) => [x, Math.max(1, Math.min(14, z + d))])
 Object.entries(worldPaths[1]).forEach(([k,v]) => { worldPaths[2][k] = mirrorX(v); worldPaths[3][k] = shiftZ(v, (Number(k)%2===0?1:-1)); worldPaths[4][k] = mirrorX(shiftZ(v, (Number(k)%2===0?-1:1))); });
 
 const worldThemes = {
-  1:{name:'World 1 · Forest', bg:0x9fd5ff, fog:0xb8d7bc, terrain:0x3f6a45, road:0x6b5a42, edge:0xa18b6c, ambient:0xcce7cf, sun:0xfff2dc, sunIntensity:1.45, fogFar:130, sky:0xc8e7ff, prop:'forest', vfx:'pollen', intro:'Wald-Biome: Bäume, Felsen und klare Tageslicht-Sicht.', skyTop:0x69b6ff, skyHorizon:0xdaf2ff, haze:0xeaf6ff},
-  2:{name:'World 2 · Ice', bg:0xcde6ff, fog:0xd8edff, terrain:0x9dbbcf, road:0x6f8ea4, edge:0xc6e1f3, ambient:0xd8edff, sun:0xe4f2ff, sunIntensity:1.25, fogFar:108, sky:0xe5f4ff, prop:'ice', vfx:'frost', intro:'Eis-Biome: gefrorene Hindernisse, kaltes Licht, Nebel.', skyTop:0x89b7f2, skyHorizon:0xe8f6ff, haze:0xd6ebff},
-  3:{name:'World 3 · Lava', bg:0x381b14, fog:0x5a2a1e, terrain:0x5f2c1f, road:0x8e5332, edge:0xd3905e, ambient:0x694033, sun:0xffb073, sunIntensity:1.95, fogFar:96, sky:0x58362d, prop:'lava', vfx:'embers', intro:'Lava-Biome: vulkanischer Boden, Asche und Hitze.', skyTop:0x2b1719, skyHorizon:0x90412f, haze:0xc06f4e},
-  4:{name:'World 4 · Space', bg:0x090c1f, fog:0x1f2649, terrain:0x4f5944, road:0x8b7150, edge:0xc0aa86, ambient:0x9daed3, sun:0xc8d6ff, sunIntensity:1.05, fogFar:112, sky:0x121833, prop:'hybrid', vfx:'hybrid', intro:'Orbit-Biome: schwebende Plattform mit Sternenfeld und kosmischem Dunst.', skyTop:0x04060f, skyHorizon:0x27356e, haze:0x7f8fd8}
+  1:{name:'World 1 · Forest', bg:0x9fd5ff, fog:0xb8d7bc, terrain:0x3f6a45, road:0x6b5a42, edge:0xa18b6c, ambient:0xcce7cf, sun:0xfff2dc, sunIntensity:1.45, fogFar:130, sky:0xc8e7ff, prop:'forest', vfx:'pollen', intro:'Wald-Biome: Bäume, Felsen und klare Tageslicht-Sicht.', skyTop:0x69b6ff, skyHorizon:0xdaf2ff, haze:0xeaf6ff, rim:0x9ec7ff, rimIntensity:0.36, fill:0xffd9b2, fillIntensity:0.28},
+  2:{name:'World 2 · Ice', bg:0xcde6ff, fog:0xd8edff, terrain:0x9dbbcf, road:0x6f8ea4, edge:0xc6e1f3, ambient:0xd8edff, sun:0xe4f2ff, sunIntensity:1.25, fogFar:108, sky:0xe5f4ff, prop:'ice', vfx:'frost', intro:'Eis-Biome: gefrorene Hindernisse, kaltes Licht, Nebel.', skyTop:0x89b7f2, skyHorizon:0xe8f6ff, haze:0xd6ebff, rim:0x8dc6ff, rimIntensity:0.44, fill:0xd4f1ff, fillIntensity:0.34},
+  3:{name:'World 3 · Lava', bg:0x381b14, fog:0x5a2a1e, terrain:0x5f2c1f, road:0x8e5332, edge:0xd3905e, ambient:0x694033, sun:0xffb073, sunIntensity:1.95, fogFar:96, sky:0x58362d, prop:'lava', vfx:'embers', intro:'Lava-Biome: vulkanischer Boden, Asche und Hitze.', skyTop:0x2b1719, skyHorizon:0x90412f, haze:0xc06f4e, rim:0xffb59b, rimIntensity:0.32, fill:0xffbf85, fillIntensity:0.22},
+  4:{name:'World 4 · Space', bg:0x090c1f, fog:0x1f2649, terrain:0x4f5944, road:0x8b7150, edge:0xc0aa86, ambient:0x9daed3, sun:0xc8d6ff, sunIntensity:1.05, fogFar:112, sky:0x121833, prop:'hybrid', vfx:'hybrid', intro:'Orbit-Biome: schwebende Plattform mit Sternenfeld und kosmischem Dunst.', skyTop:0x04060f, skyHorizon:0x27356e, haze:0x7f8fd8, rim:0xa08cff, rimIntensity:0.5, fill:0x98d0ff, fillIntensity:0.22}
 };
 
 const worldEnemyImmunities = {
@@ -1137,10 +1154,10 @@ function applyWorldTheme(worldId) {
   hemi.groundColor.setHex(worldId === 3 ? 0x5e3a2c : 0x6f9269);
   dir.color.setHex(theme.sun || 0xfff5dd);
   dir.intensity = theme.sunIntensity || 1.6;
-  rimLight.color.setHex(worldId === 3 ? 0x8cb9ff : 0xa7cdff);
-  rimLight.intensity = worldId === 3 ? 0.34 : 0.42;
-  fillLight.color.setHex(worldId === 2 ? 0xffe4c7 : 0xffd1a4);
-  fillLight.intensity = worldId === 3 ? 0.22 : 0.3;
+  rimLight.color.setHex(theme.rim || 0xa7cdff);
+  rimLight.intensity = theme.rimIntensity ?? 0.4;
+  fillLight.color.setHex(theme.fill || 0xffd1a4);
+  fillLight.intensity = theme.fillIntensity ?? 0.28;
 }
 
 function setWorldBackground(worldId) {
@@ -1460,6 +1477,7 @@ function clearWorldAmbientLayer() {
 
 function buildWorldAmbientLayer(worldId) {
   clearWorldAmbientLayer();
+  if (ui.perfToggle?.checked) return;
   const group = new THREE.Group();
   group.renderOrder = -10;
   scene.add(group);
@@ -2430,9 +2448,29 @@ function renderStatistics() {
   `).join('');
 }
 
+
+function updateMenuSummaryWidgets() {
+  if (ui.menuCoinsBadge) {
+    const coins = Math.max(0, Number(state.campaign?.castleBuild?.coins) || 0);
+    ui.menuCoinsBadge.textContent = `🪙 ${coins}`;
+  }
+  if (ui.campaignProgressFill) {
+    const pct = Math.max(0, Math.min(100, ((Number(state.campaign?.unlockedLevel) || 1) - 1) / 24 * 100));
+    ui.campaignProgressFill.style.width = `${pct.toFixed(1)}%`;
+  }
+}
+
 function showPage(pageName) {
   activeMenuPage = pageName;
-  menuPages.forEach(page => page.classList.toggle('hidden', page.dataset.page !== pageName));
+  menuPages.forEach(page => {
+    const visible = page.dataset.page === pageName;
+    page.classList.toggle('hidden', !visible);
+    if (visible) {
+      page.classList.remove('is-entering');
+      void page.offsetWidth;
+      page.classList.add('is-entering');
+    }
+  });
   if (pageName === 'unlockSettings' || pageName === 'upgrades' || pageName === 'campaign') {
     refreshProgressionAndUnlockUI();
   }
@@ -2440,6 +2478,7 @@ function showPage(pageName) {
   if (pageName === 'endless') buildModeWorldSelect(ui.endlessWorldSelect, 'endless');
   if (pageName === 'challenge') buildModeWorldSelect(ui.challengeWorldSelect, 'challenge');
   if (pageName === 'statistics') renderStatistics();
+  updateMenuSummaryWidgets();
   tutorialEngine.onMenuOpen(pageName);
   if (pageName === 'castle') {
     updateCastleCoinLabel();
@@ -3521,7 +3560,11 @@ function updateUI() {
     const el = document.getElementById(`ability-${k}`);
     if (!el) return;
     const cd = state.abilityCooldowns[k];
-    el.classList.toggle('disabled', cd > 0 || state.buildPhase);
+    const disabled = cd > 0 || state.buildPhase;
+    el.classList.toggle('disabled', disabled);
+    const pct = Math.max(0, Math.min(100, (cd / (a.cd || 1)) * 100));
+    el.style.setProperty('--cooldownPct', `${pct}%`);
+    el.classList.toggle('activePulse', !disabled && state.inWave);
     el.textContent = cd > 0 ? `${Math.ceil(cd)}` : a.icon;
   });
   ui.speedLabel.textContent = `x${state.gameSpeed}`;
@@ -3542,6 +3585,7 @@ function updateUI() {
   }
 
   updateDock();
+  updateMenuSummaryWidgets();
 }
 
 function updateCamera(dt = 1 / 60, now = performance.now()) {
@@ -4529,6 +4573,7 @@ ui.builderConfirmBtn.onclick = () => {
   ui.buildTitle.textContent = `🧩 ${cfg.name} (${cfg.cost}¢)`;
   closeBuilder();
   updateDock();
+  updateMenuSummaryWidgets();
 };
 
 ui.cancelBuildBtn.onclick = () => {
@@ -4609,6 +4654,7 @@ ui.menuBtn.onclick = () => {
   setCampaignSelectionToLatestPlayable();
   saveCampaign();
   showPage('home');
+  updateMenuSummaryWidgets();
   refreshProgressionAndUnlockUI();
   ui.mainMenu.classList.remove('hidden');
 };
@@ -4707,6 +4753,7 @@ ui.continueBtn.onclick = () => {
   setCampaignSelectionToLatestPlayable();
   saveCampaign();
   showPage('home');
+  updateMenuSummaryWidgets();
   refreshProgressionAndUnlockUI();
   ui.mainMenu.classList.remove('hidden');
   clearActiveCombatDrone();
@@ -4800,6 +4847,7 @@ function bootstrapMenu() {
     saveCampaign();
     validateCampaignDefinitions();
     showPage('home');
+  updateMenuSummaryWidgets();
     refreshProgressionAndUnlockUI();
     initDock();
     initAbilities();
