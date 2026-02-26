@@ -2838,19 +2838,29 @@ function buildModeWorldSelect(container, modeKey) {
 
 function renderStatistics() {
   if (!ui.statsGrid) return;
+  const totalCampaignLevels = 24;
+  const completedCampaignLevels = Object.values(state.campaign?.completed || {}).filter(Boolean).length;
+  const completedLevelPercent = totalCampaignLevels > 0 ? (completedCampaignLevels / totalCampaignLevels) * 100 : 0;
+
+  const challenges = Array.isArray(state.playerProgress?.challenges) ? state.playerProgress.challenges : [];
+  const completedChallenges = challenges.filter(ch => ch?.completed).length;
+  const completedChallengePercent = challenges.length > 0 ? (completedChallenges / challenges.length) * 100 : 0;
+
   const cards = [
     { label: 'Getötete Gegner gesamt', value: state.stats.enemiesKilled, icon: '💀' },
     { label: 'Getötete Bosse', value: state.stats.bossesKilled, icon: '👹' },
     { label: 'Verlorenes Leben', value: state.stats.lifeLost, icon: '❤️' },
     { label: 'Benutzte Power-Ups', value: state.stats.powerUpsUsed, icon: '⚡' },
     { label: 'Gebaute Türme', value: state.stats.towersBuilt, icon: '🏗️' },
-    { label: 'Turm-Aufwertungen', value: state.stats.towerUpgrades, icon: '⬆️' }
+    { label: 'Turm-Aufwertungen', value: state.stats.towerUpgrades, icon: '⬆️' },
+    { label: 'Abgeschlossene Level', value: `${completedLevelPercent.toFixed(0)}%`, icon: '🗺️' },
+    { label: 'Abgeschlossene Herausforderungen', value: `${completedChallengePercent.toFixed(0)}%`, icon: '🎯' }
   ];
   ui.statsGrid.innerHTML = cards.map(card => `
     <article class="statCard">
       <div class="statIcon" aria-hidden="true">${card.icon}</div>
       <div class="statLabel">${card.label}</div>
-      <div class="statValue">${Math.floor(card.value)}</div>
+      <div class="statValue">${typeof card.value === 'number' ? Math.floor(card.value) : card.value}</div>
     </article>
   `).join('');
 }
