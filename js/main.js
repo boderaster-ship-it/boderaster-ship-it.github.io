@@ -246,8 +246,21 @@ const abilities = {
   }
 };
 
-const towerUnlockOrder = ['laser', 'missile', 'cryo', null, null, null, 'machinegun'];
-const abilityUnlockOrder = ['overclock', 'poison', 'nuke', 'combatDrone'];
+const towerUnlockLevels = {
+  cannon: 1,
+  flame: 1,
+  laser: 3,
+  missile: 6,
+  cryo: 12,
+  machinegun: 18
+};
+const abilityUnlockLevels = {
+  freeze: 1,
+  overclock: 6,
+  poison: 12,
+  nuke: 18,
+  combatDrone: 21
+};
 const TOWER_BUILDER_UNLOCK_LEVEL = 18;
 
 const metaDefs = [
@@ -433,7 +446,7 @@ const campaignDefs = Array.from({ length: 24 }, (_, i) => {
     level, world, levelInWorld, waves: 10 + (world >= 3 ? 1 : 0), difficulty,
     rewardCredits: 170 + i * 32,
     rewardTokens: 2 + Math.floor(i / 4),
-    unlockTower: level % 3 === 0 ? towerUnlockOrder[Math.floor(level / 3) - 1] || null : null,
+    unlockTower: Object.keys(towerUnlockLevels).find(key => towerUnlockLevels[key] === level && key !== 'cannon' && key !== 'flame') || null,
     waveTheme: world === 4 ? 'Elite / Tank / Rage' : world === 3 ? 'Frost rush / Shield wall' : world === 2 ? 'Rush / Ökonomie-Druck' : 'Basis-Mix',
     recommendedTowers,
     intro: worldThemes[world].intro
@@ -2837,15 +2850,11 @@ function randomizeCastleBuild() {
 }
 
 function getTowerUnlockLevel(key) {
-  if (key === 'flame') return 1;
-  if (key === 'machinegun') return 21;
-  const idx = towerUnlockOrder.indexOf(key);
-  return idx >= 0 ? (idx + 1) * 3 : 1;
+  return towerUnlockLevels[key] || 1;
 }
 
 function getAbilityUnlockLevel(key) {
-  const idx = abilityUnlockOrder.indexOf(key);
-  return idx >= 0 ? (idx + 1) * 6 : 1;
+  return abilityUnlockLevels[key] || 1;
 }
 
 function isAbilityUnlocked(key) {
@@ -2874,12 +2883,11 @@ function syncTowerBuilderUnlock() {
 
 function syncProgressUnlocks() {
   syncTowerBuilderUnlock();
-  Object.keys(towerDefs).forEach(k => {
-    if ((state.campaign.unlockedLevel || 1) >= getTowerUnlockLevel(k)) unlockTower(k);
-  });
-  Object.keys(abilities).forEach(k => {
-    if ((state.campaign.unlockedLevel || 1) >= getAbilityUnlockLevel(k)) unlockAbility(k);
-  });
+  const unlockedLevel = state.campaign.unlockedLevel || 1;
+  const allowedTowers = Object.keys(towerDefs).filter(k => unlockedLevel >= getTowerUnlockLevel(k));
+  const allowedAbilities = Object.keys(abilities).filter(k => unlockedLevel >= getAbilityUnlockLevel(k));
+  state.meta.unlockedTowers = Array.from(new Set(allowedTowers));
+  state.meta.unlockedAbilities = Array.from(new Set(allowedAbilities));
 }
 
 function renderUnlockProgressionUI() {
