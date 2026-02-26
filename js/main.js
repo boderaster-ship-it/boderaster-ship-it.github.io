@@ -777,19 +777,20 @@ function updateChallengeProgressForMetric(metricKey = null) {
   let changed = false;
   state.playerProgress.challenges.forEach(ch => {
     if (metricKey && ch.metricKey !== metricKey && !(metricKey.startsWith('world') && ch.metricKey.startsWith('world'))) return;
+    const wasCompleted = !!ch.completed;
     const value = getChallengeMetricValue(ch.metricKey);
     const nextProgress = Math.min(ch.target, value);
     if (nextProgress !== ch.progress) {
       ch.progress = nextProgress;
       changed = true;
     }
-    if (!ch.completed && ch.progress >= ch.target) {
+    if (!wasCompleted && ch.progress >= ch.target) {
       ch.completed = true;
-      ch.completionNotified = false;
+      showToast(`Challenge abgeschlossen: ${ch.title}`, true);
+      ch.completionNotified = true;
       changed = true;
     }
     if (ch.completed && !ch.completionNotified) {
-      showToast(`Challenge abgeschlossen: ${ch.title}`, true);
       ch.completionNotified = true;
       changed = true;
     }
