@@ -1614,15 +1614,34 @@ function emitParticleBurst(base, cfg = {}) {
   if (state.particlesFrame > state.maxParticlesFrame) return;
   for (let i = 0; i < count; i++) {
     if (state.particlesFrame > state.maxParticlesFrame) break;
-    const particle = state.pools.particles.pop() || { mesh: new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffb78a, transparent: true, opacity: 1 })), vel: new THREE.Vector3(), life: 0 };
+    const particle = state.pools.particles.pop() || {
+      mesh: new THREE.Mesh(
+        new THREE.SphereGeometry(0.08, 8, 8),
+        new THREE.MeshBasicMaterial({ color: 0xffb78a, transparent: true, opacity: 1, depthWrite: false, toneMapped: false })
+      ),
+      vel: new THREE.Vector3(),
+      life: 0,
+      maxLife: 0,
+      baseSize: 1,
+      drag: 0,
+      spin: 0,
+      spinSpeed: 0,
+      fadeIn: 0.08
+    };
     particle.mesh.visible = true;
     if (!particle.mesh.parent) world.add(particle.mesh);
-    particle.mesh.position.copy(base).add(new THREE.Vector3((Math.random()-0.5)*0.12, cfg.y || 0.2, (Math.random()-0.5)*0.12));
-    particle.mesh.scale.setScalar(1.3);
+    particle.mesh.position.copy(base).add(new THREE.Vector3((Math.random() - 0.5) * 0.18, cfg.y || 0.2, (Math.random() - 0.5) * 0.18));
+    particle.baseSize = randomRange(cfg.sizeMin || 1.18, cfg.sizeMax || 1.9);
+    particle.mesh.scale.setScalar(particle.baseSize * 0.85);
     particle.mesh.material.opacity = 1;
-    const spread = cfg.spread || 2.8;
-    particle.vel.set((Math.random() - 0.5) * spread, (cfg.up || 1.5) + Math.random() * spread * 0.35, (Math.random() - 0.5) * spread);
-    particle.life = (cfg.life || 0.35) + Math.random() * 0.32;
+    const spread = cfg.spread || 1.8;
+    particle.vel.set((Math.random() - 0.5) * spread, (cfg.up || 1.15) + Math.random() * spread * 0.2, (Math.random() - 0.5) * spread);
+    particle.life = (cfg.life || 0.5) + Math.random() * 0.3;
+    particle.maxLife = particle.life;
+    particle.drag = cfg.drag ?? randomRange(0.72, 1.02);
+    particle.spin = Math.random() * Math.PI * 2;
+    particle.spinSpeed = randomRange(-2.7, 2.7);
+    particle.fadeIn = cfg.fadeIn ?? 0.09;
     particle.mesh.material.color.setHex(cfg.color || 0xffb78a);
     state.effects.push({ kind: 'particle', particle });
     state.particlesFrame++;
@@ -2646,14 +2665,33 @@ function spawnDeathFx(enemy) {
   }
   emitParticleBurst(base, { color: enemy.world === 3 ? 0xff8a5f : enemy.world === 2 ? 0xade7ff : 0xffc094, count: enemy.boss ? 16 : 10, spread: enemy.world === 3 ? 3.4 : 2.7, life: 0.42, y: 0.25 });
   for (let i = 0; i < 4; i++) {
-    const particle = state.pools.particles.pop() || { mesh: new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffb78a, transparent: true, opacity: 0.9 })), vel: new THREE.Vector3(), life: 0 };
+    const particle = state.pools.particles.pop() || {
+      mesh: new THREE.Mesh(
+        new THREE.SphereGeometry(0.08, 8, 8),
+        new THREE.MeshBasicMaterial({ color: 0xffb78a, transparent: true, opacity: 1, depthWrite: false, toneMapped: false })
+      ),
+      vel: new THREE.Vector3(),
+      life: 0,
+      maxLife: 0,
+      baseSize: 1,
+      drag: 0,
+      spin: 0,
+      spinSpeed: 0,
+      fadeIn: 0.08
+    };
     particle.mesh.visible = true;
     if (!particle.mesh.parent) world.add(particle.mesh);
     particle.mesh.position.copy(base).add(new THREE.Vector3(0, 0.25, 0));
-    particle.mesh.scale.setScalar(1);
-    particle.mesh.material.opacity = 0.9;
-    particle.vel.set((Math.random() - 0.5) * 2.8, 1.2 + Math.random() * 1.5, (Math.random() - 0.5) * 2.8);
-    particle.life = 0.34 + Math.random() * 0.26;
+    particle.baseSize = randomRange(1.05, 1.45);
+    particle.mesh.scale.setScalar(particle.baseSize);
+    particle.mesh.material.opacity = 1;
+    particle.vel.set((Math.random() - 0.5) * 1.75, 0.85 + Math.random() * 1.1, (Math.random() - 0.5) * 1.75);
+    particle.life = 0.52 + Math.random() * 0.32;
+    particle.maxLife = particle.life;
+    particle.drag = randomRange(0.72, 0.95);
+    particle.spin = Math.random() * Math.PI * 2;
+    particle.spinSpeed = randomRange(-2.2, 2.2);
+    particle.fadeIn = 0.08;
     state.effects.push({ kind: 'particle', particle });
   }
   const shock = state.pools.shockwaves.pop() || new THREE.Mesh(new THREE.RingGeometry(0.2, 0.24, 26), new THREE.MeshBasicMaterial({ color: 0xffc6a5, transparent: true, opacity: 0.68, side: THREE.DoubleSide, depthWrite: false }));
@@ -4695,10 +4733,22 @@ function animate(now) {
     if (fx.kind === 'particle') {
       const p = fx.particle;
       p.life -= simDt;
-      p.vel.y -= simDt * 2.8;
+      if (!Number.isFinite(p.maxLife) || p.maxLife <= 0) p.maxLife = Math.max(0.001, p.life);
+      if (!Number.isFinite(p.drag)) p.drag = 0.8;
+      const dragFactor = Math.max(0.3, 1 - p.drag * simDt);
+      p.vel.multiplyScalar(dragFactor);
+      p.vel.y -= simDt * 2.1;
       p.mesh.position.addScaledVector(p.vel, simDt);
-      p.mesh.material.opacity = Math.max(0, p.life * 3.2);
-      p.mesh.scale.setScalar(1.1 + (1 - p.life) * 1.35);
+      p.spin = (p.spin || 0) + (p.spinSpeed || 0) * simDt;
+      p.mesh.rotation.set(p.spin * 0.55, p.spin, p.spin * 0.35);
+      const lifeRatio = clamp(p.life / Math.max(0.001, p.maxLife), 0, 1);
+      const fadeInWindow = Math.max(0.01, p.fadeIn || 0.08);
+      const fadeIn = clamp((p.maxLife - p.life) / fadeInWindow, 0, 1);
+      const fadeOut = Math.pow(lifeRatio, 0.78);
+      p.mesh.material.opacity = Math.max(0, Math.min(1, fadeIn * fadeOut));
+      const startSize = p.baseSize || 1.2;
+      const growth = (1 - lifeRatio) * (0.6 + (p.drag || 0.8) * 0.35);
+      p.mesh.scale.setScalar(startSize + growth);
       if (p.life <= 0) {
         p.mesh.visible = false;
         if (p.mesh.parent) p.mesh.parent.remove(p.mesh);
