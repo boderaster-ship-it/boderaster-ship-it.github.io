@@ -667,6 +667,7 @@ function createDefaultChallengeState(def) {
     target: def.target,
     progress: 0,
     completed: false,
+    completionNotified: false,
     rewardClaimed: false,
     rewardId: def.rewardId || null,
     rewardClaimMode: def.rewardClaimMode || 'AUTO',
@@ -729,6 +730,7 @@ function sanitizePlayerProgress() {
       target,
       progress,
       completed,
+      completionNotified: completed ? true : !!saved.completionNotified,
       rewardClaimed: !!saved.rewardClaimed,
       rewardId: def.rewardId || null,
       rewardClaimMode: def.rewardClaimMode || 'AUTO',
@@ -783,7 +785,12 @@ function updateChallengeProgressForMetric(metricKey = null) {
     }
     if (!ch.completed && ch.progress >= ch.target) {
       ch.completed = true;
+      ch.completionNotified = false;
+      changed = true;
+    }
+    if (ch.completed && !ch.completionNotified) {
       showToast(`Challenge abgeschlossen: ${ch.title}`, true);
+      ch.completionNotified = true;
       changed = true;
     }
     if (ch.completed && !ch.rewardClaimed && (ch.rewardClaimMode || 'AUTO') === 'AUTO' && ch.rewardId) {
