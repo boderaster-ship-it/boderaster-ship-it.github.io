@@ -188,7 +188,7 @@ const abilities = {
     icon: '🧊',
     cd: 22,
     text: 'Stoppt Feinde für 2,5 s',
-    use: () => {
+    use: (booster = 1) => {
       launchAbilityStorm('freeze', 0x9ce9ff, {
         onTouch: enemy => {
           if (enemy.immunities?.freeze) return;
@@ -202,10 +202,10 @@ const abilities = {
     icon: '☢️',
     cd: 35,
     text: 'Gewaltige Flächenexplosion',
-    use: () => {
+    use: (booster = 1) => {
       launchAbilityStorm('nuke', 0xff7b66, {
         onTouch: enemy => {
-          applyHit(enemy, 130, 0, 0, null, 'explosive');
+          applyHit(enemy, 130 * booster, 0, 0, null, 'explosive');
         }
       });
     }
@@ -215,10 +215,10 @@ const abilities = {
     icon: '⚡',
     cd: 26,
     text: 'Durchdringt Gegner und fügt Blitzschaden zu',
-    use: () => {
+    use: (booster = 1) => {
       launchAbilityStorm('overclock', 0xffdd73, {
         onTouch: enemy => {
-          applyHit(enemy, 36, 0, 0, null, 'arc');
+          applyHit(enemy, 36 * booster, 0, 0, null, 'arc');
         }
       });
     }
@@ -228,10 +228,10 @@ const abilities = {
     icon: '☠️',
     cd: 28,
     text: 'Vergiftet Feinde für 5 s',
-    use: () => {
+    use: (booster = 1) => {
       launchAbilityStorm('poison', 0x89ff62, {
         onTouch: enemy => {
-          enemy.poison = Math.max(enemy.poison || 0, 5);
+          enemy.poison = Math.max(enemy.poison || 0, 5 * booster);
         }
       });
     }
@@ -242,7 +242,7 @@ const abilities = {
     cd: 36,
     text: 'Sucht Frontgegner, umkreist ihn und wirft Granaten (15 s aktiv)',
     delayedCooldown: true,
-    use: () => activateCombatDrone()
+    use: (booster = 1) => activateCombatDrone(booster)
   }
 };
 
@@ -320,7 +320,8 @@ const CASTLE_BUILD_VERSION = 1;
 const CASTLE_VARIANTS_PER_PART = 5;
 const CASTLE_VARIANT_COST = 1;
 
-const PLAYER_PROGRESS_VERSION = 1;
+const SAVE_VERSION = 2;
+const PLAYER_PROGRESS_VERSION = 2;
 const PLAYER_LEVEL_MAX = 100;
 const PLAYER_LEVEL_BASE_XP = 100;
 const PLAYER_LEVEL_GROWTH = 1.12;
@@ -346,27 +347,68 @@ const playerStatDefaults = {
 };
 
 const playerChallengeDefinitions = [
-  { id: 'kills_250', title: 'Jäger I', description: 'Besiege 250 Gegner.', metricKey: 'enemiesKilled', target: 250, state: 'active' },
-  { id: 'kills_2000', title: 'Jäger II', description: 'Besiege 2.000 Gegner.', metricKey: 'enemiesKilled', target: 2000, state: 'active' },
-  { id: 'boss_25', title: 'Bossbrecher', description: 'Besiege 25 Bosse.', metricKey: 'bossesKilled', target: 25, state: 'active' },
-  { id: 'damage_50000', title: 'Artillerist', description: 'Verursache 50.000 Schaden.', metricKey: 'damageDealt', target: 50000, state: 'active' },
-  { id: 'waves_120', title: 'Wellenmeister', description: 'Schließe 120 Wellen ab.', metricKey: 'wavesCleared', target: 120, state: 'active' },
-  { id: 'run_no_damage_5', title: 'Perfekte Mauer', description: 'Schließe 5 Läufe ohne Burgschaden ab.', metricKey: 'noDamageRuns', target: 5, state: 'active' },
-  { id: 'boss_no_powerup_5', title: 'Purist', description: 'Besiege 5 Bosse ohne Power-ups im Lauf.', metricKey: 'bossNoPowerupWins', target: 5, state: 'active' },
-  { id: 'coins_spent_40000', title: 'Bauleiter', description: 'Gib 40.000 Credits aus.', metricKey: 'coinsSpent', target: 40000, state: 'active' },
-  { id: 'towers_400', title: 'Architekt', description: 'Baue 400 Türme.', metricKey: 'towersBuilt', target: 400, state: 'active' },
-  { id: 'upgrades_200', title: 'Ingenieur', description: 'Verbessere 200 Türme.', metricKey: 'towerUpgrades', target: 200, state: 'active' },
-  { id: 'powerups_120', title: 'Taktiker', description: 'Nutze 120 Power-ups.', metricKey: 'powerUpsUsed', target: 120, state: 'active' },
-  { id: 'world_1_clear', title: 'Welt 1 gesichert', description: 'Schließe Welt 1 vollständig ab.', metricKey: 'world1Clears', target: 1, state: 'locked' },
-  { id: 'world_2_clear', title: 'Welt 2 gesichert', description: 'Schließe Welt 2 vollständig ab.', metricKey: 'world2Clears', target: 1, state: 'locked' },
-  { id: 'world_3_clear', title: 'Welt 3 gesichert', description: 'Schließe Welt 3 vollständig ab.', metricKey: 'world3Clears', target: 1, state: 'locked' },
-  { id: 'world_4_clear', title: 'Welt 4 gesichert', description: 'Schließe Welt 4 vollständig ab.', metricKey: 'world4Clears', target: 1, state: 'locked' },
-  { id: 'first_attempt_10', title: 'Fehlerfrei', description: 'Schließe 10 Kampagnenlevel im ersten Versuch ab.', metricKey: 'firstAttemptClears', target: 10, state: 'active' },
-  { id: 'endless_wave_40', title: 'Endlos-Legende', description: 'Erreiche Welle 40 in Endlos.', metricKey: 'endlessBestWave', target: 40, state: 'active' },
-  { id: 'endless_time_900', title: 'Ausdauer', description: 'Überlebe 15 Minuten in Endlos.', metricKey: 'endlessBestSeconds', target: 900, state: 'active' },
-  { id: 'flying_350', title: 'Flugabwehr', description: 'Besiege 350 fliegende Gegner.', metricKey: 'flyingKills', target: 350, state: 'active' },
-  { id: 'builder_damage_30000', title: 'Builder-Ass', description: 'Verursache 30.000 Schaden mit Builder-Türmen.', metricKey: 'builderDamageDealt', target: 30000, state: 'active' }
+  { id: 'kills_250', title: 'Jäger I', description: 'Besiege 250 Gegner.', metricKey: 'enemiesKilled', target: 250, state: 'active', rewardId: 'reward_castle_life_kills_250', rewardClaimMode: 'AUTO' },
+  { id: 'kills_2000', title: 'Jäger II', description: 'Besiege 2.000 Gegner.', metricKey: 'enemiesKilled', target: 2000, state: 'active', rewardId: 'reward_castle_life_kills_2000', rewardClaimMode: 'AUTO' },
+  { id: 'boss_25', title: 'Bossbrecher', description: 'Besiege 25 Bosse.', metricKey: 'bossesKilled', target: 25, state: 'active', rewardId: 'reward_castle_cannon_unlock', rewardClaimMode: 'AUTO' },
+  { id: 'damage_50000', title: 'Artillerist', description: 'Verursache 50.000 Schaden.', metricKey: 'damageDealt', target: 50000, state: 'active', rewardId: 'reward_castle_life_damage_50000', rewardClaimMode: 'AUTO' },
+  { id: 'waves_120', title: 'Wellenmeister', description: 'Schließe 120 Wellen ab.', metricKey: 'wavesCleared', target: 120, state: 'active', rewardId: 'reward_powerup_booster_unlock', rewardClaimMode: 'AUTO' },
+  { id: 'run_no_damage_5', title: 'Perfekte Mauer', description: 'Schließe 5 Läufe ohne Burgschaden ab.', metricKey: 'noDamageRuns', target: 5, state: 'active', rewardId: 'reward_castle_life_no_damage', rewardClaimMode: 'AUTO' },
+  { id: 'boss_no_powerup_5', title: 'Purist', description: 'Besiege 5 Bosse ohne Power-ups im Lauf.', metricKey: 'bossNoPowerupWins', target: 5, state: 'active', rewardId: 'reward_emergency_explosion_unlock', rewardClaimMode: 'AUTO' },
+  { id: 'coins_spent_40000', title: 'Bauleiter', description: 'Gib 40.000 Credits aus.', metricKey: 'coinsSpent', target: 40000, state: 'active', rewardId: 'reward_castle_life_coins', rewardClaimMode: 'AUTO' },
+  { id: 'towers_400', title: 'Architekt', description: 'Baue 400 Türme.', metricKey: 'towersBuilt', target: 400, state: 'active', rewardId: 'reward_castle_life_towers', rewardClaimMode: 'AUTO' },
+  { id: 'upgrades_200', title: 'Ingenieur', description: 'Verbessere 200 Türme.', metricKey: 'towerUpgrades', target: 200, state: 'active', rewardId: 'reward_castle_life_upgrades', rewardClaimMode: 'AUTO' },
+  { id: 'powerups_120', title: 'Taktiker', description: 'Nutze 120 Power-ups.', metricKey: 'powerUpsUsed', target: 120, state: 'active', rewardId: 'reward_castle_life_powerups', rewardClaimMode: 'AUTO' },
+  { id: 'world_1_clear', title: 'Welt 1 gesichert', description: 'Schließe Welt 1 vollständig ab.', metricKey: 'world1Clears', target: 1, state: 'locked', rewardId: 'reward_castle_life_world1', rewardClaimMode: 'AUTO' },
+  { id: 'world_2_clear', title: 'Welt 2 gesichert', description: 'Schließe Welt 2 vollständig ab.', metricKey: 'world2Clears', target: 1, state: 'locked', rewardId: 'reward_castle_life_world2', rewardClaimMode: 'AUTO' },
+  { id: 'world_3_clear', title: 'Welt 3 gesichert', description: 'Schließe Welt 3 vollständig ab.', metricKey: 'world3Clears', target: 1, state: 'locked', rewardId: 'reward_last_chance_unlock', rewardClaimMode: 'AUTO' },
+  { id: 'world_4_clear', title: 'Welt 4 gesichert', description: 'Schließe Welt 4 vollständig ab.', metricKey: 'world4Clears', target: 1, state: 'locked', rewardId: 'reward_castle_life_world4', rewardClaimMode: 'AUTO' },
+  { id: 'first_attempt_10', title: 'Fehlerfrei', description: 'Schließe 10 Kampagnenlevel im ersten Versuch ab.', metricKey: 'firstAttemptClears', target: 10, state: 'active', rewardId: 'reward_castle_life_first_attempt', rewardClaimMode: 'AUTO' },
+  { id: 'endless_wave_40', title: 'Endlos-Legende', description: 'Erreiche Welle 40 in Endlos.', metricKey: 'endlessBestWave', target: 40, state: 'active', rewardId: 'reward_castle_life_endless_wave', rewardClaimMode: 'AUTO' },
+  { id: 'endless_time_900', title: 'Ausdauer', description: 'Überlebe 15 Minuten in Endlos.', metricKey: 'endlessBestSeconds', target: 900, state: 'active', rewardId: 'reward_castle_life_endless_time', rewardClaimMode: 'AUTO' },
+  { id: 'flying_350', title: 'Flugabwehr', description: 'Besiege 350 fliegende Gegner.', metricKey: 'flyingKills', target: 350, state: 'active', rewardId: 'reward_castle_life_flyers', rewardClaimMode: 'AUTO' },
+  { id: 'builder_damage_30000', title: 'Builder-Ass', description: 'Verursache 30.000 Schaden mit Builder-Türmen.', metricKey: 'builderDamageDealt', target: 30000, state: 'active', rewardId: 'reward_castle_life_builder', rewardClaimMode: 'AUTO' }
 ];
+
+const REWARD_TYPES = {
+  CASTLE_LIVES: 'CASTLE_LIVES',
+  UNLOCK_EMERGENCY_EXPLOSION: 'UNLOCK_EMERGENCY_EXPLOSION',
+  UNLOCK_CASTLE_CANNON: 'UNLOCK_CASTLE_CANNON',
+  UNLOCK_LAST_CHANCE: 'UNLOCK_LAST_CHANCE',
+  UNLOCK_POWERUP_BOOSTER: 'UNLOCK_POWERUP_BOOSTER'
+};
+
+const REWARDS = {
+  reward_castle_life_kills_250: { id: 'reward_castle_life_kills_250', type: REWARD_TYPES.CASTLE_LIVES, payload: { amount: 1 }, ui: { name: 'Castle Life +1', icon: '❤️', description: '+1 permanentes Burgleben' } },
+  reward_castle_life_kills_2000: { id: 'reward_castle_life_kills_2000', type: REWARD_TYPES.CASTLE_LIVES, payload: { amount: 1 }, ui: { name: 'Castle Life +1', icon: '❤️', description: '+1 permanentes Burgleben' } },
+  reward_castle_cannon_unlock: { id: 'reward_castle_cannon_unlock', type: REWARD_TYPES.UNLOCK_CASTLE_CANNON, ui: { name: 'Castle Cannon', icon: '🏰', description: 'Schaltet die Burgkanone frei.' } },
+  reward_castle_life_damage_50000: { id: 'reward_castle_life_damage_50000', type: REWARD_TYPES.CASTLE_LIVES, payload: { amount: 1 }, ui: { name: 'Castle Life +1', icon: '❤️', description: '+1 permanentes Burgleben' } },
+  reward_powerup_booster_unlock: { id: 'reward_powerup_booster_unlock', type: REWARD_TYPES.UNLOCK_POWERUP_BOOSTER, ui: { name: 'Power-Up Booster', icon: '⚡', description: 'Power-Ups werden stärker.' } },
+  reward_castle_life_no_damage: { id: 'reward_castle_life_no_damage', type: REWARD_TYPES.CASTLE_LIVES, payload: { amount: 1 }, ui: { name: 'Castle Life +1', icon: '❤️', description: '+1 permanentes Burgleben' } },
+  reward_emergency_explosion_unlock: { id: 'reward_emergency_explosion_unlock', type: REWARD_TYPES.UNLOCK_EMERGENCY_EXPLOSION, ui: { name: 'Emergency Explosion', icon: '💣', description: 'Notfall-Explosion bei kritischem Leben.' } },
+  reward_castle_life_coins: { id: 'reward_castle_life_coins', type: REWARD_TYPES.CASTLE_LIVES, payload: { amount: 1 }, ui: { name: 'Castle Life +1', icon: '❤️', description: '+1 permanentes Burgleben' } },
+  reward_castle_life_towers: { id: 'reward_castle_life_towers', type: REWARD_TYPES.CASTLE_LIVES, payload: { amount: 1 }, ui: { name: 'Castle Life +1', icon: '❤️', description: '+1 permanentes Burgleben' } },
+  reward_castle_life_upgrades: { id: 'reward_castle_life_upgrades', type: REWARD_TYPES.CASTLE_LIVES, payload: { amount: 1 }, ui: { name: 'Castle Life +1', icon: '❤️', description: '+1 permanentes Burgleben' } },
+  reward_castle_life_powerups: { id: 'reward_castle_life_powerups', type: REWARD_TYPES.CASTLE_LIVES, payload: { amount: 1 }, ui: { name: 'Castle Life +1', icon: '❤️', description: '+1 permanentes Burgleben' } },
+  reward_castle_life_world1: { id: 'reward_castle_life_world1', type: REWARD_TYPES.CASTLE_LIVES, payload: { amount: 1 }, ui: { name: 'Castle Life +1', icon: '❤️', description: '+1 permanentes Burgleben' } },
+  reward_castle_life_world2: { id: 'reward_castle_life_world2', type: REWARD_TYPES.CASTLE_LIVES, payload: { amount: 1 }, ui: { name: 'Castle Life +1', icon: '❤️', description: '+1 permanentes Burgleben' } },
+  reward_last_chance_unlock: { id: 'reward_last_chance_unlock', type: REWARD_TYPES.UNLOCK_LAST_CHANCE, ui: { name: 'Last Chance', icon: '🛡️', description: 'Einmal pro Level tödlichen Treffer überleben.' } },
+  reward_castle_life_world4: { id: 'reward_castle_life_world4', type: REWARD_TYPES.CASTLE_LIVES, payload: { amount: 1 }, ui: { name: 'Castle Life +1', icon: '❤️', description: '+1 permanentes Burgleben' } },
+  reward_castle_life_first_attempt: { id: 'reward_castle_life_first_attempt', type: REWARD_TYPES.CASTLE_LIVES, payload: { amount: 1 }, ui: { name: 'Castle Life +1', icon: '❤️', description: '+1 permanentes Burgleben' } },
+  reward_castle_life_endless_wave: { id: 'reward_castle_life_endless_wave', type: REWARD_TYPES.CASTLE_LIVES, payload: { amount: 1 }, ui: { name: 'Castle Life +1', icon: '❤️', description: '+1 permanentes Burgleben' } },
+  reward_castle_life_endless_time: { id: 'reward_castle_life_endless_time', type: REWARD_TYPES.CASTLE_LIVES, payload: { amount: 1 }, ui: { name: 'Castle Life +1', icon: '❤️', description: '+1 permanentes Burgleben' } },
+  reward_castle_life_flyers: { id: 'reward_castle_life_flyers', type: REWARD_TYPES.CASTLE_LIVES, payload: { amount: 1 }, ui: { name: 'Castle Life +1', icon: '❤️', description: '+1 permanentes Burgleben' } },
+  reward_castle_life_builder: { id: 'reward_castle_life_builder', type: REWARD_TYPES.CASTLE_LIVES, payload: { amount: 1 }, ui: { name: 'Castle Life +1', icon: '❤️', description: '+1 permanentes Burgleben' } }
+};
+
+const rewardRuntimeConfig = {
+  emergencyExplosionThreshold: 0.28,
+  emergencyExplosionDamage: 110,
+  emergencyExplosionRadius: 2.8,
+  castleCannonInterval: 1.6,
+  castleCannonRange: 8.8,
+  lastChanceRestorePercent: 0.2,
+  powerUpBoosterMultiplier: 1.3
+};
 
 /**
  * Castle part registry is the single source of truth for modular goal-castle parts.
@@ -424,7 +466,7 @@ const state = {
   pendingLevelRewards: null,
   activeBuild: null,
   builderDraft: [],
-  unlocks: safeJSONParse('aegis-unlocks', { towerBuilder: false }),
+  unlocks: safeJSONParse('aegis-unlocks', { towerBuilder: false, emergencyExplosion: false, castleCannon: false, lastChance: false, powerUpBooster: false }),
   tutorial: safeJSONParse('aegis-tutorial', { version: 1, completed: {}, seenStep: {} }),
   stats: safeJSONParse('aegis-stats', { enemiesKilled: 0, bossesKilled: 0, lifeLost: 0, powerUpsUsed: 0, towersBuilt: 0, towerUpgrades: 0 }),
   playerProgress: safeJSONParse('aegis-player-progress', null),
@@ -437,7 +479,10 @@ const state = {
     coinsSpent: 0,
     startAt: 0,
     firstAttempt: false,
-    levelKey: null
+    levelKey: null,
+    emergencyExplosionUsed: false,
+    lastChanceUsed: false,
+    castleCannonCooldown: 0
   }
 };
 
@@ -447,7 +492,11 @@ if (state.meta.unlockedAbilities.includes('repair')) {
   state.meta.unlockedAbilities = state.meta.unlockedAbilities.map(key => key === 'repair' ? 'poison' : key);
 }
 state.meta.savedBuilds = state.meta.savedBuilds || [];
-state.unlocks = state.unlocks || { towerBuilder: false };
+state.unlocks = state.unlocks || { towerBuilder: false, emergencyExplosion: false, castleCannon: false, lastChance: false, powerUpBooster: false };
+state.unlocks.emergencyExplosion = !!state.unlocks.emergencyExplosion;
+state.unlocks.castleCannon = !!state.unlocks.castleCannon;
+state.unlocks.lastChance = !!state.unlocks.lastChance;
+state.unlocks.powerUpBooster = !!state.unlocks.powerUpBooster;
 state.tutorial = state.tutorial || { version: 1, completed: {}, seenStep: {} };
 state.tutorial.version = Number(state.tutorial.version) || 1;
 state.tutorial.completed = state.tutorial.completed || {};
@@ -492,6 +541,8 @@ function createDefaultChallengeState(def) {
     progress: 0,
     completed: false,
     rewardClaimed: false,
+    rewardId: def.rewardId || null,
+    rewardClaimMode: def.rewardClaimMode || 'AUTO',
     state: def.state || 'active'
   };
 }
@@ -499,6 +550,7 @@ function createDefaultChallengeState(def) {
 function getDefaultPlayerProgress() {
   return {
     version: PLAYER_PROGRESS_VERSION,
+    saveVersion: SAVE_VERSION,
     playerLevel: 1,
     playerXP: 0,
     playerXPToNext: getXPRequiredForLevel(1),
@@ -506,7 +558,8 @@ function getDefaultPlayerProgress() {
     lifetimeStats: JSON.parse(JSON.stringify(playerStatDefaults)),
     challenges: playerChallengeDefinitions.map(createDefaultChallengeState),
     castleLifeBonusPermanent: 0,
-    pendingRewards: []
+    pendingRewards: [],
+    grantedRewards: {}
   };
 }
 
@@ -530,7 +583,8 @@ function sanitizePlayerProgress() {
     ...raw,
     lifetimeStats: sanitizeLifetimeStats(raw.lifetimeStats),
     campaignXPClaimed: raw.campaignXPClaimed && typeof raw.campaignXPClaimed === 'object' ? raw.campaignXPClaimed : {},
-    pendingRewards: Array.isArray(raw.pendingRewards) ? raw.pendingRewards : []
+    pendingRewards: Array.isArray(raw.pendingRewards) ? raw.pendingRewards : [],
+    grantedRewards: raw.grantedRewards && typeof raw.grantedRewards === 'object' ? raw.grantedRewards : {}
   };
 
   const challengeMap = new Map((Array.isArray(raw.challenges) ? raw.challenges : []).map(c => [c?.id, c]));
@@ -549,11 +603,20 @@ function sanitizePlayerProgress() {
       progress,
       completed,
       rewardClaimed: !!saved.rewardClaimed,
+      rewardId: def.rewardId || null,
+      rewardClaimMode: def.rewardClaimMode || 'AUTO',
       state: saved.state || def.state || 'active'
     };
   });
 
+  if ((Number(raw.version) || 0) < 2) {
+    merged.challenges.forEach(ch => {
+      if (ch.rewardClaimed && ch.rewardId) merged.grantedRewards[ch.rewardId] = true;
+    });
+  }
+
   merged.version = PLAYER_PROGRESS_VERSION;
+  merged.saveVersion = Math.max(1, Math.min(SAVE_VERSION, Number(raw.saveVersion) || 1));
   merged.playerLevel = Math.max(1, Math.min(PLAYER_LEVEL_MAX, Number(merged.playerLevel) || 1));
   merged.playerXP = Math.max(0, Number(merged.playerXP) || 0);
   merged.castleLifeBonusPermanent = Math.max(0, Number(merged.castleLifeBonusPermanent) || 0);
@@ -596,15 +659,63 @@ function updateChallengeProgressForMetric(metricKey = null) {
       showToast(`Challenge abgeschlossen: ${ch.title}`, true);
       changed = true;
     }
+    if (ch.completed && !ch.rewardClaimed && (ch.rewardClaimMode || 'AUTO') === 'AUTO' && ch.rewardId) {
+      const granted = grantReward(ch.rewardId, { source: 'challenge-auto', challengeId: ch.id });
+      if (granted || state.playerProgress.grantedRewards[ch.rewardId]) {
+        ch.rewardClaimed = true;
+        changed = true;
+      }
+    }
   });
   if (changed) savePlayerProgress();
 }
 
-function grantPermanentLifeReward(reasonText) {
+function getRewardMeta(rewardId) {
+  return REWARDS[rewardId] || null;
+}
+
+function getRewardLabel(rewardId) {
+  const reward = getRewardMeta(rewardId);
+  return reward?.ui?.name || rewardId;
+}
+
+function applyRewardEffect(reward, context = {}) {
+  const type = reward.type;
+  if (type === REWARD_TYPES.CASTLE_LIVES) {
+    const amount = Math.max(1, Number(reward.payload?.amount) || 1);
+    state.playerProgress.castleLifeBonusPermanent = Math.max(0, Number(state.playerProgress.castleLifeBonusPermanent) || 0) + amount;
+    return;
+  }
+  if (type === REWARD_TYPES.UNLOCK_EMERGENCY_EXPLOSION) {
+    state.unlocks.emergencyExplosion = true;
+    return;
+  }
+  if (type === REWARD_TYPES.UNLOCK_CASTLE_CANNON) {
+    state.unlocks.castleCannon = true;
+    return;
+  }
+  if (type === REWARD_TYPES.UNLOCK_LAST_CHANCE) {
+    state.unlocks.lastChance = true;
+    return;
+  }
+  if (type === REWARD_TYPES.UNLOCK_POWERUP_BOOSTER) {
+    state.unlocks.powerUpBooster = true;
+  }
+}
+
+function grantReward(rewardId, context = {}) {
   sanitizePlayerProgress();
-  state.playerProgress.castleLifeBonusPermanent = Math.max(0, (state.playerProgress.castleLifeBonusPermanent || 0) + 1);
+  if (!rewardId) return false;
+  const reward = getRewardMeta(rewardId);
+  if (!reward) return false;
+  const repeatable = !!reward.repeatable;
+  if (!repeatable && state.playerProgress.grantedRewards[rewardId]) return false;
+  applyRewardEffect(reward, context);
+  if (!repeatable) state.playerProgress.grantedRewards[rewardId] = true;
   savePlayerProgress();
-  showToast(`${reasonText} +1 Castle Life`, true);
+  saveUnlocks();
+  showToast(`Belohnung erhalten: ${reward.ui?.icon || '🎁'} ${reward.ui?.name || rewardId}`, true);
+  return true;
 }
 
 function addPlayerXP(amount, reason = 'XP') {
@@ -620,7 +731,8 @@ function addPlayerXP(amount, reason = 'XP') {
     state.playerProgress.playerXP -= need;
     state.playerProgress.playerLevel += 1;
     showToast(`Level Up! Level ${state.playerProgress.playerLevel}`, true);
-    grantPermanentLifeReward('Level-Up Belohnung:');
+    state.playerProgress.castleLifeBonusPermanent = Math.max(0, Number(state.playerProgress.castleLifeBonusPermanent) || 0) + 1;
+    showToast('Level-Up Belohnung: +1 Castle Life', true);
   }
 
   if (state.playerProgress.playerLevel >= PLAYER_LEVEL_MAX) {
@@ -637,9 +749,11 @@ function claimChallengeReward(challengeId) {
   sanitizePlayerProgress();
   const challenge = state.playerProgress.challenges.find(c => c.id === challengeId);
   if (!challenge || !challenge.completed || challenge.rewardClaimed) return;
-  challenge.rewardClaimed = true;
+  const rewardId = challenge.rewardId;
+  if (!rewardId) return;
+  const granted = grantReward(rewardId, { source: 'challenge', challengeId });
+  challenge.rewardClaimed = challenge.rewardClaimed || granted || !!state.playerProgress.grantedRewards[rewardId];
   savePlayerProgress();
-  grantPermanentLifeReward('Challenge-Belohnung:');
   renderPlayerProgressPage();
 }
 
@@ -660,12 +774,14 @@ function renderPlayerProgressPage() {
     const row = document.createElement('article');
     row.className = 'challengeCard';
     const cpct = Math.max(0, Math.min(100, (ch.progress / Math.max(1, ch.target)) * 100));
+    const reward = ch.rewardId ? getRewardMeta(ch.rewardId) : null;
+    const rewardText = reward ? `${reward.ui?.icon || '🎁'} ${reward.ui?.name || ch.rewardId}` : 'Keine Belohnung';
     const status = ch.rewardClaimed ? 'Abgeschlossen + Belohnung erhalten' : ch.completed ? 'Abgeschlossen' : (ch.state || 'active') === 'locked' ? 'Gesperrt' : 'Aktiv';
-    row.innerHTML = `<div class="challengeHead"><strong>${ch.title}</strong><span>${status}</span></div><div class="tiny">${ch.description}</div><div class="challengeProgressTrack"><div style="width:${cpct.toFixed(1)}%"></div></div><div class="challengeFooter"><span>${Math.floor(ch.progress)}/${Math.floor(ch.target)}</span></div>`;
-    if (ch.completed && !ch.rewardClaimed) {
+    row.innerHTML = `<div class="challengeHead"><strong>${ch.title}</strong><span>${status}</span></div><div class="tiny">${ch.description}</div><div class="tiny">Belohnung: ${rewardText}</div><div class="challengeProgressTrack"><div style="width:${cpct.toFixed(1)}%"></div></div><div class="challengeFooter"><span>${Math.floor(ch.progress)}/${Math.floor(ch.target)}</span></div>`;
+    if (ch.completed && !ch.rewardClaimed && (ch.rewardClaimMode || 'AUTO') === 'MANUAL') {
       const btn = document.createElement('button');
       btn.className = 'btnPrimary';
-      btn.textContent = 'Claim +1 Life';
+      btn.textContent = 'Belohnung beanspruchen';
       btn.onclick = () => claimChallengeReward(ch.id);
       row.querySelector('.challengeFooter')?.appendChild(btn);
     }
@@ -2452,6 +2568,13 @@ function isAbilityUnlocked(key) {
   return (state.meta.unlockedAbilities || ['freeze']).includes(key);
 }
 
+
+function isEmergencyExplosionUnlocked() { return !!state.unlocks.emergencyExplosion; }
+function isCastleCannonUnlocked() { return !!state.unlocks.castleCannon; }
+function isLastChanceUnlocked() { return !!state.unlocks.lastChance; }
+function isPowerUpBoosterUnlocked() { return !!state.unlocks.powerUpBooster; }
+function getPowerUpBoosterMultiplier() { return isPowerUpBoosterUnlocked() ? rewardRuntimeConfig.powerUpBoosterMultiplier : 1; }
+
 function unlockAbility(key) {
   state.meta.unlockedAbilities = state.meta.unlockedAbilities || ['freeze'];
   if (!state.meta.unlockedAbilities.includes(key)) {
@@ -2493,13 +2616,20 @@ function renderUnlockProgressionUI() {
   });
   const builderStatus = isTowerBuilderUnlocked() ? 'Freigeschaltet' : 'Gesperrt';
   const builderRow = `<div>🧩 Turm-Editor — ${builderStatus} · ab Level ${TOWER_BUILDER_UNLOCK_LEVEL}</div>`;
+  const rewardUnlockRows = [
+    `<div>💣 Emergency Explosion — ${isEmergencyExplosionUnlocked() ? 'Freigeschaltet' : 'Gesperrt'}</div>`,
+    `<div>🏰 Castle Cannon — ${isCastleCannonUnlocked() ? 'Freigeschaltet' : 'Gesperrt'}</div>`,
+    `<div>🛡️ Last Chance — ${isLastChanceUnlocked() ? 'Freigeschaltet' : 'Gesperrt'}</div>`,
+    `<div>⚡ Power-Up Booster — ${isPowerUpBoosterUnlocked() ? 'Freigeschaltet' : 'Gesperrt'}</div>`
+  ];
   ui.unlockList.innerHTML = [
     '<div><strong>Waffen</strong></div>',
     ...towerRows,
     '<div><strong>Power-ups</strong></div>',
     ...abilityRows,
     '<div><strong>Spezial</strong></div>',
-    builderRow
+    builderRow,
+    ...rewardUnlockRows
   ].join('');
 }
 
@@ -2748,7 +2878,7 @@ function showPage(pageName) {
       page.classList.add('is-entering');
     }
   });
-  if (pageName === 'unlockSettings' || pageName === 'upgrades' || pageName === 'campaign') {
+  if (pageName === 'unlockSettings' || pageName === 'upgrades' || pageName === 'campaign' || pageName === 'home' || pageName === 'playerProgress') {
     refreshProgressionAndUnlockUI();
   }
   if (pageName === 'campaign') buildCampaignMenu();
@@ -3192,7 +3322,8 @@ function initAbilities() {
     btn.title = a.name;
     btn.onclick = () => {
       if (state.abilityCooldowns[k] > 0 || state.buildPhase || !state.inWave) return;
-      a.use();
+      const booster = getPowerUpBoosterMultiplier();
+      a.use(booster);
       if (!a.delayedCooldown) state.abilityCooldowns[k] = a.cd;
       state.stats.powerUpsUsed += 1;
       state.runStats.powerUpsUsed += 1;
@@ -3756,12 +3887,12 @@ function createCombatDroneMesh() {
   return drone;
 }
 
-function launchSkyhammerGrenade(origin, enemy) {
+function launchSkyhammerGrenade(origin, enemy, booster = 1) {
   if (!enemy?.mesh?.parent) return;
   const def = towerDefs.missile;
   const p = getProjectile();
   p.alive = true;
-  p.damage = def.damage * getTowerMetaDamageBonus('missile');
+  p.damage = def.damage * getTowerMetaDamageBonus('missile') * Math.max(1, booster);
   p.aoe = def.aoe || 0;
   p.slow = 0;
   p.custom = null;
@@ -3788,7 +3919,7 @@ function clearActiveCombatDrone({ startCooldown = false } = {}) {
   }
 }
 
-function activateCombatDrone() {
+function activateCombatDrone(booster = 1) {
   if (!state.gameStarted || !state.inWave || state.buildPhase) return;
   if (state.effects.some(fx => fx.kind === 'combatDrone')) return;
   const launchPos = (objectiveEntities.castle?.group?.position || cellToWorld(board.path[board.path.length - 1][0], board.path[board.path.length - 1][1])).clone();
@@ -3803,8 +3934,9 @@ function activateCombatDrone() {
     orbitSpeed: 2.4,
     orbitAngle: Math.random() * Math.PI * 2,
     grenadeTimer: 0.1,
-    grenadeInterval: 0.72,
-    moveSpeed: 7.8
+    grenadeInterval: 0.72 / Math.max(1, booster),
+    moveSpeed: 7.8,
+    booster
   });
 }
 
@@ -4042,6 +4174,7 @@ function animate(now) {
   }
 
   const simDt = dt * state.gameSpeed;
+  state.runStats.castleCannonCooldown = Math.max(0, Number(state.runStats.castleCannonCooldown) - simDt);
   if (objectiveEntities.spawnPoint) objectiveVisuals.updateSpawn(objectiveEntities.spawnPoint, simDt, now);
   state.particlesFrame = 0;
   for (const k of Object.keys(state.abilityCooldowns)) state.abilityCooldowns[k] = Math.max(0, state.abilityCooldowns[k] - simDt);
@@ -4060,6 +4193,16 @@ function animate(now) {
       state.spawnTimer = boss ? 1.4 : 0.45;
     }
     if (state.remainingInWave === 0 && state.enemies.length === 0) beginBuildPhase();
+  }
+
+
+  if (isCastleCannonUnlocked() && state.inWave && !state.buildPhase && state.runStats.castleCannonCooldown <= 0) {
+    const castlePos = (objectiveEntities.castle?.group?.position || cellToWorld(board.path[board.path.length - 1][0], board.path[board.path.length - 1][1])).clone();
+    const target = findFrontMostEnemy();
+    if (target?.mesh?.parent && target.mesh.position.distanceTo(castlePos) <= rewardRuntimeConfig.castleCannonRange) {
+      launchSkyhammerGrenade(castlePos.clone().setY(castlePos.y + 0.7), target, 1);
+      state.runStats.castleCannonCooldown = rewardRuntimeConfig.castleCannonInterval;
+    }
   }
 
   for (let i = state.enemies.length - 1; i >= 0; i--) {
@@ -4102,6 +4245,27 @@ function animate(now) {
       releaseHealthBar(e.healthBar);
       if (e.blobShadow) world.remove(e.blobShadow);
       world.remove(e.mesh);
+      if (isEmergencyExplosionUnlocked() && !state.runStats.emergencyExplosionUsed) {
+        const maxLives = 20 + (state.playerProgress.castleLifeBonusPermanent || 0);
+        const thresholdLives = Math.max(1, Math.ceil(maxLives * rewardRuntimeConfig.emergencyExplosionThreshold));
+        if (state.lives <= thresholdLives) {
+          state.runStats.emergencyExplosionUsed = true;
+          const castlePos = (objectiveEntities.castle?.group?.position || cellToWorld(board.path[board.path.length - 1][0], board.path[board.path.length - 1][1])).clone();
+          state.enemies.forEach(enemy => {
+            if (!enemy?.mesh?.parent) return;
+            if (enemy.mesh.position.distanceTo(castlePos) <= rewardRuntimeConfig.emergencyExplosionRadius) {
+              applyHit(enemy, rewardRuntimeConfig.emergencyExplosionDamage, 0, 0, null, 'explosive');
+            }
+          });
+          emitParticleBurst(castlePos.clone(), { color: 0xff8a5f, count: 22, spread: 2.8, life: 0.4, y: 0.2 });
+        }
+      }
+      if (state.lives <= 0 && isLastChanceUnlocked() && !state.runStats.lastChanceUsed) {
+        state.runStats.lastChanceUsed = true;
+        const maxLives = 20 + (state.playerProgress.castleLifeBonusPermanent || 0);
+        state.lives = Math.max(1, Math.ceil(maxLives * rewardRuntimeConfig.lastChanceRestorePercent));
+        showToast('Last Chance aktiviert!', true);
+      }
       if (state.lives <= 0) {
         if (state.mode === 'endless') {
           const survivedSeconds = Math.max(0, Math.floor((performance.now() - (state.runStats.startAt || performance.now())) / 1000));
@@ -4387,7 +4551,7 @@ function animate(now) {
           fx.grenadeTimer = fx.grenadeInterval;
           const dropOrigin = fx.mesh.position.clone();
           dropOrigin.y = Math.max(dropOrigin.y - 0.12, enemyPos.y + 0.22);
-          launchSkyhammerGrenade(dropOrigin, target);
+          launchSkyhammerGrenade(dropOrigin, target, fx.booster || 1);
           emitParticleBurst(dropOrigin, { color: 0xffd166, count: 5, spread: 0.25, life: 0.22, y: 0.08 });
         }
       } else {
@@ -5006,7 +5170,10 @@ function start(mode) {
     coinsSpent: 0,
     startAt: performance.now(),
     firstAttempt: mode === 'campaign' ? !state.campaign.completed[state.currentLevel] : false,
-    levelKey: mode === 'campaign' ? `L${state.currentLevel}` : mode
+    levelKey: mode === 'campaign' ? `L${state.currentLevel}` : mode,
+    emergencyExplosionUsed: false,
+    lastChanceUsed: false,
+    castleCannonCooldown: 0
   };
   state.wave = 0;
   state.inWave = false;
