@@ -1618,6 +1618,8 @@ function emitParticleBurst(base, cfg = {}) {
     particle.mesh.visible = true;
     if (!particle.mesh.parent) world.add(particle.mesh);
     particle.mesh.position.copy(base).add(new THREE.Vector3((Math.random()-0.5)*0.12, cfg.y || 0.2, (Math.random()-0.5)*0.12));
+    particle.mesh.scale.setScalar(1);
+    particle.mesh.material.opacity = 0.9;
     const spread = cfg.spread || 2.8;
     particle.vel.set((Math.random() - 0.5) * spread, (cfg.up || 1.5) + Math.random() * spread * 0.35, (Math.random() - 0.5) * spread);
     particle.life = (cfg.life || 0.35) + Math.random() * 0.24;
@@ -2648,6 +2650,8 @@ function spawnDeathFx(enemy) {
     particle.mesh.visible = true;
     if (!particle.mesh.parent) world.add(particle.mesh);
     particle.mesh.position.copy(base).add(new THREE.Vector3(0, 0.25, 0));
+    particle.mesh.scale.setScalar(1);
+    particle.mesh.material.opacity = 0.9;
     particle.vel.set((Math.random() - 0.5) * 2.8, 1.2 + Math.random() * 1.5, (Math.random() - 0.5) * 2.8);
     particle.life = 0.34 + Math.random() * 0.26;
     state.effects.push({ kind: 'particle', particle });
