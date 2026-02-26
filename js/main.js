@@ -282,6 +282,133 @@ const worldThemes = {
   4:{name:'World 4 · Space', bg:0x090c1f, fog:0x1f2649, terrain:0x4f5944, road:0x8b7150, edge:0xc0aa86, ambient:0x9daed3, sun:0xc8d6ff, sunIntensity:1.05, fogFar:112, sky:0x121833, prop:'hybrid', vfx:'hybrid', intro:'Orbit-Biome: schwebende Plattform mit Sternenfeld und kosmischem Dunst.', skyTop:0x04060f, skyHorizon:0x27356e, haze:0x7f8fd8, rim:0xa08cff, rimIntensity:0.5, fill:0x98d0ff, fillIntensity:0.22}
 };
 
+const PARTICLE_PRESETS = {
+  world1: {
+    motionStyle: 'drift',
+    layerCount: 2,
+    bounds: { x: 15.5, z: 16.5, minY: 1.8, maxY: 11.2 },
+    near: {
+      colors: [0xd3b68f, 0xb8a07d, 0xc6b090],
+      blending: THREE.NormalBlending,
+      count: 16,
+      size: [0.13, 0.24],
+      opacity: [0.07, 0.13],
+      velocityX: [0.09, 0.17],
+      velocityY: [-0.01, 0.02],
+      velocityZ: [-0.04, 0.04],
+      lifetime: [17, 29],
+      parallax: 0.065,
+      swirl: 0.12
+    },
+    far: {
+      colors: [0xdcc8a8, 0xcbb391],
+      blending: THREE.NormalBlending,
+      count: 48,
+      size: [0.045, 0.095],
+      opacity: [0.03, 0.075],
+      velocityX: [0.03, 0.08],
+      velocityY: [-0.015, 0.01],
+      velocityZ: [-0.02, 0.02],
+      lifetime: [24, 38],
+      parallax: 0.02,
+      swirl: 0.06
+    }
+  },
+  world2: {
+    motionStyle: 'float',
+    layerCount: 2,
+    bounds: { x: 15.5, z: 16.5, minY: 2.1, maxY: 11.8 },
+    near: {
+      colors: [0xf1fbff, 0xd7eeff, 0xbfddff],
+      blending: THREE.NormalBlending,
+      count: 14,
+      size: [0.12, 0.21],
+      opacity: [0.08, 0.15],
+      velocityX: [-0.03, 0.03],
+      velocityY: [-0.14, -0.06],
+      velocityZ: [-0.03, 0.03],
+      lifetime: [18, 32],
+      parallax: 0.055,
+      swirl: 0.16
+    },
+    far: {
+      colors: [0xf8fcff, 0xd6ecff],
+      blending: THREE.NormalBlending,
+      count: 56,
+      size: [0.04, 0.085],
+      opacity: [0.025, 0.065],
+      velocityX: [-0.015, 0.015],
+      velocityY: [-0.085, -0.03],
+      velocityZ: [-0.02, 0.02],
+      lifetime: [26, 44],
+      parallax: 0.018,
+      swirl: 0.09
+    }
+  },
+  world3: {
+    motionStyle: 'rise',
+    layerCount: 2,
+    bounds: { x: 15.2, z: 15.8, minY: 1.2, maxY: 8.8 },
+    near: {
+      colors: [0xff8f58, 0xd85534, 0xffb26b],
+      blending: THREE.AdditiveBlending,
+      count: 12,
+      size: [0.11, 0.2],
+      opacity: [0.08, 0.16],
+      velocityX: [-0.025, 0.025],
+      velocityY: [0.08, 0.16],
+      velocityZ: [-0.02, 0.02],
+      lifetime: [14, 23],
+      parallax: 0.06,
+      swirl: 0.18
+    },
+    far: {
+      colors: [0xff7a4d, 0xc7462a],
+      blending: THREE.AdditiveBlending,
+      count: 42,
+      size: [0.035, 0.08],
+      opacity: [0.025, 0.055],
+      velocityX: [-0.02, 0.02],
+      velocityY: [0.05, 0.11],
+      velocityZ: [-0.018, 0.018],
+      lifetime: [20, 30],
+      parallax: 0.015,
+      swirl: 0.11
+    }
+  },
+  world4: {
+    motionStyle: 'slow swirl',
+    layerCount: 2,
+    bounds: { x: 17.8, z: 18.4, minY: 3.3, maxY: 12.4 },
+    near: {
+      colors: [0xeaf1ff, 0xb8cbff, 0xdde8ff],
+      blending: THREE.NormalBlending,
+      count: 10,
+      size: [0.08, 0.16],
+      opacity: [0.06, 0.11],
+      velocityX: [-0.01, 0.01],
+      velocityY: [-0.004, 0.008],
+      velocityZ: [-0.01, 0.01],
+      lifetime: [28, 44],
+      parallax: 0.08,
+      swirl: 0.2
+    },
+    far: {
+      colors: [0xf2f7ff, 0xcad9ff],
+      blending: THREE.NormalBlending,
+      count: 34,
+      size: [0.03, 0.065],
+      opacity: [0.02, 0.05],
+      velocityX: [-0.008, 0.008],
+      velocityY: [-0.003, 0.006],
+      velocityZ: [-0.008, 0.008],
+      lifetime: [32, 54],
+      parallax: 0.026,
+      swirl: 0.14
+    }
+  }
+};
+
 const worldEnemyImmunities = {
   1: { freeze: false, fire: false, explosive: false },
   2: { freeze: true, fire: false, explosive: false },
@@ -820,7 +947,7 @@ renderer.setSize(1, 1, false);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd5ff);
 scene.fog = new THREE.Fog(0xbfdff4, 45, 130);
-const worldVisuals = { backgroundTexture: null, ambientLayer: null, ambientItems: [], activeWorld: 1 };
+const worldVisuals = { backgroundTexture: null, particleSystem: null, activeWorld: 1 };
 const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 220);
 const cam = { yaw: 0.6, pitch: 0.98, dist: 24, target: new THREE.Vector3(0, 0, 8.2), velYaw: 0, velPitch: 0, velDist: 0, panVel: new THREE.Vector2(), transitioning: null, cine: { active: false, targetEnemy: null, travelStart: 0, travelDur: 820, pathStart: 0, pathProgress: 1, camT: 0, followOffsetT: 0.11, smoothPos: null, smoothLook: null, baseYaw: 0, basePitch: 0, baseDist: 0, userYawOffset: 0, userPitchOffset: 0, userDistOffset: 0, userPanOffset: new THREE.Vector2(), baselineTarget: new THREE.Vector3(0, 0, 8.2) } };
 
@@ -1527,7 +1654,7 @@ function applyWorldTheme(worldId) {
   const theme = worldThemes[worldId] || worldThemes[1];
   worldVisuals.activeWorld = worldId;
   setWorldBackground(worldId);
-  buildWorldAmbientLayer(worldId);
+  buildWorldParticleSystem(worldId);
   scene.fog = new THREE.Fog(theme.fog, 38, theme.fogFar || (worldId === 4 ? 105 : 130));
   if (terrain?.userData?.topMaterial) {
     const { topMaterial, sideMaterial, bottomMaterial } = terrain.userData;
@@ -1848,92 +1975,195 @@ function createWorldBackgroundTexture(theme, worldId) {
 }
 
 
-function randomAmbientEdgePosition(extent) {
-  const side = Math.floor(Math.random() * 4);
-  const pad = 1.6;
-  if (side === 0) return new THREE.Vector3(-extent, 0, (Math.random() * 2 - 1) * (extent + pad) + 8.4);
-  if (side === 1) return new THREE.Vector3(extent, 0, (Math.random() * 2 - 1) * (extent + pad) + 8.4);
-  if (side === 2) return new THREE.Vector3((Math.random() * 2 - 1) * extent, 0, -extent + 8.4 - pad);
-  return new THREE.Vector3((Math.random() * 2 - 1) * extent, 0, extent + 8.4 + pad);
+function randomRange(min, max) {
+  return min + Math.random() * (max - min);
 }
 
-function clearWorldAmbientLayer() {
-  if (worldVisuals.ambientLayer?.parent) worldVisuals.ambientLayer.parent.remove(worldVisuals.ambientLayer);
-  worldVisuals.ambientItems.forEach(item => {
-    item.mesh?.geometry?.dispose?.();
-    item.mesh?.material?.dispose?.();
-  });
-  worldVisuals.ambientItems = [];
-  worldVisuals.ambientLayer = null;
+function pickParticleColor(colors) {
+  return colors[Math.floor(Math.random() * colors.length)] || 0xffffff;
 }
 
-function buildWorldAmbientLayer(worldId) {
-  clearWorldAmbientLayer();
-  if (ui.perfToggle?.checked) return;
+function buildWorldParticleSystem(worldId) {
+  clearWorldParticleSystem();
+  const preset = PARTICLE_PRESETS[`world${worldId}`] || PARTICLE_PRESETS.world1;
+  if (!preset) return;
+
+  const performanceMode = Boolean(ui.perfToggle?.checked);
   const group = new THREE.Group();
-  group.renderOrder = -10;
+  group.renderOrder = -9;
   scene.add(group);
-  const extent = 13.6;
 
-  const spawnItem = (cfg) => {
-    const mesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(cfg.size, cfg.size * (cfg.aspect || 1)),
-      new THREE.MeshBasicMaterial({
-        color: cfg.color,
-        transparent: true,
-        opacity: cfg.opacity,
-        depthWrite: false,
-        side: THREE.DoubleSide
-      })
-    );
-    mesh.position.copy(randomAmbientEdgePosition(extent));
-    mesh.position.y = cfg.minY + Math.random() * (cfg.maxY - cfg.minY);
-    mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-    group.add(mesh);
-    worldVisuals.ambientItems.push({
-      mesh,
-      velocity: cfg.velocity.clone().add(new THREE.Vector3((Math.random() - 0.5) * cfg.jitter, (Math.random() - 0.5) * cfg.jitterY, (Math.random() - 0.5) * cfg.jitter)),
-      spin: new THREE.Vector3((Math.random() - 0.5) * cfg.spin, (Math.random() - 0.5) * cfg.spin, (Math.random() - 0.5) * cfg.spin),
-      pulse: cfg.pulse || 0,
-      baseOpacity: cfg.opacity,
-      extent,
-      wrapY: cfg.wrapY,
-      resetY: cfg.resetY,
-      scaleJitter: 0.9 + Math.random() * 0.35
+  const bounds = {
+    x: preset.bounds?.x || 15,
+    z: preset.bounds?.z || 16,
+    minY: preset.bounds?.minY ?? 2,
+    maxY: preset.bounds?.maxY ?? 11,
+    centerZ: 8.4
+  };
+
+  const layers = [];
+
+  const createLayer = (layerPreset, layerName) => {
+    if (!layerPreset) return;
+    if (performanceMode && layerName === 'near') return;
+
+    const targetCount = Math.max(0, Math.floor(performanceMode && layerName === 'far' ? layerPreset.count * 0.3 : layerPreset.count));
+    if (!targetCount) return;
+
+    const blending = performanceMode && layerPreset.blending === THREE.AdditiveBlending
+      ? THREE.NormalBlending
+      : (layerPreset.blending || THREE.NormalBlending);
+
+    const material = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 1,
+      depthWrite: false,
+      depthTest: true,
+      blending,
+      side: THREE.DoubleSide,
+      fog: true
+    });
+
+    const geometry = new THREE.PlaneGeometry(1, 1);
+    const entries = new Array(targetCount);
+    const velocity = new THREE.Vector3();
+
+    for (let i = 0; i < targetCount; i++) {
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.frustumCulled = true;
+      mesh.castShadow = false;
+      mesh.receiveShadow = false;
+      mesh.renderOrder = layerName === 'near' ? -8 : -10;
+      group.add(mesh);
+
+      entries[i] = {
+        mesh,
+        velocity: velocity.clone(),
+        life: 0,
+        maxLife: 1,
+        baseOpacity: 0,
+        drift: randomRange(0, Math.PI * 2),
+        driftSpeed: randomRange(0.3, 0.9),
+        swirlSeed: randomRange(-1, 1),
+        parallax: layerPreset.parallax || 0,
+        nearLayer: layerName === 'near'
+      };
+    }
+
+    layers.push({
+      name: layerName,
+      preset: layerPreset,
+      entries,
+      material,
+      geometry,
+      tmp: new THREE.Vector3()
     });
   };
 
-  if (worldId === 1) {
-    for (let i = 0; i < 24; i++) spawnItem({ color: i % 2 ? 0xdba65f : 0x85c26f, size: 0.24, aspect: 0.66, opacity: 0.2, minY: 2.8, maxY: 8.6, velocity: new THREE.Vector3(0.38, -0.14, 0.16), jitter: 0.2, jitterY: 0.06, spin: 2.4, pulse: 0.15, wrapY: 2.2, resetY: 8.6 });
-  } else if (worldId === 2) {
-    for (let i = 0; i < 36; i++) spawnItem({ color: i % 3 ? 0xf5fcff : 0xbee8ff, size: 0.17, aspect: 1, opacity: 0.16, minY: 2.4, maxY: 10.2, velocity: new THREE.Vector3(0.05, -0.42, 0.06), jitter: 0.08, jitterY: 0.02, spin: 0.9, pulse: 0.08, wrapY: 2, resetY: 10.2 });
-  } else if (worldId === 3) {
-    for (let i = 0; i < 30; i++) spawnItem({ color: i % 2 ? 0xff8a46 : 0xffd083, size: 0.2, aspect: 1.2, opacity: 0.19, minY: 1.8, maxY: 6.6, velocity: new THREE.Vector3(0.09, 0.5, 0.08), jitter: 0.13, jitterY: 0.15, spin: 2.8, pulse: 0.22, wrapY: 6.8, resetY: 1.8 });
-  } else {
-    for (let i = 0; i < 40; i++) spawnItem({ color: i % 2 ? 0x9cb6ff : 0xd8e4ff, size: 0.14, aspect: 1, opacity: 0.14, minY: 4.5, maxY: 11.4, velocity: new THREE.Vector3(0, 0.005, 0), jitter: 0.012, jitterY: 0.01, spin: 1.2, pulse: 0.25, wrapY: 11.6, resetY: 4.5 });
-  }
+  createLayer(preset.near, 'near');
+  createLayer(preset.far, 'far');
 
-  worldVisuals.ambientLayer = group;
+  worldVisuals.particleSystem = {
+    group,
+    layers,
+    bounds,
+    motionStyle: preset.motionStyle,
+    activeWorld: worldId,
+    perfReduced: performanceMode
+  };
+
+  for (const layer of layers) {
+    for (const entry of layer.entries) {
+      resetWorldParticle(entry, layer.preset, bounds, true);
+    }
+  }
 }
 
-function updateWorldAmbientLayer(dt, now) {
-  for (const item of worldVisuals.ambientItems) {
-    item.mesh.position.addScaledVector(item.velocity, dt);
-    item.mesh.rotation.x += item.spin.x * dt;
-    item.mesh.rotation.y += item.spin.y * dt;
-    item.mesh.rotation.z += item.spin.z * dt;
-    item.mesh.lookAt(camera.position);
-    const twinkle = item.pulse ? (0.8 + Math.sin(now * 0.0018 + item.mesh.position.x * 0.25 + item.mesh.position.z * 0.33) * item.pulse) : 1;
-    item.mesh.material.opacity = Math.max(0.08, item.baseOpacity * twinkle);
-    item.mesh.scale.setScalar(item.scaleJitter * (0.92 + twinkle * 0.12));
+function resetWorldParticle(entry, layerPreset, bounds, randomizeY = false) {
+  const mesh = entry.mesh;
+  const spawnY = randomizeY
+    ? randomRange(bounds.minY, bounds.maxY)
+    : (entry.velocity.y >= 0 ? bounds.minY : bounds.maxY);
+  mesh.position.set(
+    randomRange(-bounds.x, bounds.x),
+    spawnY,
+    randomRange(bounds.centerZ - bounds.z, bounds.centerZ + bounds.z)
+  );
 
-    const dx = Math.abs(item.mesh.position.x);
-    const dz = Math.abs(item.mesh.position.z - 8.4);
-    const offBounds = dx > item.extent + 2 || dz > item.extent + 4;
-    const outY = (item.velocity.y < 0 && item.mesh.position.y < item.wrapY) || (item.velocity.y > 0 && item.mesh.position.y > item.wrapY);
-    if (offBounds || outY) {
-      item.mesh.position.copy(randomAmbientEdgePosition(item.extent));
-      item.mesh.position.y = item.resetY;
+  const size = randomRange(layerPreset.size[0], layerPreset.size[1]);
+  mesh.scale.set(size, size, 1);
+  mesh.rotation.z = randomRange(0, Math.PI * 2);
+  mesh.material.color.setHex(pickParticleColor(layerPreset.colors));
+
+  entry.velocity.set(
+    randomRange(layerPreset.velocityX[0], layerPreset.velocityX[1]),
+    randomRange(layerPreset.velocityY[0], layerPreset.velocityY[1]),
+    randomRange(layerPreset.velocityZ[0], layerPreset.velocityZ[1])
+  );
+  entry.baseOpacity = randomRange(layerPreset.opacity[0], layerPreset.opacity[1]);
+  entry.life = 0;
+  entry.maxLife = randomRange(layerPreset.lifetime[0], layerPreset.lifetime[1]);
+  entry.drift = randomRange(0, Math.PI * 2);
+}
+
+function clearWorldParticleSystem() {
+  const sys = worldVisuals.particleSystem;
+  if (!sys) return;
+  if (sys.group?.parent) sys.group.parent.remove(sys.group);
+  for (const layer of sys.layers || []) {
+    layer.geometry?.dispose?.();
+    layer.material?.dispose?.();
+  }
+  worldVisuals.particleSystem = null;
+}
+
+function updateWorldParticleSystem(dt, now) {
+  const sys = worldVisuals.particleSystem;
+  if (!sys) return;
+
+  const camX = camera.position.x;
+  const camZ = camera.position.z;
+
+  for (const layer of sys.layers) {
+    const layerPreset = layer.preset;
+    const swirlAmount = layerPreset.swirl || 0;
+    const twinkleHz = layer.name === 'near' ? 0.85 : 0.45;
+
+    for (const entry of layer.entries) {
+      entry.life += dt;
+      entry.drift += dt * entry.driftSpeed;
+
+      layer.tmp.copy(entry.velocity);
+      if (swirlAmount > 0) {
+        const phase = now * 0.00035 + entry.drift + entry.swirlSeed;
+        layer.tmp.x += Math.sin(phase) * swirlAmount * 0.02;
+        layer.tmp.z += Math.cos(phase * 1.2) * swirlAmount * 0.02;
+      }
+
+      entry.mesh.position.addScaledVector(layer.tmp, dt);
+
+      if (entry.parallax) {
+        entry.mesh.position.x += (camX - entry.mesh.position.x) * entry.parallax * dt * 0.04;
+        entry.mesh.position.z += (camZ - entry.mesh.position.z) * entry.parallax * dt * 0.04;
+      }
+
+      entry.mesh.lookAt(camera.position);
+      const lifeRatio = Math.min(1, entry.life / Math.max(0.001, entry.maxLife));
+      const fade = Math.sin(lifeRatio * Math.PI);
+      const pulse = 0.88 + Math.sin(now * 0.001 * twinkleHz + entry.drift * 0.75) * 0.12;
+      entry.mesh.material.opacity = Math.max(0.012, entry.baseOpacity * fade * pulse);
+
+      const outOfBounds =
+        Math.abs(entry.mesh.position.x) > sys.bounds.x + 2 ||
+        Math.abs(entry.mesh.position.z - sys.bounds.centerZ) > sys.bounds.z + 2 ||
+        entry.mesh.position.y < sys.bounds.minY - 1.5 ||
+        entry.mesh.position.y > sys.bounds.maxY + 1.5 ||
+        entry.life > entry.maxLife;
+
+      if (outOfBounds) {
+        resetWorldParticle(entry, layerPreset, sys.bounds, false);
+      }
     }
   }
 }
@@ -4177,7 +4407,7 @@ function animate(now) {
   requestAnimationFrame(animate);
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
-  updateWorldAmbientLayer(dt, now);
+  updateWorldParticleSystem(dt, now);
   if (state.paused || !state.gameStarted) {
     renderer.render(scene, camera);
     return;
@@ -5250,7 +5480,10 @@ ui.cineCamBtn.onclick = () => {
   }
 };
 ui.speedBtn.onclick = () => { state.gameSpeed = state.gameSpeed >= 4 ? 1 : state.gameSpeed + 1; };
-ui.perfToggle?.addEventListener('change', () => { if (ui.perfToggle.checked) tutorialEngine.runTutorial('performance_mode_intro'); });
+ui.perfToggle?.addEventListener('change', () => {
+  if (ui.perfToggle.checked) tutorialEngine.runTutorial('performance_mode_intro');
+  buildWorldParticleSystem(worldVisuals.activeWorld || 1);
+});
 
 ui.continueBtn.onclick = () => {
   resetCineCam(false);
