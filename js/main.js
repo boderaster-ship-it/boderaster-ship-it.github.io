@@ -584,7 +584,7 @@ const state = {
   meta: safeJSONParse('aegis-meta', { upgradePoints: 5, unlockedTowers: ['cannon'] }),
   pools: { projectiles: [], effects: [], healthBars: [], fragments: [], particles: [], shockwaves: [], stormHeads: [] },
   particlesFrame: 0,
-  maxParticlesFrame: 70,
+  maxParticlesFrame: 160,
   campaign: safeJSONParse('aegis-campaign', { selectedLevel: 1, selectedWorld: 1, completed: {}, unlockedLevel: 1, clearedObstacles: {}, castleBuild: { version: CASTLE_BUILD_VERSION, coins: 0, selection: {}, owned: {} } }),
   currentLevel: 1,
   endlessWorld: 1,
@@ -1614,15 +1614,15 @@ function emitParticleBurst(base, cfg = {}) {
   if (state.particlesFrame > state.maxParticlesFrame) return;
   for (let i = 0; i < count; i++) {
     if (state.particlesFrame > state.maxParticlesFrame) break;
-    const particle = state.pools.particles.pop() || { mesh: new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffb78a, transparent: true, opacity: 0.9 })), vel: new THREE.Vector3(), life: 0 };
+    const particle = state.pools.particles.pop() || { mesh: new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffb78a, transparent: true, opacity: 1 })), vel: new THREE.Vector3(), life: 0 };
     particle.mesh.visible = true;
     if (!particle.mesh.parent) world.add(particle.mesh);
     particle.mesh.position.copy(base).add(new THREE.Vector3((Math.random()-0.5)*0.12, cfg.y || 0.2, (Math.random()-0.5)*0.12));
-    particle.mesh.scale.setScalar(1);
-    particle.mesh.material.opacity = 0.9;
+    particle.mesh.scale.setScalar(1.3);
+    particle.mesh.material.opacity = 1;
     const spread = cfg.spread || 2.8;
     particle.vel.set((Math.random() - 0.5) * spread, (cfg.up || 1.5) + Math.random() * spread * 0.35, (Math.random() - 0.5) * spread);
-    particle.life = (cfg.life || 0.35) + Math.random() * 0.24;
+    particle.life = (cfg.life || 0.35) + Math.random() * 0.32;
     particle.mesh.material.color.setHex(cfg.color || 0xffb78a);
     state.effects.push({ kind: 'particle', particle });
     state.particlesFrame++;
@@ -4697,8 +4697,8 @@ function animate(now) {
       p.life -= simDt;
       p.vel.y -= simDt * 2.8;
       p.mesh.position.addScaledVector(p.vel, simDt);
-      p.mesh.material.opacity = Math.max(0, p.life * 2.5);
-      p.mesh.scale.setScalar(0.8 + (1 - p.life) * 0.9);
+      p.mesh.material.opacity = Math.max(0, p.life * 3.2);
+      p.mesh.scale.setScalar(1.1 + (1 - p.life) * 1.35);
       if (p.life <= 0) {
         p.mesh.visible = false;
         if (p.mesh.parent) p.mesh.parent.remove(p.mesh);
