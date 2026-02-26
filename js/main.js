@@ -1518,7 +1518,7 @@ function buildWorldAmbientLayer(worldId) {
   } else if (worldId === 3) {
     for (let i = 0; i < 30; i++) spawnItem({ color: i % 2 ? 0xff8a46 : 0xffd083, size: 0.2, aspect: 1.2, opacity: 0.19, minY: 1.8, maxY: 6.6, velocity: new THREE.Vector3(0.09, 0.5, 0.08), jitter: 0.13, jitterY: 0.15, spin: 2.8, pulse: 0.22, wrapY: 6.8, resetY: 1.8 });
   } else {
-    for (let i = 0; i < 40; i++) spawnItem({ color: i % 2 ? 0x9cb6ff : 0xd8e4ff, size: 0.14, aspect: 1, opacity: 0.14, minY: 4.5, maxY: 11.4, velocity: new THREE.Vector3(0.03, 0.01, 0.02), jitter: 0.05, jitterY: 0.03, spin: 1.2, pulse: 0.25, wrapY: 11.6, resetY: 4.5 });
+    for (let i = 0; i < 40; i++) spawnItem({ color: i % 2 ? 0x9cb6ff : 0xd8e4ff, size: 0.14, aspect: 1, opacity: 0.14, minY: 4.5, maxY: 11.4, velocity: new THREE.Vector3(0, 0.005, 0), jitter: 0.012, jitterY: 0.01, spin: 1.2, pulse: 0.25, wrapY: 11.6, resetY: 4.5 });
   }
 
   worldVisuals.ambientLayer = group;
