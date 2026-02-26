@@ -86,9 +86,27 @@
             <button id="openCastle" class="btnSecondary">Castle</button>
             <button id="openUpgrades" class="btnSecondary">Upgrades</button>
             <button id="openUnlockSettings" class="btnSecondary">Freischaltungen &amp; Einstellungen</button>
+            <button id="openPlayerProgress" class="btnSecondary">Player Level &amp; Fortschritt</button>
             <button id="openMotAnleitung" class="btnSecondary">MOT Anleitung</button>
             <button id="openStatistics" class="btnSecondary">Statistiken</button>
           </div>
+        </section>
+
+        <section class="menuPage hidden" data-page="playerProgress">
+          <div class="menuPageHeader">
+            <h2>Player Level</h2>
+            <button data-nav="home" class="btnSecondary">Back to Menu</button>
+          </div>
+          <section class="playerLevelCard">
+            <div id="playerLevelHeadline" class="playerLevelHeadline">Level 1</div>
+            <div class="campaignProgressTrack"><div id="playerXPFill"></div></div>
+            <div id="playerXPLabel" class="tiny">XP: 0 / 100</div>
+            <div id="playerLifeBonusLabel" class="tiny">Permanenter Burgleben-Bonus: +0</div>
+          </section>
+          <section>
+            <h3>Challenges</h3>
+            <div id="playerChallengeList" class="playerChallengeList"></div>
+          </section>
         </section>
 
         <section class="menuPage hidden" data-page="castle">

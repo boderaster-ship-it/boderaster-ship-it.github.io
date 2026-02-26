@@ -77,9 +77,15 @@ const ui = {
   openCastle: document.getElementById('openCastle'),
   openUpgrades: document.getElementById('openUpgrades'),
   openUnlockSettings: document.getElementById('openUnlockSettings'),
+  openPlayerProgress: document.getElementById('openPlayerProgress'),
   openMotAnleitung: document.getElementById('openMotAnleitung'),
   openStatistics: document.getElementById('openStatistics'),
   menuCoinsBadge: document.getElementById('menuCoinsBadge'),
+  playerLevelHeadline: document.getElementById('playerLevelHeadline'),
+  playerXPFill: document.getElementById('playerXPFill'),
+  playerXPLabel: document.getElementById('playerXPLabel'),
+  playerLifeBonusLabel: document.getElementById('playerLifeBonusLabel'),
+  playerChallengeList: document.getElementById('playerChallengeList'),
   campaignProgressFill: document.getElementById('campaignProgressFill'),
   statsGrid: document.getElementById('statsGrid'),
   metaTree: document.getElementById('metaTree'),
@@ -314,6 +320,54 @@ const CASTLE_BUILD_VERSION = 1;
 const CASTLE_VARIANTS_PER_PART = 5;
 const CASTLE_VARIANT_COST = 1;
 
+const PLAYER_PROGRESS_VERSION = 1;
+const PLAYER_LEVEL_MAX = 100;
+const PLAYER_LEVEL_BASE_XP = 100;
+const PLAYER_LEVEL_GROWTH = 1.12;
+
+const playerStatDefaults = {
+  enemiesKilled: 0,
+  bossesKilled: 0,
+  lifeLost: 0,
+  powerUpsUsed: 0,
+  towersBuilt: 0,
+  towerUpgrades: 0,
+  damageDealt: 0,
+  wavesCleared: 0,
+  coinsSpent: 0,
+  noDamageRuns: 0,
+  bossNoPowerupWins: 0,
+  firstAttemptClears: 0,
+  endlessBestWave: 0,
+  endlessBestSeconds: 0,
+  flyingKills: 0,
+  builderDamageDealt: 0,
+  powerupUsageByType: {}
+};
+
+const playerChallengeDefinitions = [
+  { id: 'kills_250', title: 'Jäger I', description: 'Besiege 250 Gegner.', metricKey: 'enemiesKilled', target: 250, state: 'active' },
+  { id: 'kills_2000', title: 'Jäger II', description: 'Besiege 2.000 Gegner.', metricKey: 'enemiesKilled', target: 2000, state: 'active' },
+  { id: 'boss_25', title: 'Bossbrecher', description: 'Besiege 25 Bosse.', metricKey: 'bossesKilled', target: 25, state: 'active' },
+  { id: 'damage_50000', title: 'Artillerist', description: 'Verursache 50.000 Schaden.', metricKey: 'damageDealt', target: 50000, state: 'active' },
+  { id: 'waves_120', title: 'Wellenmeister', description: 'Schließe 120 Wellen ab.', metricKey: 'wavesCleared', target: 120, state: 'active' },
+  { id: 'run_no_damage_5', title: 'Perfekte Mauer', description: 'Schließe 5 Läufe ohne Burgschaden ab.', metricKey: 'noDamageRuns', target: 5, state: 'active' },
+  { id: 'boss_no_powerup_5', title: 'Purist', description: 'Besiege 5 Bosse ohne Power-ups im Lauf.', metricKey: 'bossNoPowerupWins', target: 5, state: 'active' },
+  { id: 'coins_spent_40000', title: 'Bauleiter', description: 'Gib 40.000 Credits aus.', metricKey: 'coinsSpent', target: 40000, state: 'active' },
+  { id: 'towers_400', title: 'Architekt', description: 'Baue 400 Türme.', metricKey: 'towersBuilt', target: 400, state: 'active' },
+  { id: 'upgrades_200', title: 'Ingenieur', description: 'Verbessere 200 Türme.', metricKey: 'towerUpgrades', target: 200, state: 'active' },
+  { id: 'powerups_120', title: 'Taktiker', description: 'Nutze 120 Power-ups.', metricKey: 'powerUpsUsed', target: 120, state: 'active' },
+  { id: 'world_1_clear', title: 'Welt 1 gesichert', description: 'Schließe Welt 1 vollständig ab.', metricKey: 'world1Clears', target: 1, state: 'locked' },
+  { id: 'world_2_clear', title: 'Welt 2 gesichert', description: 'Schließe Welt 2 vollständig ab.', metricKey: 'world2Clears', target: 1, state: 'locked' },
+  { id: 'world_3_clear', title: 'Welt 3 gesichert', description: 'Schließe Welt 3 vollständig ab.', metricKey: 'world3Clears', target: 1, state: 'locked' },
+  { id: 'world_4_clear', title: 'Welt 4 gesichert', description: 'Schließe Welt 4 vollständig ab.', metricKey: 'world4Clears', target: 1, state: 'locked' },
+  { id: 'first_attempt_10', title: 'Fehlerfrei', description: 'Schließe 10 Kampagnenlevel im ersten Versuch ab.', metricKey: 'firstAttemptClears', target: 10, state: 'active' },
+  { id: 'endless_wave_40', title: 'Endlos-Legende', description: 'Erreiche Welle 40 in Endlos.', metricKey: 'endlessBestWave', target: 40, state: 'active' },
+  { id: 'endless_time_900', title: 'Ausdauer', description: 'Überlebe 15 Minuten in Endlos.', metricKey: 'endlessBestSeconds', target: 900, state: 'active' },
+  { id: 'flying_350', title: 'Flugabwehr', description: 'Besiege 350 fliegende Gegner.', metricKey: 'flyingKills', target: 350, state: 'active' },
+  { id: 'builder_damage_30000', title: 'Builder-Ass', description: 'Verursache 30.000 Schaden mit Builder-Türmen.', metricKey: 'builderDamageDealt', target: 30000, state: 'active' }
+];
+
 /**
  * Castle part registry is the single source of truth for modular goal-castle parts.
  * Save format: state.campaign.castleBuild = { version, coins, selection: { [partId]: variantId }, owned: { [partId]: { [variantId]: true } } }
@@ -373,9 +427,18 @@ const state = {
   unlocks: safeJSONParse('aegis-unlocks', { towerBuilder: false }),
   tutorial: safeJSONParse('aegis-tutorial', { version: 1, completed: {}, seenStep: {} }),
   stats: safeJSONParse('aegis-stats', { enemiesKilled: 0, bossesKilled: 0, lifeLost: 0, powerUpsUsed: 0, towersBuilt: 0, towerUpgrades: 0 }),
+  playerProgress: safeJSONParse('aegis-player-progress', null),
   obstacleTap: { key: null, expires: 0 },
   selectedCastlePart: 'wall',
-  activeCastleVariantPart: null
+  activeCastleVariantPart: null,
+  runStats: {
+    powerUpsUsed: 0,
+    castleDamageTaken: 0,
+    coinsSpent: 0,
+    startAt: 0,
+    firstAttempt: false,
+    levelKey: null
+  }
 };
 
 state.meta.unlockedTowers = state.meta.unlockedTowers || ['cannon'];
@@ -396,6 +459,15 @@ state.stats.lifeLost = Math.max(0, Number(state.stats.lifeLost) || 0);
 state.stats.powerUpsUsed = Math.max(0, Number(state.stats.powerUpsUsed) || 0);
 state.stats.towersBuilt = Math.max(0, Number(state.stats.towersBuilt) || 0);
 state.stats.towerUpgrades = Math.max(0, Number(state.stats.towerUpgrades) || 0);
+sanitizePlayerProgress();
+state.playerProgress.lifetimeStats.enemiesKilled = Math.max(state.playerProgress.lifetimeStats.enemiesKilled, state.stats.enemiesKilled);
+state.playerProgress.lifetimeStats.bossesKilled = Math.max(state.playerProgress.lifetimeStats.bossesKilled, state.stats.bossesKilled);
+state.playerProgress.lifetimeStats.lifeLost = Math.max(state.playerProgress.lifetimeStats.lifeLost, state.stats.lifeLost);
+state.playerProgress.lifetimeStats.powerUpsUsed = Math.max(state.playerProgress.lifetimeStats.powerUpsUsed, state.stats.powerUpsUsed);
+state.playerProgress.lifetimeStats.towersBuilt = Math.max(state.playerProgress.lifetimeStats.towersBuilt, state.stats.towersBuilt);
+state.playerProgress.lifetimeStats.towerUpgrades = Math.max(state.playerProgress.lifetimeStats.towerUpgrades, state.stats.towerUpgrades);
+updateChallengeProgressForMetric();
+savePlayerProgress();
 state.campaign = state.campaign || {};
 state.campaign.completed = state.campaign.completed || {};
 state.campaign.unlockedLevel = state.campaign.unlockedLevel || 1;
@@ -403,6 +475,210 @@ state.campaign.selectedWorld = Number(state.campaign.selectedWorld) || 1;
 state.campaign.selectedLevel = Number(state.campaign.selectedLevel) || 1;
 state.campaign.finalBossUnlocked = !!state.campaign.finalBossUnlocked;
 state.campaign.bossCompleted = !!state.campaign.bossCompleted;
+
+
+function getXPRequiredForLevel(level) {
+  const safeLevel = Math.max(1, Math.min(PLAYER_LEVEL_MAX, Number(level) || 1));
+  return Math.max(50, Math.floor(PLAYER_LEVEL_BASE_XP * Math.pow(PLAYER_LEVEL_GROWTH, safeLevel - 1)));
+}
+
+function createDefaultChallengeState(def) {
+  return {
+    id: def.id,
+    title: def.title,
+    description: def.description,
+    metricKey: def.metricKey,
+    target: def.target,
+    progress: 0,
+    completed: false,
+    rewardClaimed: false,
+    state: def.state || 'active'
+  };
+}
+
+function getDefaultPlayerProgress() {
+  return {
+    version: PLAYER_PROGRESS_VERSION,
+    playerLevel: 1,
+    playerXP: 0,
+    playerXPToNext: getXPRequiredForLevel(1),
+    campaignXPClaimed: {},
+    lifetimeStats: JSON.parse(JSON.stringify(playerStatDefaults)),
+    challenges: playerChallengeDefinitions.map(createDefaultChallengeState),
+    castleLifeBonusPermanent: 0,
+    pendingRewards: []
+  };
+}
+
+function sanitizeLifetimeStats(stats) {
+  const merged = { ...playerStatDefaults, ...(stats || {}) };
+  Object.keys(playerStatDefaults).forEach(key => {
+    if (key === 'powerupUsageByType') {
+      merged.powerupUsageByType = merged.powerupUsageByType && typeof merged.powerupUsageByType === 'object' ? merged.powerupUsageByType : {};
+      return;
+    }
+    merged[key] = Math.max(0, Number(merged[key]) || 0);
+  });
+  return merged;
+}
+
+function sanitizePlayerProgress() {
+  const defaults = getDefaultPlayerProgress();
+  const raw = state.playerProgress && typeof state.playerProgress === 'object' ? state.playerProgress : {};
+  const merged = {
+    ...defaults,
+    ...raw,
+    lifetimeStats: sanitizeLifetimeStats(raw.lifetimeStats),
+    campaignXPClaimed: raw.campaignXPClaimed && typeof raw.campaignXPClaimed === 'object' ? raw.campaignXPClaimed : {},
+    pendingRewards: Array.isArray(raw.pendingRewards) ? raw.pendingRewards : []
+  };
+
+  const challengeMap = new Map((Array.isArray(raw.challenges) ? raw.challenges : []).map(c => [c?.id, c]));
+  merged.challenges = playerChallengeDefinitions.map(def => {
+    const saved = challengeMap.get(def.id) || {};
+    const progress = Math.max(0, Number(saved.progress) || 0);
+    const target = Math.max(1, Number(saved.target) || def.target);
+    const completed = !!saved.completed || progress >= target;
+    return {
+      ...createDefaultChallengeState(def),
+      ...saved,
+      title: def.title,
+      description: def.description,
+      metricKey: def.metricKey,
+      target,
+      progress,
+      completed,
+      rewardClaimed: !!saved.rewardClaimed,
+      state: saved.state || def.state || 'active'
+    };
+  });
+
+  merged.version = PLAYER_PROGRESS_VERSION;
+  merged.playerLevel = Math.max(1, Math.min(PLAYER_LEVEL_MAX, Number(merged.playerLevel) || 1));
+  merged.playerXP = Math.max(0, Number(merged.playerXP) || 0);
+  merged.castleLifeBonusPermanent = Math.max(0, Number(merged.castleLifeBonusPermanent) || 0);
+  merged.playerXPToNext = merged.playerLevel >= PLAYER_LEVEL_MAX ? 0 : getXPRequiredForLevel(merged.playerLevel);
+  state.playerProgress = merged;
+}
+
+function savePlayerProgress() { localStorage.setItem('aegis-player-progress', JSON.stringify(state.playerProgress)); }
+
+function trackPlayerMetric(metricKey, amount = 1) {
+  sanitizePlayerProgress();
+  const safeAmount = Math.max(0, Number(amount) || 0);
+  if (!safeAmount) return;
+  state.playerProgress.lifetimeStats[metricKey] = Math.max(0, Number(state.playerProgress.lifetimeStats[metricKey]) || 0) + safeAmount;
+  updateChallengeProgressForMetric(metricKey);
+}
+
+function getChallengeMetricValue(metricKey) {
+  if (metricKey.startsWith('world') && metricKey.endsWith('Clears')) {
+    const world = Number(metricKey.replace(/\D/g, ''));
+    const allDone = [1,2,3,4,5,6].every(lvl => !!state.campaign.completed[(world - 1) * 6 + lvl]);
+    return allDone ? 1 : 0;
+  }
+  return Math.max(0, Number(state.playerProgress.lifetimeStats[metricKey]) || 0);
+}
+
+function updateChallengeProgressForMetric(metricKey = null) {
+  sanitizePlayerProgress();
+  let changed = false;
+  state.playerProgress.challenges.forEach(ch => {
+    if (metricKey && ch.metricKey !== metricKey && !(metricKey.startsWith('world') && ch.metricKey.startsWith('world'))) return;
+    const value = getChallengeMetricValue(ch.metricKey);
+    const nextProgress = Math.min(ch.target, value);
+    if (nextProgress !== ch.progress) {
+      ch.progress = nextProgress;
+      changed = true;
+    }
+    if (!ch.completed && ch.progress >= ch.target) {
+      ch.completed = true;
+      showToast(`Challenge abgeschlossen: ${ch.title}`, true);
+      changed = true;
+    }
+  });
+  if (changed) savePlayerProgress();
+}
+
+function grantPermanentLifeReward(reasonText) {
+  sanitizePlayerProgress();
+  state.playerProgress.castleLifeBonusPermanent = Math.max(0, (state.playerProgress.castleLifeBonusPermanent || 0) + 1);
+  savePlayerProgress();
+  showToast(`${reasonText} +1 Castle Life`, true);
+}
+
+function addPlayerXP(amount, reason = 'XP') {
+  sanitizePlayerProgress();
+  if (state.playerProgress.playerLevel >= PLAYER_LEVEL_MAX) return;
+  const safeAmount = Math.max(0, Math.floor(Number(amount) || 0));
+  if (!safeAmount) return;
+  state.playerProgress.playerXP += safeAmount;
+
+  while (state.playerProgress.playerLevel < PLAYER_LEVEL_MAX) {
+    const need = getXPRequiredForLevel(state.playerProgress.playerLevel);
+    if (state.playerProgress.playerXP < need) break;
+    state.playerProgress.playerXP -= need;
+    state.playerProgress.playerLevel += 1;
+    showToast(`Level Up! Level ${state.playerProgress.playerLevel}`, true);
+    grantPermanentLifeReward('Level-Up Belohnung:');
+  }
+
+  if (state.playerProgress.playerLevel >= PLAYER_LEVEL_MAX) {
+    state.playerProgress.playerLevel = PLAYER_LEVEL_MAX;
+    state.playerProgress.playerXP = 0;
+    state.playerProgress.playerXPToNext = 0;
+  } else {
+    state.playerProgress.playerXPToNext = getXPRequiredForLevel(state.playerProgress.playerLevel);
+  }
+  savePlayerProgress();
+}
+
+function claimChallengeReward(challengeId) {
+  sanitizePlayerProgress();
+  const challenge = state.playerProgress.challenges.find(c => c.id === challengeId);
+  if (!challenge || !challenge.completed || challenge.rewardClaimed) return;
+  challenge.rewardClaimed = true;
+  savePlayerProgress();
+  grantPermanentLifeReward('Challenge-Belohnung:');
+  renderPlayerProgressPage();
+}
+
+function renderPlayerProgressPage() {
+  sanitizePlayerProgress();
+  if (!ui.playerLevelHeadline || !ui.playerChallengeList) return;
+  const lvl = state.playerProgress.playerLevel;
+  const cur = state.playerProgress.playerXP;
+  const next = state.playerProgress.playerXPToNext || 1;
+  const pct = lvl >= PLAYER_LEVEL_MAX ? 100 : Math.max(0, Math.min(100, (cur / next) * 100));
+  ui.playerLevelHeadline.textContent = `Level ${lvl}`;
+  if (ui.playerXPFill) ui.playerXPFill.style.width = `${pct.toFixed(1)}%`;
+  if (ui.playerXPLabel) ui.playerXPLabel.textContent = lvl >= PLAYER_LEVEL_MAX ? 'XP: MAX' : `XP: ${cur} / ${next}`;
+  if (ui.playerLifeBonusLabel) ui.playerLifeBonusLabel.textContent = `Permanenter Burgleben-Bonus: +${state.playerProgress.castleLifeBonusPermanent || 0}`;
+
+  ui.playerChallengeList.innerHTML = '';
+  state.playerProgress.challenges.forEach(ch => {
+    const row = document.createElement('article');
+    row.className = 'challengeCard';
+    const cpct = Math.max(0, Math.min(100, (ch.progress / Math.max(1, ch.target)) * 100));
+    const status = ch.rewardClaimed ? 'Abgeschlossen + Belohnung erhalten' : ch.completed ? 'Abgeschlossen' : (ch.state || 'active') === 'locked' ? 'Gesperrt' : 'Aktiv';
+    row.innerHTML = `<div class="challengeHead"><strong>${ch.title}</strong><span>${status}</span></div><div class="tiny">${ch.description}</div><div class="challengeProgressTrack"><div style="width:${cpct.toFixed(1)}%"></div></div><div class="challengeFooter"><span>${Math.floor(ch.progress)}/${Math.floor(ch.target)}</span></div>`;
+    if (ch.completed && !ch.rewardClaimed) {
+      const btn = document.createElement('button');
+      btn.className = 'btnPrimary';
+      btn.textContent = 'Claim +1 Life';
+      btn.onclick = () => claimChallengeReward(ch.id);
+      row.querySelector('.challengeFooter')?.appendChild(btn);
+    }
+    ui.playerChallengeList.appendChild(row);
+  });
+}
+
+function processCampaignCompletionXP(levelKey, firstTime) {
+  if (!firstTime) return;
+  if (state.playerProgress.campaignXPClaimed[levelKey]) return;
+  state.playerProgress.campaignXPClaimed[levelKey] = true;
+  addPlayerXP(95, 'Campaign clear');
+}
 state.campaign.clearedObstacles = state.campaign.clearedObstacles || {};
 
 state.abilityCooldowns = state.abilityCooldowns || {};
@@ -2242,6 +2518,7 @@ function refreshProgressionAndUnlockUI({ persist = false, refreshInGameDock = fa
     saveMeta();
     saveCampaign();
     saveUnlocks();
+    savePlayerProgress();
   }
 }
 
@@ -2478,6 +2755,7 @@ function showPage(pageName) {
   if (pageName === 'endless') buildModeWorldSelect(ui.endlessWorldSelect, 'endless');
   if (pageName === 'challenge') buildModeWorldSelect(ui.challengeWorldSelect, 'challenge');
   if (pageName === 'statistics') renderStatistics();
+  if (pageName === 'playerProgress') renderPlayerProgressPage();
   updateMenuSummaryWidgets();
   tutorialEngine.onMenuOpen(pageName);
   if (pageName === 'castle') {
@@ -2917,6 +3195,10 @@ function initAbilities() {
       a.use();
       if (!a.delayedCooldown) state.abilityCooldowns[k] = a.cd;
       state.stats.powerUpsUsed += 1;
+      state.runStats.powerUpsUsed += 1;
+      trackPlayerMetric('powerUpsUsed', 1);
+      state.playerProgress.lifetimeStats.powerupUsageByType[k] = Math.max(0, Number(state.playerProgress.lifetimeStats.powerupUsageByType[k]) || 0) + 1;
+      savePlayerProgress();
       saveStats();
     };
     ui.abilityBar.appendChild(btn);
@@ -2977,6 +3259,12 @@ function beginBuildPhase() {
   state.buildPhase = true;
   state.inWave = false;
   ui.bossWarning.classList.add('hidden');
+  trackPlayerMetric('wavesCleared', 1);
+  if (state.mode === 'endless') {
+    state.playerProgress.lifetimeStats.endlessBestWave = Math.max(state.playerProgress.lifetimeStats.endlessBestWave || 0, state.wave || 0);
+    updateChallengeProgressForMetric('endlessBestWave');
+    savePlayerProgress();
+  }
   if (state.mode === 'campaign' && state.wave >= state.levelWaves) { handleLevelComplete(); return; }
   state.betweenWaveCountdown = 5;
 }
@@ -2985,6 +3273,7 @@ function beginBuildPhase() {
 
 function handleLevelComplete() {
   const def = campaignDefs.find(x => x.level === state.currentLevel) || campaignDefs[0];
+  const wasCompletedBefore = !!state.campaign.completed[state.currentLevel];
   const rewards = { credits: def.rewardCredits, tokens: def.rewardTokens, unlockTower: def.unlockTower };
   state.money += rewards.credits;
   state.meta.upgradePoints += rewards.tokens;
@@ -2992,6 +3281,12 @@ function handleLevelComplete() {
   Object.keys(abilities).forEach(k => { if (state.currentLevel >= getAbilityUnlockLevel(k)) unlockAbility(k); });
   state.campaign.completed[state.currentLevel] = true;
   state.campaign.castleBuild.coins = Math.max(0, (state.campaign.castleBuild.coins || 0) + 1);
+  processCampaignCompletionXP(`L${state.currentLevel}`, !wasCompletedBefore);
+  if (state.runStats.castleDamageTaken <= 0) trackPlayerMetric('noDamageRuns', 1);
+  if (state.runStats.powerUpsUsed <= 0) trackPlayerMetric('bossNoPowerupWins', 1);
+  if (state.runStats.firstAttempt) trackPlayerMetric('firstAttemptClears', 1);
+  addPlayerXP(20 + def.world * 8, 'Run completion');
+  updateChallengeProgressForMetric(`world${def.world}Clears`);
   if (state.currentLevel >= 24) state.campaign.finalBossUnlocked = true;
   state.campaign.unlockedLevel = Math.max(state.campaign.unlockedLevel || 1, state.currentLevel + 1);
   refreshProgressionAndUnlockUI({ persist: true, refreshInGameDock: true });
@@ -3371,6 +3666,7 @@ function applyHit(enemy, damage, slow = 0, burn = 0, customStats = null, damageT
   const vulnerability = worldEnemyDamageVulnerability[enemy.world] || worldEnemyDamageVulnerability[1];
   const elementalBonus = damageType === 'fire' ? vulnerability.fire : damageType === 'ice' ? vulnerability.ice : 1;
   const dealt = damage * elementalBonus * (1 - (enemy.armor || 0));
+  trackPlayerMetric('damageDealt', Math.max(0, dealt));
   if (enemy.shield > 0) {
     enemy.shield -= dealt;
     if (enemy.shield < 0) enemy.hp += enemy.shield;
@@ -3382,6 +3678,7 @@ function applyHit(enemy, damage, slow = 0, burn = 0, customStats = null, damageT
   enemy.freeze = Math.max(enemy.freeze, freezeDur);
   enemy.burn = immunity.fire ? (enemy.burn || 0) : Math.max(enemy.burn || 0, burn || 0);
   if (customStats?.shatter && enemy.freeze > 0.2) enemy.hp -= damage * customStats.shatter;
+  if (customStats) trackPlayerMetric('builderDamageDealt', Math.max(0, dealt));
   enemy.hitFlash = 0.16;
   updateEnemyHealthBarVisual(enemy, true);
   spawnImpactFx(enemy.mesh.position.clone(), damageType);
@@ -3517,9 +3814,12 @@ function placeTowerAt(cell) {
   if (state.selectedTowerType === 'custom') {
     if (!state.activeBuild || state.money < state.activeBuild.cost) return false;
     state.money -= state.activeBuild.cost;
+    trackPlayerMetric('coinsSpent', state.activeBuild.cost);
     board.blocked.add(key);
     state.towers.push(makeTower('custom', cell, state.activeBuild));
     state.stats.towersBuilt += 1;
+    trackPlayerMetric('towersBuilt', 1);
+    addPlayerXP(2, 'Build');
     saveStats();
     state.buildMode = false;
     ghost.visible = false;
@@ -3533,9 +3833,12 @@ function placeTowerAt(cell) {
   const def = towerDefs[state.selectedTowerType];
   if (!def || state.money < def.cost) return false;
   state.money -= def.cost;
+  trackPlayerMetric('coinsSpent', def.cost);
   board.blocked.add(key);
   state.towers.push(makeTower(state.selectedTowerType, cell));
   state.stats.towersBuilt += 1;
+  trackPlayerMetric('towersBuilt', 1);
+  addPlayerXP(2, 'Build');
   saveStats();
   state.buildMode = false;
   ghost.visible = false;
@@ -3766,6 +4069,10 @@ function animate(now) {
       state.meta.upgradePoints = (state.meta.upgradePoints || 0) + (e.boss ? 1 : 0);
       state.stats.enemiesKilled += 1;
       if (e.boss) state.stats.bossesKilled += 1;
+      trackPlayerMetric('enemiesKilled', 1);
+      if (e.boss) trackPlayerMetric('bossesKilled', 1);
+      if (e.flying) trackPlayerMetric('flyingKills', 1);
+      addPlayerXP(e.boss ? 12 : 1, 'Combat');
       saveStats();
       spawnDeathFx(e);
       releaseHealthBar(e.healthBar);
@@ -3788,12 +4095,20 @@ function animate(now) {
       const lostLives = e.boss ? 4 : 1;
       state.lives -= lostLives;
       state.stats.lifeLost += lostLives;
+      state.runStats.castleDamageTaken += lostLives;
+      trackPlayerMetric('lifeLost', lostLives);
       saveStats();
       state.enemies.splice(i, 1);
       releaseHealthBar(e.healthBar);
       if (e.blobShadow) world.remove(e.blobShadow);
       world.remove(e.mesh);
       if (state.lives <= 0) {
+        if (state.mode === 'endless') {
+          const survivedSeconds = Math.max(0, Math.floor((performance.now() - (state.runStats.startAt || performance.now())) / 1000));
+          state.playerProgress.lifetimeStats.endlessBestSeconds = Math.max(state.playerProgress.lifetimeStats.endlessBestSeconds || 0, survivedSeconds);
+          updateChallengeProgressForMetric('endlessBestSeconds');
+          savePlayerProgress();
+        }
         state.paused = true;
         resetCineCam(false);
         closeTransientPanels();
@@ -4599,8 +4914,11 @@ ui.upgradeBtn.onclick = () => {
   const cost = 45 * t.level;
   if (state.money < cost) return showToast('Mehr Credits benötigt', false);
   state.money -= cost;
+  trackPlayerMetric('coinsSpent', cost);
   t.level += 1;
   state.stats.towerUpgrades += 1;
+  trackPlayerMetric('towerUpgrades', 1);
+  addPlayerXP(3, 'Upgrade');
   saveStats();
   t.core.scale.setScalar(1 + t.level * 0.08);
   t.barrel.scale.z = 1 + t.level * 0.16;
@@ -4680,7 +4998,16 @@ function start(mode) {
   const cur = campaignDefs.find(x => x.level === Math.min(state.currentLevel,24));
   state.levelWaves = mode === 'campaign' ? (cur?.waves || 10) : mode === 'boss' ? 15 : 999;
   state.money = (mode === 'boss' ? 520 : 220) + (state.meta.econ || 0) * 45;
-  state.lives = 20;
+  sanitizePlayerProgress();
+  state.lives = 20 + (state.playerProgress.castleLifeBonusPermanent || 0);
+  state.runStats = {
+    powerUpsUsed: 0,
+    castleDamageTaken: 0,
+    coinsSpent: 0,
+    startAt: performance.now(),
+    firstAttempt: mode === 'campaign' ? !state.campaign.completed[state.currentLevel] : false,
+    levelKey: mode === 'campaign' ? `L${state.currentLevel}` : mode
+  };
   state.wave = 0;
   state.inWave = false;
   state.buildPhase = true;
@@ -4718,6 +5045,7 @@ ui.playChallenge.onclick = () => showPage('challenge');
 ui.openCastle.onclick = () => showPage('castle');
 ui.openUpgrades.onclick = () => showPage('upgrades');
 ui.openUnlockSettings.onclick = () => showPage('unlockSettings');
+ui.openPlayerProgress.onclick = () => showPage('playerProgress');
 ui.openMotAnleitung.onclick = () => showPage('motAnleitung');
 ui.openStatistics.onclick = () => showPage('statistics');
 ui.playCampaignStart.onclick = () => {
