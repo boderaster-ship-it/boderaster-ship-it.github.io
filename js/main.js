@@ -250,9 +250,25 @@ const abilities = {
   }
 };
 
-const towerUnlockOrder = ['laser', 'missile', 'cryo', null, null, null, 'machinegun'];
-const abilityUnlockOrder = ['overclock', 'poison', 'nuke', 'combatDrone'];
-const TOWER_BUILDER_UNLOCK_LEVEL = 18;
+const CAMPAIGN_TOWER_UNLOCK_LEVELS = {
+  laser: 3,
+  flame: 9,
+  cryo: 15,
+  missile: 21
+};
+
+const CAMPAIGN_ABILITY_UNLOCK_LEVELS = {
+  overclock: 6,
+  nuke: 12,
+  poison: 18,
+  combatDrone: 24
+};
+
+const ENDLESS_MACHINEGUN_UNLOCK_WAVE = 50;
+
+function getCampaignTowerUnlockForLevel(level) {
+  return Object.keys(CAMPAIGN_TOWER_UNLOCK_LEVELS).find(key => CAMPAIGN_TOWER_UNLOCK_LEVELS[key] === level) || null;
+}
 
 const metaDefs = [
   { key: 'upCannon', icon: towerDefs.cannon.icon, name: 'Bastion-Upgrade', tower: 'cannon', affects: 'Bastion-Schaden', desc: 'Erhöht den Schaden der Bastion.', unit: '%', perLevel: 10 },
@@ -442,7 +458,7 @@ const campaignDefs = Array.from({ length: 24 }, (_, i) => {
     level, world, levelInWorld, waves: 10 + (world >= 3 ? 1 : 0), difficulty,
     rewardCredits: 170 + i * 32,
     rewardTokens: 2 + Math.floor(i / 4),
-    unlockTower: level % 3 === 0 ? towerUnlockOrder[Math.floor(level / 3) - 1] || null : null,
+    unlockTower: getCampaignTowerUnlockForLevel(level),
     waveTheme: world === 4 ? 'Elite / Tank / Rage' : world === 3 ? 'Frost rush / Shield wall' : world === 2 ? 'Rush / Ökonomie-Druck' : 'Basis-Mix',
     recommendedTowers,
     intro: worldThemes[world].intro
@@ -594,7 +610,7 @@ const state = {
   pools: { projectiles: [], effects: [], healthBars: [], fragments: [], particles: [], shockwaves: [], stormHeads: [] },
   particlesFrame: 0,
   maxParticlesFrame: 160,
-  campaign: safeJSONParse('aegis-campaign', { selectedLevel: 1, selectedWorld: 1, completed: {}, unlockedLevel: 1, clearedObstacles: {}, castleBuild: { version: CASTLE_BUILD_VERSION, coins: 0, selection: {}, owned: {} } }),
+  campaign: safeJSONParse('aegis-campaign', { selectedLevel: 1, selectedWorld: 1, completed: {}, unlockedLevel: 1, finalBossCompleted: false, clearedObstacles: {}, castleBuild: { version: CASTLE_BUILD_VERSION, coins: 0, selection: {}, owned: {} } }),
   currentLevel: 1,
   endlessWorld: 1,
   challengeWorld: 1,
@@ -660,6 +676,7 @@ state.campaign.selectedWorld = Number(state.campaign.selectedWorld) || 1;
 state.campaign.selectedLevel = Number(state.campaign.selectedLevel) || 1;
 state.campaign.finalBossUnlocked = !!state.campaign.finalBossUnlocked;
 state.campaign.bossCompleted = !!state.campaign.bossCompleted;
+state.campaign.finalBossCompleted = !!state.campaign.finalBossCompleted || state.campaign.bossCompleted;
 
 
 function getXPRequiredForLevel(level) {
@@ -2846,15 +2863,14 @@ function randomizeCastleBuild() {
 }
 
 function getTowerUnlockLevel(key) {
-  if (key === 'flame') return 1;
-  if (key === 'machinegun') return 21;
-  const idx = towerUnlockOrder.indexOf(key);
-  return idx >= 0 ? (idx + 1) * 3 : 1;
+  if (key === 'cannon') return 1;
+  if (key === 'machinegun') return Number.POSITIVE_INFINITY;
+  return CAMPAIGN_TOWER_UNLOCK_LEVELS[key] || 1;
 }
 
 function getAbilityUnlockLevel(key) {
-  const idx = abilityUnlockOrder.indexOf(key);
-  return idx >= 0 ? (idx + 1) * 6 : 1;
+  if (key === 'freeze') return 1;
+  return CAMPAIGN_ABILITY_UNLOCK_LEVELS[key] || 1;
 }
 
 function isAbilityUnlocked(key) {
@@ -2877,7 +2893,7 @@ function unlockAbility(key) {
 
 function syncTowerBuilderUnlock() {
   const hadBuilder = !!state.unlocks.towerBuilder;
-  state.unlocks.towerBuilder = (state.campaign.unlockedLevel || 1) >= TOWER_BUILDER_UNLOCK_LEVEL;
+  state.unlocks.towerBuilder = !!state.campaign.finalBossCompleted;
   if (!hadBuilder && state.unlocks.towerBuilder) tutorialEngine.onUnlock('towerBuilder');
 }
 
@@ -2886,6 +2902,7 @@ function syncProgressUnlocks() {
   Object.keys(towerDefs).forEach(k => {
     if ((state.campaign.unlockedLevel || 1) >= getTowerUnlockLevel(k)) unlockTower(k);
   });
+  if ((state.playerProgress?.lifetimeStats?.endlessBestWave || 0) >= ENDLESS_MACHINEGUN_UNLOCK_WAVE) unlockTower('machinegun');
   Object.keys(abilities).forEach(k => {
     if ((state.campaign.unlockedLevel || 1) >= getAbilityUnlockLevel(k)) unlockAbility(k);
   });
@@ -2898,9 +2915,11 @@ function renderUnlockProgressionUI() {
   ui.playFinalBoss.classList.toggle('hidden', !state.campaign.finalBossUnlocked);
 
   const towerRows = Object.keys(towerDefs).map(k => {
-    const unlockLevel = getTowerUnlockLevel(k);
     const status = isTowerUnlocked(k) ? 'Freigeschaltet' : 'Gesperrt';
-    return `<div>${towerDefs[k].icon} ${towerDefs[k].name} — ${status} · ab Level ${unlockLevel}</div>`;
+    const unlockText = k === 'machinegun'
+      ? `Endlos bis Welle ${ENDLESS_MACHINEGUN_UNLOCK_WAVE}`
+      : `ab Level ${getTowerUnlockLevel(k)}`;
+    return `<div>${towerDefs[k].icon} ${towerDefs[k].name} — ${status} · ${unlockText}</div>`;
   });
   const abilityRows = Object.keys(abilities).map(k => {
     const unlockLevel = getAbilityUnlockLevel(k);
@@ -2908,7 +2927,7 @@ function renderUnlockProgressionUI() {
     return `<div>${abilities[k].icon} ${abilities[k].name} — ${status} · ab Level ${unlockLevel}</div>`;
   });
   const builderStatus = isTowerBuilderUnlocked() ? 'Freigeschaltet' : 'Gesperrt';
-  const builderRow = `<div>🧩 Turm-Editor — ${builderStatus} · ab Level ${TOWER_BUILDER_UNLOCK_LEVEL}</div>`;
+  const builderRow = `<div>🧩 Turm-Editor — ${builderStatus} · nach Endboss-Abschluss</div>`;
   const rewardUnlockRows = [
     `<div>💣 Emergency Explosion — ${isEmergencyExplosionUnlocked() ? 'Freigeschaltet' : 'Gesperrt'}</div>`,
     `<div>🏰 Castle Cannon — ${isCastleCannonUnlocked() ? 'Freigeschaltet' : 'Gesperrt'}</div>`,
@@ -3397,7 +3416,7 @@ const tutorialEngine = {
     if (Object.keys(abilities).length && !state.tutorial.completed.powerups_intro) this.runTutorial('powerups_intro');
   },
   onLevelComplete(mode, worldId, levelId) {
-    if (mode === 'campaign' && (state.campaign.unlockedLevel || 1) >= TOWER_BUILDER_UNLOCK_LEVEL) this.runTutorial('builder_unlocked_level18');
+    if (mode === 'campaign' && isTowerBuilderUnlocked()) this.runTutorial('builder_unlocked_level18');
   },
   onEnemySpawn(enemyTypeId) {
     if (!enemyTypeId || this.observedEnemyTypes.has(enemyTypeId)) return;
@@ -3704,10 +3723,28 @@ function beginBuildPhase() {
     savePlayerProgress();
   }
   if (state.mode === 'campaign' && state.wave >= state.levelWaves) { handleLevelComplete(); return; }
+  if (state.mode === 'boss' && state.wave >= state.levelWaves) { handleBossComplete(); return; }
   state.betweenWaveCountdown = 5;
 }
 
 
+
+function handleBossComplete() {
+  const wasCompletedBefore = !!state.campaign.finalBossCompleted;
+  state.campaign.finalBossUnlocked = true;
+  state.campaign.finalBossCompleted = true;
+  state.campaign.bossCompleted = true;
+  syncProgressUnlocks();
+  refreshProgressionAndUnlockUI({ persist: true, refreshInGameDock: true });
+  ui.levelCompleteSummary.textContent = `Endboss abgeschlossen: ${state.levelWaves}/${state.levelWaves} Wellen überlebt.`;
+  ui.levelRewards.innerHTML = `<div>Freigeschaltetes Spezial: Turm-Editor</div>`;
+  ui.levelCompleteModal.classList.remove('hidden');
+  resetCineCam(false);
+  state.paused = true;
+  buildCampaignMenu();
+  refreshProgressionAndUnlockUI();
+  if (!wasCompletedBefore) addPlayerXP(60, 'Final boss completion');
+}
 
 function handleLevelComplete() {
   const def = campaignDefs.find(x => x.level === state.currentLevel) || campaignDefs[0];
