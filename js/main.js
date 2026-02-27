@@ -2891,6 +2891,21 @@ function unlockAbility(key) {
   }
 }
 
+function destroyNonBossEnemies() {
+  let removed = 0;
+  for (let i = state.enemies.length - 1; i >= 0; i--) {
+    const enemy = state.enemies[i];
+    if (!enemy || enemy.boss) continue;
+    spawnDeathFx(enemy);
+    releaseHealthBar(enemy.healthBar);
+    if (enemy.blobShadow) world.remove(enemy.blobShadow);
+    if (enemy.mesh) world.remove(enemy.mesh);
+    state.enemies.splice(i, 1);
+    removed += 1;
+  }
+  return removed;
+}
+
 function syncTowerBuilderUnlock() {
   const hadBuilder = !!state.unlocks.towerBuilder;
   state.unlocks.towerBuilder = !!state.campaign.finalBossCompleted;
@@ -4652,7 +4667,12 @@ function animate(now) {
         state.runStats.lastChanceUsed = true;
         const maxLives = 20 + (state.playerProgress.castleLifeBonusPermanent || 0);
         state.lives = Math.max(1, Math.ceil(maxLives * rewardRuntimeConfig.lastChanceRestorePercent));
-        showToast('Last Chance aktiviert!', true);
+        const removedEnemies = destroyNonBossEnemies();
+        if (removedEnemies > 0) {
+          showToast(`Last Chance aktiviert! ${removedEnemies} Gegner vernichtet.`, true);
+        } else {
+          showToast('Last Chance aktiviert!', true);
+        }
       }
       if (state.lives <= 0) {
         if (state.mode === 'endless') {
