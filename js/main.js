@@ -189,10 +189,11 @@ const abilities = {
     cd: 22,
     text: 'Stoppt Feinde für 2,5 s',
     use: (booster = 1) => {
+      const abilityBonus = getAbilityMetaBonus('freeze');
       launchAbilityStorm('freeze', 0x9ce9ff, {
         onTouch: enemy => {
           if (enemy.immunities?.freeze) return;
-          enemy.freeze = Math.max(enemy.freeze, 2.5);
+          enemy.freeze = Math.max(enemy.freeze, 2.5 * abilityBonus);
         }
       });
     }
@@ -203,9 +204,10 @@ const abilities = {
     cd: 35,
     text: 'Gewaltige Flächenexplosion',
     use: (booster = 1) => {
+      const abilityBonus = getAbilityMetaBonus('nuke');
       launchAbilityStorm('nuke', 0xff7b66, {
         onTouch: enemy => {
-          applyHit(enemy, 130 * booster, 0, 0, null, 'explosive');
+          applyHit(enemy, 130 * booster * abilityBonus, 0, 0, null, 'explosive');
         }
       });
     }
@@ -216,9 +218,10 @@ const abilities = {
     cd: 26,
     text: 'Durchdringt Gegner und fügt Blitzschaden zu',
     use: (booster = 1) => {
+      const abilityBonus = getAbilityMetaBonus('overclock');
       launchAbilityStorm('overclock', 0xffdd73, {
         onTouch: enemy => {
-          applyHit(enemy, 36 * booster, 0, 0, null, 'arc');
+          applyHit(enemy, 36 * booster * abilityBonus, 0, 0, null, 'arc');
         }
       });
     }
@@ -229,9 +232,10 @@ const abilities = {
     cd: 28,
     text: 'Vergiftet Feinde für 5 s',
     use: (booster = 1) => {
+      const abilityBonus = getAbilityMetaBonus('poison');
       launchAbilityStorm('poison', 0x89ff62, {
         onTouch: enemy => {
-          enemy.poison = Math.max(enemy.poison || 0, 5 * booster);
+          enemy.poison = Math.max(enemy.poison || 0, 5 * booster * abilityBonus);
         }
       });
     }
@@ -242,7 +246,7 @@ const abilities = {
     cd: 36,
     text: 'Sucht Frontgegner, umkreist ihn und wirft Granaten (15 s aktiv)',
     delayedCooldown: true,
-    use: (booster = 1) => activateCombatDrone(booster)
+    use: (booster = 1) => activateCombatDrone(booster * getAbilityMetaBonus('combatDrone'))
   }
 };
 
@@ -257,6 +261,11 @@ const metaDefs = [
   { key: 'upCryo', icon: towerDefs.cryo.icon, name: 'Frost-Coil-Upgrade', tower: 'cryo', affects: 'Frost-Coil-Schaden', desc: 'Erhöht den Schaden der Frost Coil.', unit: '%', perLevel: 10 },
   { key: 'upFlame', icon: towerDefs.flame.icon, name: 'Pyre-Upgrade', tower: 'flame', affects: 'Pyre-Schaden', desc: 'Erhöht den Schaden der Pyre.', unit: '%', perLevel: 10 },
   { key: 'upMachinegun', icon: towerDefs.machinegun.icon, name: 'Machine-Gun-Upgrade', tower: 'machinegun', affects: 'Machine-Gun-Schaden', desc: 'Erhöht den Schaden des Machine Gun Tower.', unit: '%', perLevel: 10 },
+  { key: 'upFreeze', icon: abilities.freeze.icon, name: 'Einfrieren-Upgrade', ability: 'freeze', affects: 'Einfrieren-Effekt', desc: 'Erhöht die Stärke von Einfrieren.', unit: '%', perLevel: 10 },
+  { key: 'upOverclock', icon: abilities.overclock.icon, name: 'Blitzangriff-Upgrade', ability: 'overclock', affects: 'Blitzangriff-Schaden', desc: 'Erhöht den Schaden von Blitzangriff.', unit: '%', perLevel: 10 },
+  { key: 'upPoison', icon: abilities.poison.icon, name: 'Gift-Upgrade', ability: 'poison', affects: 'Gift-Dauer', desc: 'Erhöht die Dauer von Gift.', unit: '%', perLevel: 10 },
+  { key: 'upNuke', icon: abilities.nuke.icon, name: 'Nuklear-Upgrade', ability: 'nuke', affects: 'Nuklear-Schaden', desc: 'Erhöht den Schaden von Nuklear.', unit: '%', perLevel: 10 },
+  { key: 'upCombatDrone', icon: abilities.combatDrone.icon, name: 'Combat-Drone-Upgrade', ability: 'combatDrone', affects: 'Combat-Drone-Effekt', desc: 'Erhöht die Stärke der Combat Drone.', unit: '%', perLevel: 10 },
   { key: 'econ', icon: '💰', name: 'Versorgungslager', affects: 'Startguthaben', desc: 'Beginne jedes Level mit zusätzlichem Guthaben.', unit: 'Credits', perLevel: 45 }
 ];
 
@@ -3013,7 +3022,11 @@ function buildMeta() {
     const valueCur = m.key === 'econ' ? `${lvl * m.perLevel} Credits` : `+${lvl * m.perLevel}${m.unit}`;
     const valueNextRaw = lvl + 1;
     const valueNext = m.key === 'econ' ? `${valueNextRaw * m.perLevel} Credits` : `+${valueNextRaw * m.perLevel}${m.unit}`;
-    const reqText = m.key === 'econ' ? 'Freischaltung: Level 1 abschließen' : `Freischaltung: Level ${getTowerUnlockLevel(m.tower)} abschließen`;
+    const reqText = m.key === 'econ'
+      ? 'Freischaltung: Level 1 abschließen'
+      : m.ability
+        ? `Freischaltung: Level ${getAbilityUnlockLevel(m.ability)} abschließen`
+        : `Freischaltung: Level ${getTowerUnlockLevel(m.tower)} abschließen`;
     const btn = document.createElement('button');
     btn.innerHTML = `<strong>${m.icon} ${m.name}</strong><br><small>${m.affects}</small><br><small>${valueCur} → ${valueNext} · Kosten ${cost}</small><br><small>${reqText}</small>`;
     btn.disabled = state.meta.upgradePoints < cost;
@@ -4039,6 +4052,20 @@ function getTowerMetaDamageBonus(type) {
     cryo: 'upCryo',
     flame: 'upFlame',
     machinegun: 'upMachinegun'
+  };
+  const key = map[type];
+  if (!key) return 1;
+  const lvl = state.meta?.[key] || 0;
+  return 1 + lvl * 0.1;
+}
+
+function getAbilityMetaBonus(type) {
+  const map = {
+    freeze: 'upFreeze',
+    overclock: 'upOverclock',
+    poison: 'upPoison',
+    nuke: 'upNuke',
+    combatDrone: 'upCombatDrone'
   };
   const key = map[type];
   if (!key) return 1;
