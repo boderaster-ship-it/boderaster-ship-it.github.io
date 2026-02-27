@@ -4135,6 +4135,7 @@ function getAbilityMetaBonus(type) {
 }
 
 function getTowerDamageAtLevel(def, towerType, level) {
+  if (towerType === 'cannon') return def.damage + (Math.max(1, level) - 1) * 12;
   if (towerType === 'missile') return def.damage + (Math.max(1, level) - 1) * 14;
   return def.damage * Math.max(1, level);
 }
