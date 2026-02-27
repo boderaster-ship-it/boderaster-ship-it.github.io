@@ -4073,6 +4073,11 @@ function getAbilityMetaBonus(type) {
   return 1 + lvl * 0.1;
 }
 
+function getTowerDamageAtLevel(def, towerType, level) {
+  if (towerType === 'missile') return def.damage + (Math.max(1, level) - 1) * 14;
+  return def.damage * Math.max(1, level);
+}
+
 function fireTower(tower, enemy) {
   const customStats = tower.custom?.stats;
   const d = customStats ? {
@@ -4084,7 +4089,7 @@ function fireTower(tower, enemy) {
   } : towerDefs[tower.type];
   const p = getProjectile();
   p.alive = true;
-  p.damage = d.damage * tower.level * getTowerMetaDamageBonus(tower.type);
+  p.damage = getTowerDamageAtLevel(d, tower.type, tower.level) * getTowerMetaDamageBonus(tower.type);
   p.aoe = d.aoe || 0;
   p.slow = d.slow || 0;
   p.custom = customStats || null;
@@ -4331,11 +4336,12 @@ function updateUI() {
     const d = state.selectedTower.custom ? { name: state.selectedTower.displayName, damage: state.selectedTower.custom.stats.damage, range: state.selectedTower.custom.stats.range, rate: state.selectedTower.custom.stats.rate } : towerDefs[state.selectedTower.type];
     const lvl = state.selectedTower.level;
     const minRate = state.selectedTower.type === 'machinegun' ? 0.045 : 0.12;
-    const next = { damage: Math.round(d.damage * (lvl + 1)), rate: Math.max(minRate, d.rate - 0.07 * lvl).toFixed(2) };
+    const currentDamage = Math.round(getTowerDamageAtLevel(d, state.selectedTower.type, lvl));
+    const next = { damage: Math.round(getTowerDamageAtLevel(d, state.selectedTower.type, lvl + 1)), rate: Math.max(minRate, d.rate - 0.07 * lvl).toFixed(2) };
     ui.selectionPanel.classList.remove('hidden');
     ui.selectedName.textContent = `${d.name} Lv.${lvl} [${state.selectedTower.branch}]`;
-    ui.selectedStats.textContent = `DMG ${Math.round(d.damage * lvl)} | RNG ${(d.range + 0.45 * (lvl - 1)).toFixed(1)} | CD ${Math.max(minRate, d.rate - 0.07 * (lvl - 1)).toFixed(2)}`;
-    ui.upgradeDiff.innerHTML = `<span class="deltaUp">+${next.damage - Math.round(d.damage * lvl)} Schaden</span> · <span class="deltaUp">Visueller Rang +</span> · <span class="deltaDown">-${(Math.max(minRate, d.rate - 0.07 * (lvl - 1)) - next.rate).toFixed(2)}s Abklingzeit</span>`;
+    ui.selectedStats.textContent = `DMG ${currentDamage} | RNG ${(d.range + 0.45 * (lvl - 1)).toFixed(1)} | CD ${Math.max(minRate, d.rate - 0.07 * (lvl - 1)).toFixed(2)}`;
+    ui.upgradeDiff.innerHTML = `<span class="deltaUp">+${next.damage - currentDamage} Schaden</span> · <span class="deltaUp">Visueller Rang +</span> · <span class="deltaDown">-${(Math.max(minRate, d.rate - 0.07 * (lvl - 1)) - next.rate).toFixed(2)}s Abklingzeit</span>`;
   } else {
     ui.selectionPanel.classList.add('hidden');
   }
