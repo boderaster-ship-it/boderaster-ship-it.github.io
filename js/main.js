@@ -3035,19 +3035,22 @@ function buildMeta() {
   state.meta.unlockedTowers = state.meta.unlockedTowers || ['cannon'];
   ui.upgradePointsLabel.textContent = `Upgrade-Punkte: ${state.meta.upgradePoints}`;
   ui.metaTree.innerHTML = '';
+  let visibleCount = 0;
   for (const m of metaDefs) {
+    const unlocked = m.key === 'econ'
+      ? (state.campaign?.unlockedLevel || 1) > 1
+      : m.ability
+        ? isAbilityUnlocked(m.ability)
+        : isTowerUnlocked(m.tower);
+    if (!unlocked) continue;
+    visibleCount += 1;
     const lvl = state.meta[m.key] || 0;
     const cost = 2 + lvl;
     const valueCur = m.key === 'econ' ? `${lvl * m.perLevel} Credits` : `+${lvl * m.perLevel}${m.unit}`;
     const valueNextRaw = lvl + 1;
     const valueNext = m.key === 'econ' ? `${valueNextRaw * m.perLevel} Credits` : `+${valueNextRaw * m.perLevel}${m.unit}`;
-    const reqText = m.key === 'econ'
-      ? 'Freischaltung: Level 1 abschließen'
-      : m.ability
-        ? `Freischaltung: Level ${getAbilityUnlockLevel(m.ability)} abschließen`
-        : `Freischaltung: Level ${getTowerUnlockLevel(m.tower)} abschließen`;
     const btn = document.createElement('button');
-    btn.innerHTML = `<strong>${m.icon} ${m.name}</strong><br><small>${m.affects}</small><br><small>${valueCur} → ${valueNext} · Kosten ${cost}</small><br><small>${reqText}</small>`;
+    btn.innerHTML = `<strong>${m.icon} ${m.name}</strong><br><small>${m.affects}</small><br><small>${valueCur} → ${valueNext} · Kosten ${cost}</small>`;
     btn.disabled = state.meta.upgradePoints < cost;
     btn.onclick = () => {
       if ((state.meta.upgradePoints || 0) < cost) return;
@@ -3057,6 +3060,10 @@ function buildMeta() {
       buildMeta();
     };
     ui.metaTree.appendChild(btn);
+  }
+
+  if (!visibleCount) {
+    ui.metaTree.innerHTML = '<div class="muted">Noch keine Upgrades freigeschaltet.</div>';
   }
 }
 
