@@ -2897,15 +2897,32 @@ function syncTowerBuilderUnlock() {
   if (!hadBuilder && state.unlocks.towerBuilder) tutorialEngine.onUnlock('towerBuilder');
 }
 
+function getEligibleTowerUnlocks() {
+  const unlockedLevel = Number(state.campaign?.unlockedLevel) || 1;
+  const endlessBestWave = Number(state.playerProgress?.lifetimeStats?.endlessBestWave) || 0;
+  return Object.keys(towerDefs).filter(key => {
+    if (key === 'cannon') return true;
+    if (key === 'machinegun') return endlessBestWave >= ENDLESS_MACHINEGUN_UNLOCK_WAVE;
+    return unlockedLevel >= getTowerUnlockLevel(key);
+  });
+}
+
+function getEligibleAbilityUnlocks() {
+  const unlockedLevel = Number(state.campaign?.unlockedLevel) || 1;
+  return Object.keys(abilities).filter(key => unlockedLevel >= getAbilityUnlockLevel(key));
+}
+
+function enforceProgressionUnlockRules() {
+  const eligibleTowers = new Set(getEligibleTowerUnlocks());
+  const eligibleAbilities = new Set(getEligibleAbilityUnlocks());
+
+  state.meta.unlockedTowers = Object.keys(towerDefs).filter(key => eligibleTowers.has(key));
+  state.meta.unlockedAbilities = Object.keys(abilities).filter(key => eligibleAbilities.has(key));
+}
+
 function syncProgressUnlocks() {
   syncTowerBuilderUnlock();
-  Object.keys(towerDefs).forEach(k => {
-    if ((state.campaign.unlockedLevel || 1) >= getTowerUnlockLevel(k)) unlockTower(k);
-  });
-  if ((state.playerProgress?.lifetimeStats?.endlessBestWave || 0) >= ENDLESS_MACHINEGUN_UNLOCK_WAVE) unlockTower('machinegun');
-  Object.keys(abilities).forEach(k => {
-    if ((state.campaign.unlockedLevel || 1) >= getAbilityUnlockLevel(k)) unlockAbility(k);
-  });
+  enforceProgressionUnlockRules();
 }
 
 function renderUnlockProgressionUI() {
