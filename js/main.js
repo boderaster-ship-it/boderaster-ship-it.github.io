@@ -4419,12 +4419,29 @@ function updateUI() {
     ui.selectedName.textContent = `${d.name} Lv.${lvl} [${state.selectedTower.branch}]`;
     ui.selectedStats.textContent = `DMG ${currentDamage} | RNG ${(d.range + 0.45 * (lvl - 1)).toFixed(1)} | CD ${Math.max(minRate, d.rate - 0.07 * (lvl - 1)).toFixed(2)}`;
     ui.upgradeDiff.innerHTML = `<span class="deltaUp">+${next.damage - currentDamage} Schaden</span> · <span class="deltaUp">Visueller Rang +</span> · <span class="deltaDown">-${(Math.max(minRate, d.rate - 0.07 * (lvl - 1)) - next.rate).toFixed(2)}s Abklingzeit</span>`;
+    const upgradeCost = getTowerUpgradeCost(state.selectedTower);
+    const sellRefund = getTowerSellRefund(state.selectedTower);
+    ui.upgradeBtn.textContent = `${upgradeCost}¢`;
+    ui.sellBtn.textContent = `${sellRefund}¢`;
+    ui.upgradeBtn.disabled = state.money < upgradeCost;
   } else {
     ui.selectionPanel.classList.add('hidden');
+    ui.upgradeBtn.textContent = '—';
+    ui.sellBtn.textContent = '—';
+    ui.upgradeBtn.disabled = false;
   }
 
   updateDock();
   updateMenuSummaryWidgets();
+}
+
+function getTowerUpgradeCost(tower) {
+  return 45 * tower.level;
+}
+
+function getTowerSellRefund(tower) {
+  const baseCost = tower.custom ? tower.custom.cost : towerDefs[tower.type].cost;
+  return Math.round(baseCost * 0.65);
 }
 
 function updateCamera(dt = 1 / 60, now = performance.now()) {
@@ -5496,7 +5513,7 @@ ui.startWaveBtn.onclick = () => {
 ui.upgradeBtn.onclick = () => {
   const t = state.selectedTower;
   if (!t) return;
-  const cost = 45 * t.level;
+  const cost = getTowerUpgradeCost(t);
   if (state.money < cost) return showToast('Mehr Credits benötigt', false);
   state.money -= cost;
   trackPlayerMetric('coinsSpent', cost);
@@ -5512,8 +5529,7 @@ ui.upgradeBtn.onclick = () => {
 ui.sellBtn.onclick = () => {
   const t = state.selectedTower;
   if (!t) return;
-  const baseCost = t.custom ? t.custom.cost : towerDefs[t.type].cost;
-  state.money += Math.round(baseCost * 0.65);
+  state.money += getTowerSellRefund(t);
   board.blocked.delete(`${t.cell[0]},${t.cell[1]}`);
   syncBuildPads();
   world.remove(t.mesh);
