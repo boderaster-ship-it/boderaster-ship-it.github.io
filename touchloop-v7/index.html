@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#070a11">
+<title>TouchLoop 7</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="app">
+<header class="head"><div class="brand"><div class="logo">∞</div><div><h1>TouchLoop 7</h1><div class="sub">Clean Multitrack · Per-Track Timing</div></div></div><div class="badge ready" id="badge">MIC AUS</div></header>
+<section class="card"><div class="settings"><div class="box"><div class="lab">Tempo</div><div class="big"><span id="bpmV">100</span> <small>BPM</small></div><div class="row"><button class="step" id="minus">−</button><input class="range" id="bpm" type="range" min="50" max="180" value="100"><button class="step" id="plus">+</button></div></div><div class="box"><div class="lab">Loop-Länge</div><div class="big"><span id="barsV">4</span> <small>Takte</small></div><div class="seg" id="barsSeg"></div></div></div><div class="opts"><button class="pill on" id="count">1 Takt Count-in</button><button class="pill on" id="clean">✓ Clean Record</button><button class="pill" id="phones">Kopfhörer-Modus</button></div><div class="info compact"><b>Timing wird pro Spur eingestellt.</b> Nach der Aufnahme kannst du jede Spur unabhängig auf Original, 1/4, 1/8, 1/16 oder Zentrieren stellen.</div></section>
+<section class="card"><div class="status"><div id="state"><span class="dot"></span><span id="stateT">Bereit</span></div><div id="timer">00:00.0</div></div><div class="transport"><button class="btn rec" id="rec"><i>●</i>ERSTE SPUR</button><button class="btn new" id="newTrack" disabled><i>＋</i>NEUE SPUR</button><button class="btn" id="play" disabled><i id="playI">■</i><span id="playT">STOP</span></button><button class="btn clear" id="clear" disabled><i>×</i>ALLE LÖSCHEN</button></div></section>
+<section class="card"><div class="timelineTop"><b>TAKT / BEAT</b><span class="mut" id="pos">—</span></div><div class="beats" id="beats"></div><div class="meterTop"><span>MIC INPUT</span><span id="db">MIC AUS</span></div><div class="meter"><div class="fill" id="fill"></div></div><div class="micInfo">Das Mikrofon ist nur während einer Aufnahme aktiv und wird danach vollständig beendet.</div></section>
+<section class="card"><div class="timelineTop"><b>SPUREN</b><span class="mut" id="trackCount">0 Spuren</span></div><div class="master"><b>MASTER</b><input class="range" id="master" type="range" min="0" max="200" value="145"><span class="masterVal" id="masterV">145%</span></div><div id="tracks"><div class="tracksEmpty">Noch keine Aufnahme</div></div><button class="secondary" id="save" disabled>Apple WAV · aktiven Gesamtmix speichern / teilen</button><div class="info">Die Erkennung analysiert pro Spur einmal die vollständigen hörbaren Klangblöcke. Kurze leise Stellen innerhalb eines Wortes oder Tons bleiben Bestandteil desselben Blocks. Stille davor und danach wird nicht mitverschoben. Danach lassen sich Timing-Modus und Stärke pro Spur jederzeit ändern.</div></section>
+</main>
+<div class="overlay" id="ov"><div class="startCard"><h2>TouchLoop 7 starten</h2><p>Es wird nur die Audio-Engine gestartet. Das Mikrofon bleibt aus, bis du eine Aufnahme beginnst.</p><button class="start" id="start">Audio-Engine starten</button></div></div><div class="toast" id="toast"></div>
+<script src="core.js"></script><script src="audio.js"></script><script src="quant.js"></script><script src="ui.js"></script>
+</body>
+</html>
