@@ -1,60 +1,61 @@
 class TouchLoopRecorderProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
-    this.job = null;
+    this.armed = false;
+    this.startFrame = 0;
+    this.targetFrames = 0;
+    this.writeIndex = 0;
+    this.buffer = null;
     this.port.onmessage = (event) => {
-      const m = event.data || {};
-      if (m.type === 'arm') {
-        const frames = Math.max(1, Math.floor(m.frames || 0));
-        this.job = {
-          id: m.id,
-          startFrame: Math.max(0, Math.floor(m.startFrame || 0)),
-          frames,
-          written: 0,
-          data: new Float32Array(frames)
-        };
-      } else if (m.type === 'cancel') {
-        this.job = null;
+      const data = event.data || {};
+      if (data.type === 'arm') {
+        this.startFrame = Math.max(0, Math.floor(data.startFrame || 0));
+        this.targetFrames = Math.max(1, Math.floor(data.targetFrames || 1));
+        this.writeIndex = 0;
+        this.buffer = new Float32Array(this.targetFrames);
+        this.armed = true;
+        this.port.postMessage({ type: 'armed', startFrame: this.startFrame, targetFrames: this.targetFrames });
+      } else if (data.type === 'cancel') {
+        this.armed = false;
+        this.buffer = null;
+        this.writeIndex = 0;
       }
     };
   }
 
   process(inputs, outputs) {
-    const out = outputs[0];
-    if (out) {
-      for (let c = 0; c < out.length; c++) out[c].fill(0);
+    const output = outputs[0];
+    if (output) {
+      for (const channel of output) channel.fill(0);
+    }
+    if (!this.armed || !this.buffer) return true;
+
+    const input = inputs[0];
+    const channel = input && input[0];
+    const quantumFrames = channel ? channel.length : 128;
+    const quantumStart = currentFrame;
+    const quantumEnd = quantumStart + quantumFrames;
+
+    if (quantumEnd <= this.startFrame) return true;
+
+    let sourceIndex = Math.max(0, this.startFrame - quantumStart);
+    while (sourceIndex < quantumFrames && this.writeIndex < this.targetFrames) {
+      this.buffer[this.writeIndex++] = channel ? channel[sourceIndex] : 0;
+      sourceIndex++;
     }
 
-    const job = this.job;
-    const input = inputs[0] && inputs[0][0];
-    if (!job || !input || input.length === 0) return true;
-
-    const blockStart = currentFrame;
-    const blockEnd = blockStart + input.length;
-    const recordStart = job.startFrame;
-    const recordEnd = recordStart + job.frames;
-
-    if (blockEnd <= recordStart || blockStart >= recordEnd) return true;
-
-    const copyStart = Math.max(blockStart, recordStart);
-    const copyEnd = Math.min(blockEnd, recordEnd);
-    const srcOffset = copyStart - blockStart;
-    const dstOffset = copyStart - recordStart;
-    const count = copyEnd - copyStart;
-
-    if (count > 0) {
-      job.data.set(input.subarray(srcOffset, srcOffset + count), dstOffset);
-      job.written = Math.max(job.written, dstOffset + count);
-    }
-
-    if (copyEnd >= recordEnd) {
-      const payload = job.data.buffer;
-      const id = job.id;
-      this.job = null;
-      this.port.postMessage({ type: 'complete', id, frames: job.frames, buffer: payload }, [payload]);
+    if (this.writeIndex >= this.targetFrames) {
+      const completed = this.buffer;
+      this.armed = false;
+      this.buffer = null;
+      this.writeIndex = 0;
+      this.port.postMessage(
+        { type: 'complete', pcm: completed.buffer, sampleRate },
+        [completed.buffer]
+      );
     }
     return true;
   }
 }
 
-registerProcessor('touchloop-recorder', TouchLoopRecorderProcessor);
+registerProcessor('touchloop-recorder-v9', TouchLoopRecorderProcessor);
