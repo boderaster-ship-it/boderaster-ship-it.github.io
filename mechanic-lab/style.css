@@ -1,0 +1,22 @@
+:root{--bg:#0b0f17;--panel:#141b26;--txt:#eef4ff;--muted:#8fa1b8;--line:#263247;--accent:#75e6ff;--good:#73ffa6;--warn:#ffd36b;--bad:#ff758f}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;background:radial-gradient(circle at top,#162238,#080b11 58%);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overscroll-behavior:none}
+body{padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);touch-action:manipulation}
+#app{max-width:980px;margin:0 auto;padding:14px}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+.brand{font-weight:900;letter-spacing:.08em;font-size:14px;color:var(--accent)}
+.badge{font-size:12px;color:var(--muted);border:1px solid var(--line);padding:6px 9px;border-radius:999px}
+.panel{background:rgba(20,27,38,.94);border:1px solid var(--line);border-radius:22px;box-shadow:0 18px 60px rgba(0,0,0,.3)}
+#menu{padding:18px}
+h1{font-size:clamp(28px,7vw,52px);margin:5px 0 6px;line-height:.98}.lead{color:var(--muted);margin:0 0 18px;line-height:1.45}
+.modegrid{display:grid;gap:12px}.mode{width:100%;text-align:left;padding:18px;border-radius:18px;border:1px solid var(--line);background:linear-gradient(145deg,#182231,#101721);color:var(--txt);font-size:16px;min-height:120px;cursor:pointer}.mode:active{transform:scale(.985)}
+.mode strong{display:block;font-size:25px;margin-bottom:5px}.mode span{color:var(--muted);line-height:1.3}.mode small{display:block;margin-top:10px;color:var(--accent);font-weight:700}
+#game{display:none}.topbar{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:9px;margin-bottom:10px}.iconbtn,.btn{border:1px solid var(--line);background:#172131;color:var(--txt);border-radius:14px;font-weight:800;min-height:48px;padding:0 14px;font-size:15px}.iconbtn{width:48px;padding:0}.btn:active,.iconbtn:active{transform:scale(.97);background:#1d2b40}
+.leveltitle{text-align:center;min-width:0}.leveltitle strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.leveltitle span{font-size:12px;color:var(--muted)}
+.stage{position:relative;padding:8px}.canvaswrap{position:relative;border-radius:16px;overflow:hidden;background:#09101a;border:1px solid var(--line)}canvas{width:100%;height:auto;display:block;aspect-ratio:16/10;touch-action:none}
+#overlay{position:absolute;left:10px;right:10px;top:10px;pointer-events:none;display:flex;justify-content:space-between;gap:8px;font-size:12px}.chip{background:rgba(5,10,17,.72);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.1);padding:6px 8px;border-radius:10px;color:#dfeaff}
+.instructions{padding:13px 14px 6px;color:#d8e3f2;line-height:1.35;font-size:14px;min-height:58px}.instructions b{color:var(--accent)}
+.controls{display:grid;gap:9px;padding:10px 12px 14px}.row{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.row.two{grid-template-columns:1fr 1fr}.ctrl{min-height:58px;border-radius:16px;border:1px solid var(--line);background:linear-gradient(#1b2738,#121a26);color:white;font-weight:900;font-size:15px;padding:8px}.ctrl.primary{border-color:#2f8298;background:linear-gradient(#1a5362,#143944)}.ctrl.good{border-color:#2e8754;background:linear-gradient(#1c5635,#153b28)}.ctrl:active,.ctrl.active{transform:translateY(1px);filter:brightness(1.2)}
+.progress{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;padding:0 12px 12px}.dot{height:5px;border-radius:99px;background:#273245}.dot.done{background:var(--good)}.dot.current{background:var(--accent)}
+.toast{position:fixed;z-index:9;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(120px);padding:12px 16px;background:#eaf5ff;color:#08111c;border-radius:14px;font-weight:900;box-shadow:0 10px 30px #0008;transition:.25s;max-width:88%;text-align:center}.toast.show{transform:translateX(-50%) translateY(0)}
+@media(min-width:720px){.modegrid{grid-template-columns:repeat(3,1fr)}#app{padding:24px}.controls{grid-template-columns:1fr 1fr}.controls .row{align-self:stretch}}
