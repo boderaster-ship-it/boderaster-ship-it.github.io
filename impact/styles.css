@@ -14,7 +14,7 @@ button{border:0;color:inherit}
 #ui{position:fixed;inset:0;z-index:4;pointer-events:none}
 .screen{position:absolute;inset:0;display:none;padding:max(18px,var(--safeT)) max(18px,var(--safeR)) max(18px,var(--safeB)) max(18px,var(--safeL));pointer-events:none}
 .screen.active{display:flex;pointer-events:auto}
-.gameScreen.active{display:block}
+.gameScreen.active{display:block;pointer-events:none}
 .glass{background:rgba(10,17,27,.58);border:1px solid var(--line);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 10px 30px rgba(0,0,0,.2)}
 .icon{width:48px;height:48px;border-radius:15px;font-size:22px;font-weight:700;display:grid;place-items:center}
 .icon:active,.cta:active,.launch:active,.vector:active,.receiver:active,.miniBtn:active{transform:scale(.97)}
