@@ -1,100 +1,89 @@
 (()=>{
+'use strict';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const menu=$('#menu'),game=$('#game'),cv=$('#c'),ctx=cv.getContext('2d'),controls=$('#controls'),toast=$('#toast');
-const W=cv.width,H=cv.height; let mode=null,level=0,state={},raf=0,last=0,won=false;
-const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
-function say(t){toast.textContent=t;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),1200)}
-function btn(label,action,cls=''){return `<button class="ctrl ${cls}" data-a="${action}">${label}</button>`}
+const cv=$('#c'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+const menu=$('#menu'),game=$('#game'),toast=$('#toast'),impactFlash=$('#impactFlash');
+const launchBtn=$('#launch'),applyBtn=$('#apply');
+const DIRS={ul:[-.707,-.707],u:[0,-1],ur:[.707,-.707],l:[-1,0],r:[1,0],dl:[-.707,.707],d:[0,1],dr:[.707,.707]};
+const dirNames={ul:'↖',u:'↑',ur:'↗',l:'←',r:'→',dl:'↙',d:'↓',dr:'↘'};
+let level=0,state=null,raf=0,last=0,won=false;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+const levels=[
+ {name:'WHO REACTS?',sub:'First contact',objective:'Move the wall into the green zone.',instruction:'Tap the wall. Set <b>SURFACE + →</b>, then launch.',ball:{x:120,y:380,vx:430,vy:0},surfaces:[{id:'A',x:560,y:250,w:55,h:250}],goals:[{type:'surface',id:'A',x:785,y:275,w:145,h:205}],preset:{A:['ball','l']}},
+ {name:'WHERE DOES IT GO?',sub:'Return the shot',objective:'Send the ball back into the goal.',instruction:'Same wall, different rule: <b>BALL + ←</b>.',ball:{x:130,y:390,vx:470,vy:0},surfaces:[{id:'A',x:760,y:245,w:48,h:270}],goals:[{type:'ball',x:45,y:325,w:115,h:130}],preset:{A:['surface','r']}},
+ {name:'WALL JUMP',sub:'Direction becomes movement',objective:'Reach the high green target.',instruction:'Use the wall as a launcher: <b>BALL + ↗</b>.',ball:{x:110,y:440,vx:430,vy:0},surfaces:[{id:'A',x:405,y:300,w:45,h:225}],goals:[{type:'ball',x:735,y:80,w:175,h:130}],preset:{A:['ball','l']}},
+ {name:'DROP THE BRIDGE',sub:'Move the thing you hit',objective:'Push the plate down into its dock.',instruction:'This time the ball should keep going. Make the <b>SURFACE react ↓</b>.',ball:{x:115,y:320,vx:440,vy:0},surfaces:[{id:'A',x:570,y:225,w:85,h:170,push:300}],goals:[{type:'surface',id:'A',x:535,y:420,w:155,h:145}],preset:{A:['ball','l']}},
+ {name:'TWO RULES',sub:'Program a path',objective:'Hit the final goal after two impacts.',instruction:'Configure both blue surfaces before launch. Hint: first <b>↗</b>, then <b>↘</b>.',ball:{x:90,y:410,vx:440,vy:0},surfaces:[{id:'A',x:360,y:295,w:42,h:220},{id:'B',x:525,y:145,w:235,h:35}],goals:[{type:'ball',x:790,y:350,w:135,h:150}],preset:{A:['ball','l'],B:['ball','u']}},
+ {name:'CHAIN PUSH',sub:'Who + where, twice',objective:'Dock both movable blocks.',instruction:'The ball crosses both blocks. Give <b>A →</b> and <b>B ↑</b> to the surfaces.',ball:{x:80,y:390,vx:500,vy:0},surfaces:[{id:'A',x:330,y:345,w:58,h:90,push:250},{id:'B',x:600,y:345,w:58,h:90,push:250}],goals:[{type:'surface',id:'A',x:430,y:345,w:125,h:95},{type:'surface',id:'B',x:585,y:150,w:90,h:145}],preset:{A:['ball','l'],B:['ball','l']},allGoals:true},
+ {name:'LIVE IMPACT',sub:'Decide at the collision',objective:'React in real time and hit the goal.',instruction:'Now the game freezes <b>at impact</b>. Choose BALL + ↗ and tap APPLY IMPACT.',ball:{x:105,y:440,vx:470,vy:0},surfaces:[{id:'A',x:470,y:285,w:48,h:240}],goals:[{type:'ball',x:735,y:90,w:170,h:120}],live:true,preset:{A:['ball','l']}},
+ {name:'RETURN FIRE',sub:'Live defense',objective:'Redirect the incoming shot into the target.',instruction:'The red shot comes from the right. At impact choose <b>BALL + ↖</b>.',ball:{x:865,y:425,vx:-470,vy:0,enemy:true},surfaces:[{id:'A',x:510,y:285,w:42,h:240}],goals:[{type:'ball',x:80,y:90,w:170,h:130}],live:true,preset:{A:['ball','r']}},
+ {name:'DOUBLE IMPACT',sub:'Two live decisions',objective:'Survive two impacts and reach the goal.',instruction:'First send the ball <b>↗</b>. At the ceiling send it <b>↘</b>.',ball:{x:85,y:420,vx:460,vy:0},surfaces:[{id:'A',x:355,y:290,w:42,h:225},{id:'B',x:515,y:145,w:235,h:34}],goals:[{type:'ball',x:800,y:350,w:130,h:150}],live:true,preset:{A:['ball','l'],B:['ball','u']}},
+ {name:'IMPACT RUN',sub:'Hybrid finale',objective:'Move the gate AND finish the shot.',instruction:'Impact 1: make the <b>SURFACE go →</b>. Impact 2: send the <b>BALL ↗</b>. Impact 3: send the <b>BALL ↘</b>.',ball:{x:70,y:420,vx:500,vy:0},surfaces:[{id:'A',x:260,y:330,w:45,h:150,push:260},{id:'B',x:500,y:290,w:42,h:230},{id:'C',x:650,y:140,w:230,h:34}],goals:[{type:'surface',id:'A',x:340,y:330,w:115,h:155},{type:'ball',x:805,y:350,w:125,h:155}],live:true,allGoals:true,preset:{A:['ball','l'],B:['ball','l'],C:['ball','u']}}
+];
+
+function say(t){toast.textContent=t;toast.classList.add('show');clearTimeout(say.t);say.t=setTimeout(()=>toast.classList.remove('show'),1200)}
 function pointerPos(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height}}
-function circle(x,y,r,fill,stroke='#fff'){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=fill;ctx.fill();ctx.strokeStyle=stroke;ctx.lineWidth=3;ctx.stroke()}
-function rect(o,fill,stroke='#fff'){ctx.fillStyle=fill;ctx.fillRect(o.x,o.y,o.w,o.h);ctx.strokeStyle=stroke;ctx.lineWidth=3;ctx.strokeRect(o.x,o.y,o.w,o.h)}
-function arrow(x,y,ang,len=42,col='#75e6ff'){ctx.save();ctx.translate(x,y);ctx.rotate(ang);ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(len,0);ctx.stroke();ctx.beginPath();ctx.moveTo(len,0);ctx.lineTo(len-13,-9);ctx.lineTo(len-13,9);ctx.closePath();ctx.fill();ctx.restore()}
-function text(t,x,y,size=26,align='center',col='#fff'){ctx.fillStyle=col;ctx.font=`800 ${size}px -apple-system,BlinkMacSystemFont,sans-serif`;ctx.textAlign=align;ctx.fillText(t,x,y)}
-const common={gravity:900, floor:535};
-const reactionLevels=[
- ['Wall Test','Schieße die Kugel. Wähle vorher, ob Kugel oder Wand den Stoß bekommt.',{wallX:690,target:'wall',need:'wall'}],
- ['Return Fire','Lass die Kugel zurückprallen und triff den grünen Sender.',{wallX:740,target:'ball',need:'ballReturn'}],
- ['Move the Block','Nutze den Stoß, um die rote Kiste in die Zielzone zu schieben.',{block:true,target:'block',need:'blockGoal'}],
- ['Keep Momentum','Die Kugel soll drei Wände treffen, ohne selbst gestoppt zu werden.',{multiWalls:3,target:'walls',need:'pass3'}],
- ['Domino','Stoß die erste Kiste in die zweite und erreiche die Zielzone.',{domino:true,target:'block',need:'domino'}],
- ['Ceiling Break','Lenke die Reaktion nach oben: katapultiere die Platte gegen die Decke.',{ceiling:true,target:'plate',need:'ceiling'}],
- ['Shield','Eine feindliche Kugel kommt auf dich zu. Gib die Reaktion der Kugel zurück.',{enemy:true,target:'ball',need:'shield'}],
- ['Two Targets','Wähle bei zwei Treffern jeweils den richtigen Reaktionsempfänger.',{sequence:true,target:'mixed',need:'sequence'}],
- ['Chain Reaction','Vier Objekte, ein Schuss. Halte die Reaktionskette am Leben.',{chain:true,target:'mixed',need:'chain'}],
- ['Reaction Run','Finale: Sender → Kiste → Wand → Ziel. Du entscheidest dreimal.',{final:true,target:'mixed',need:'final'}]
-];
-const promiseLevels=[
- ['First Promise','Tippe die Kiste und dann die leuchtende Zielzone.',{boxes:1,goal:[760,430],need:'box'}],
- ['Ride It','Setze die Kiste oben aufs Podest und springe im richtigen Moment mit.',{ride:true,goal:[730,260],need:'ride'}],
- ['Under the Door','Versprich die Kiste hinter die Wand – sie muss physisch darunter hindurch.',{tunnel:true,goal:[780,450],need:'box'}],
- ['Push a Switch','Setze den Zukunftspunkt hinter dem Schalter.',{switch:true,goal:[820,400],need:'switch'}],
- ['Counterforce','Die Kiste zieht beim Beschleunigen eine Plattform in Gegenrichtung.',{counter:true,goal:[760,380],need:'counter'}],
- ['Moving Goal','Treffe eine bewegte Zukunftszone.',{moving:true,goal:[740,300],need:'box'}],
- ['Two Promises','Erfülle nacheinander zwei Zukunftspunkte.',{two:true,goal:[430,270],goal2:[790,430],need:'two'}],
- ['Heavy Object','Die schwere Kiste braucht mehr Zeit: wähle den richtigen Zukunftshorizont.',{heavy:true,goal:[790,390],need:'box'}],
- ['Promise Platformer','Nutze zwei versprochene Kistenpositionen als temporäre Plattformen.',{platformer:true,goal:[800,210],need:'platformer'}],
- ['Impossible?','Finale: bring dich und die Kiste gemeinsam in zwei Zielzonen.',{final:true,goal:[800,250],need:'final'}]
-];
-const normalLevels=[
- ['First Bounce','Tippe die Bodenfläche, drehe den Pfeil nach rechts und starte den Ball.',{surfaces:1,goal:[820,400],need:'goal'}],
- ['Wall Lift','Drehe die Wand-Normale nach oben, damit der Ball hochkatapultiert wird.',{wall:true,goal:[760,160],need:'goal'}],
- ['Corner Shot','Zwei Flächen, zwei Pfeile. Erreiche die obere Ecke.',{corner:true,goal:[820,120],need:'goal'}],
- ['Avoid Red','Ändere den Bounce so, dass der Ball die rote Zone meidet.',{hazard:true,goal:[820,180],need:'goal'}],
- ['S-Curve','Drei Normals ergeben einen gekrümmten Weg ohne Kurve.',{s:true,goal:[850,210],need:'goal'}],
- ['Backwards Floor','Der Boden schießt den Ball gegen seine ursprüngliche Bewegungsrichtung.',{back:true,goal:[130,190],need:'goal'}],
- ['Pinball Logic','Vier Kontaktflächen – plane die Pfeile vor dem Start.',{pin:true,goal:[810,110],need:'goal'}],
- ['Moving Surface','Eine Plattform fährt. Ihre Normale entscheidet den Absprung.',{moving:true,goal:[820,160],need:'goal'}],
- ['One Edit Only','Du darfst genau eine Normale verändern.',{one:true,goal:[830,140],need:'goal'}],
- ['Normal Run','Finale: fünf Flächen, ein Ball, ein Ziel.',{final:true,goal:[860,100],need:'goal'}]
-];
-const info={reaction:{name:'REACTION',levels:reactionLevels},promise:{name:'PROMISE',levels:promiseLevels},normal:{name:'NORMAL',levels:normalLevels}};
+function text(t,x,y,size=20,align='center',col='#fff'){ctx.fillStyle=col;ctx.font=`900 ${size}px -apple-system,BlinkMacSystemFont,sans-serif`;ctx.textAlign=align;ctx.fillText(t,x,y)}
+function rectDraw(o,fill,stroke='#fff',lw=3){ctx.fillStyle=fill;ctx.fillRect(o.x,o.y,o.w,o.h);ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.strokeRect(o.x,o.y,o.w,o.h)}
+function circleDraw(o,fill,stroke='#fff'){ctx.beginPath();ctx.arc(o.x,o.y,o.r,0,Math.PI*2);ctx.fillStyle=fill;ctx.fill();ctx.strokeStyle=stroke;ctx.lineWidth=3;ctx.stroke()}
+function arrow(x,y,dir,len=48,col='#6ee7ff'){const d=DIRS[dir]||DIRS.r,ang=Math.atan2(d[1],d[0]);ctx.save();ctx.translate(x,y);ctx.rotate(ang);ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(len,0);ctx.stroke();ctx.beginPath();ctx.moveTo(len,0);ctx.lineTo(len-13,-9);ctx.lineTo(len-13,9);ctx.closePath();ctx.fill();ctx.restore()}
+function insideRect(x,y,r){return x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h}
+function circleRect(c,r){const nx=clamp(c.x,r.x,r.x+r.w),ny=clamp(c.y,r.y,r.y+r.h);return Math.hypot(c.x-nx,c.y-ny)<=c.r}
+
 function buildProgress(){const p=$('#progress');p.innerHTML='';for(let i=0;i<10;i++){const d=document.createElement('div');d.className='dot'+(i<level?' done':'')+(i===level?' current':'');p.appendChild(d)}}
-function openMode(m){mode=m;level=0;menu.style.display='none';game.style.display='block';loadLevel()}
-function loadLevel(){won=false;cancelAnimationFrame(raf);last=0;const L=info[mode].levels[level];$('#modeName').textContent=info[mode].name;$('#levelName').textContent=`${level+1}/10 · ${L[0]}`;$('#objective').textContent='Ziel: '+L[0];buildProgress(); if(mode==='reaction') initReaction(L); if(mode==='promise') initPromise(L); if(mode==='normal') initNormal(L); raf=requestAnimationFrame(loop)}
-function complete(){if(won)return;won=true;say(level===9?'Mechanic Test abgeschlossen!':'Challenge geschafft!');setTimeout(()=>{if(level<9){level++;loadLevel()}else{showMenu()}},900)}
-function showMenu(){cancelAnimationFrame(raf);game.style.display='none';menu.style.display='block';mode=null}
-$$('.mode').forEach(b=>b.onclick=()=>openMode(b.dataset.mode));$('#home').onclick=showMenu;$('#reset').onclick=loadLevel;
-controls.addEventListener('pointerdown',e=>{const b=e.target.closest('[data-a]');if(!b)return;e.preventDefault();handleAction(b.dataset.a,true)});controls.addEventListener('pointerup',e=>{const b=e.target.closest('[data-a]');if(b)handleAction(b.dataset.a,false)});controls.addEventListener('pointercancel',e=>{const b=e.target.closest('[data-a]');if(b)handleAction(b.dataset.a,false)});
-cv.addEventListener('pointerdown',e=>{e.preventDefault();const p=pointerPos(e); if(mode==='promise') promiseTap(p); if(mode==='normal') normalTap(p); if(mode==='reaction') reactionTap(p)});
-let keys={left:false,right:false};
-function handleAction(a,on){if(a==='left'||a==='right'){keys[a]=on;return}if(!on)return;if(mode==='reaction')reactionAction(a);if(mode==='promise')promiseAction(a);if(mode==='normal')normalAction(a)}
-function loop(ts){const dt=Math.min(.028,(ts-last)/1000||.016);last=ts;ctx.clearRect(0,0,W,H);if(mode==='reaction'){updateReaction(dt);drawReaction()}if(mode==='promise'){updatePromise(dt);drawPromise()}if(mode==='normal'){updateNormal(dt);drawNormal()}raf=requestAnimationFrame(loop)}
-// REACTION
-function initReaction(L){const cfg=L[2];state={cfg,ball:{x:160,y:450,r:20,vx:0,vy:0},wall:{x:cfg.wallX||700,y:260,w:40,h:275,vx:0},block:cfg.block||cfg.domino||cfg.final?{x:570,y:455,w:70,h:80,vx:0}:null,block2:cfg.domino?{x:700,y:455,w:70,h:80,vx:0}:null,plate:cfg.ceiling?{x:500,y:470,w:110,h:28,vy:0}:null,choice:'ball',shot:false,hits:0,seq:0,hitCd:0};
-$('#instructions').innerHTML=`<b>Core mechanic:</b> Vor dem Treffer bestimmst du den Reaktionsempfänger. ${level===0?'Teste erst BALL, dann WALL.':''}`;
-controls.innerHTML=`<div class="row two">${btn('⚪ BALL reagiert','pickBall')}${btn('🧱 OBJEKT reagiert','pickObj')}</div><div class="row two">${btn('FIRE','fire','primary')}${btn('RESET','restart')}</div>`; updateReactionStatus()}
-function updateReactionStatus(){$('#status').textContent='Empfänger: '+(state.choice==='ball'?'BALL':'OBJEKT')}
-function reactionAction(a){if(a==='pickBall'){state.choice='ball';updateReactionStatus()}if(a==='pickObj'){state.choice='obj';updateReactionStatus()}if(a==='fire'&&!state.shot){state.shot=true;if(state.cfg.enemy){state.ball.x=820;state.ball.y=450;state.ball.vx=-520}else state.ball.vx=500}if(a==='restart')loadLevel()}
-function reactionTap(p){if(p.x>450){state.choice='obj';updateReactionStatus()}else{state.choice='ball';updateReactionStatus()}}
-function updateReaction(dt){let s=state,b=s.ball;if(s.hitCd>0)s.hitCd-=dt;if(!s.shot)return;b.x+=b.vx*dt;b.y+=b.vy*dt;b.vy+=common.gravity*dt;if(b.y+b.r>common.floor){b.y=common.floor-b.r;b.vy*=-.55}
-if(s.block){s.block.x+=s.block.vx*dt;s.block.vx*=.985;if(hitCircleRect(b,s.block)){collisionRect(s.block)}}
-if(s.block2){s.block2.x+=s.block2.vx*dt;s.block2.vx*=.985;if(rectHit(s.block,s.block2)&&Math.abs(s.block.vx)>20){s.block2.vx+=s.block.vx*.8;s.block.vx*=.35}}
-if(s.plate){s.plate.y+=s.plate.vy*dt;s.plate.vy+=700*dt;if(s.plate.y>470){s.plate.y=470;s.plate.vy=0}if(hitCircleRect(b,s.plate)){if(s.choice==='obj')s.plate.vy=-620;else b.vy=-500;b.vx*=.85}}
-if(hitCircleRect(b,s.wall)&&s.hitCd<=0){s.hitCd=.16;s.hits++; if(s.choice==='obj'){s.wall.vx+=Math.max(170,Math.abs(b.vx)*.55);b.vx*=.75;if(s.cfg.multiWalls&&s.hits<3){s.wall.x=Math.min(900,b.x+170);s.wall.vx=0}}else{b.vx=-Math.abs(b.vx)*.9}}
-s.wall.x+=s.wall.vx*dt;s.wall.vx*=.985;
-if(s.cfg.enemy && s.shot && b.vx>0 && b.x>760){complete()}
-if(s.cfg.need==='wall'&&s.wall.x>760)complete();if(s.cfg.need==='ballReturn'&&b.x<120&&s.shot&&b.vx<0)complete();if(s.cfg.need==='blockGoal'&&s.block&&s.block.x>780)complete();if(s.cfg.need==='pass3'&&s.hits>=3)complete();if(s.cfg.need==='domino'&&s.block2&&s.block2.x>820)complete();if(s.cfg.need==='ceiling'&&s.plate&&s.plate.y<100)complete();if((s.cfg.need==='sequence'||s.cfg.need==='chain'||s.cfg.need==='final')&&s.hits>=2&&((s.block&&s.block.x>730)||s.wall.x>780))complete();if(s.cfg.enemy&&b.x<70&&!won){s.shot=false;b.x=820;b.y=450;b.vx=0;say('Treffer – BALL reagieren lassen')} }
-function collisionRect(o){if(state.choice==='obj'){o.vx+=(state.ball.vx||380)*.8;state.ball.vx*=.55}else state.ball.vx=-Math.abs(state.ball.vx)*.8}
-function hitCircleRect(c,r){const nx=clamp(c.x,r.x,r.x+r.w),ny=clamp(c.y,r.y,r.y+r.h);return Math.hypot(c.x-nx,c.y-ny)<c.r}
-function rectHit(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
-function drawReaction(){ctx.fillStyle='#0a1320';ctx.fillRect(0,0,W,H);ctx.fillStyle='#243244';ctx.fillRect(0,common.floor,W,H-common.floor);let s=state;circle(s.ball.x,s.ball.y,s.ball.r,'#eff7ff','#75e6ff');rect(s.wall,'#7b3b46','#ff758f');if(s.block)rect(s.block,'#a05252','#ffb1b1');if(s.block2)rect(s.block2,'#7f5aa8','#d9b6ff');if(s.plate)rect(s.plate,'#6a7890','#cbd8ec');ctx.fillStyle='rgba(115,255,166,.2)';ctx.fillRect(790,400,140,135);text('GOAL',860,465,20,'center','#73ffa6');text(state.choice==='ball'?'BALL':'OBJECT',480,90,30,'center','#75e6ff')}
-// PROMISE
-function initPromise(L){const cfg=L[2];state={cfg,box:{x:230,y:430,w:70,h:70,vx:0,vy:0,mass:cfg.heavy?3:1},player:{x:100,y:460,w:34,h:70,vx:0,vy:0,on:false},goal:{x:cfg.goal[0],y:cfg.goal[1],r:34},goal2:cfg.goal2?{x:cfg.goal2[0],y:cfg.goal2[1],r:34}:null,selected:false,promise:null,timer:0,stage:0};
-$('#instructions').innerHTML='<b>Core mechanic:</b> Tippe die Kiste, dann den gewünschten Zukunftsort. Die Kiste wird nicht teleportiert – sie wird dorthin beschleunigt.';
-controls.innerHTML=`<div class="row">${btn('◀','left')}${btn('JUMP','jump','primary')}${btn('▶','right')}</div><div class="row two">${btn('PROMISE 1.5s','promise')}${btn('RESET','restart')}</div>`;$('#status').textContent='Tippe Kiste → Ziel'}
-function promiseAction(a){if(a==='jump'&&state.player.on){state.player.vy=-460;state.player.on=false}if(a==='promise'){state.selected=true;$('#status').textContent='Tippe Zukunftspunkt'}if(a==='restart')loadLevel()}
-function promiseTap(p){let s=state;if(p.x>=s.box.x-20&&p.x<=s.box.x+s.box.w+20&&p.y>=s.box.y-20&&p.y<=s.box.y+s.box.h+20){s.selected=true;$('#status').textContent='Tippe Zukunftspunkt';return}if(s.selected){s.promise={x:p.x,y:p.y,t:1.5};s.timer=0;s.selected=false;$('#status').textContent='Promise aktiv';}}
-function updatePromise(dt){let s=state,p=s.player,b=s.box;p.vx=(keys.right?220:0)-(keys.left?220:0);p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=common.gravity*dt;if(p.y+p.h>common.floor){p.y=common.floor-p.h;p.vy=0;p.on=true}if(s.promise){s.timer+=dt;const left=Math.max(.15,s.promise.t-s.timer);const tx=s.promise.x-b.w/2,ty=s.promise.y-b.h/2;const ax=(tx-b.x-b.vx*left)/(left*left*.5),ay=(ty-b.y-b.vy*left)/(left*left*.5);b.vx+=clamp(ax,-1300,1300)*dt/b.mass;b.vy+=clamp(ay,-1300,1300)*dt/b.mass;if(s.timer>=s.promise.t){s.promise=null;$('#status').textContent='Promise erfüllt?'}}else b.vy+=common.gravity*dt;b.x+=b.vx*dt;b.y+=b.vy*dt;b.vx*=.996;if(b.y+b.h>common.floor){b.y=common.floor-b.h;b.vy*=-.25}
-if(p.x+p.w>b.x&&p.x<b.x+b.w&&p.y+p.h>=b.y&&p.y+p.h<=b.y+24&&p.vy>=0){p.y=b.y-p.h;p.vy=b.vy;p.on=true}
-let ok=dist({x:b.x+b.w/2,y:b.y+b.h/2},s.goal)<55;if(ok){if(s.cfg.need==='ride'&&p.y<340)complete();else if(s.cfg.need==='switch'||s.cfg.need==='counter'||s.cfg.need==='box')complete();else if(s.cfg.need==='two'){if(s.stage===0&&s.goal2){s.stage=1;s.goal=s.goal2;s.goal2=null;say('Erstes Promise erfüllt')}else complete()}else if(s.cfg.need==='platformer'&&p.y<300)complete();else if(s.cfg.need==='final'&&p.x>650)complete()} }
-function drawPromise(){ctx.fillStyle='#0c1020';ctx.fillRect(0,0,W,H);ctx.fillStyle='#283347';ctx.fillRect(0,common.floor,W,H-common.floor);let s=state;if(s.cfg.tunnel){ctx.fillStyle='#334258';ctx.fillRect(480,240,70,230)}if(s.cfg.ride||s.cfg.platformer||s.cfg.final){ctx.fillStyle='#32425a';ctx.fillRect(680,330,220,24)}circle(s.goal.x,s.goal.y,s.goal.r,'rgba(115,255,166,.12)','#73ffa6');if(s.goal2)circle(s.goal2.x,s.goal2.y,s.goal2.r,'rgba(115,255,166,.08)','#73ffa6');rect(s.box,'#6653b7','#c9bfff');rect(s.player,'#2e7192','#75e6ff');if(s.promise){circle(s.promise.x,s.promise.y,24,'rgba(117,230,255,.08)','#75e6ff');ctx.setLineDash([10,10]);ctx.strokeStyle='#75e6ff';ctx.beginPath();ctx.moveTo(s.box.x+s.box.w/2,s.box.y+s.box.h/2);ctx.lineTo(s.promise.x,s.promise.y);ctx.stroke();ctx.setLineDash([])}}
-// NORMAL
-function initNormal(L){const cfg=L[2],surfs=[];surfs.push({x:0,y:520,w:960,h:25,a:-Math.PI/2,sel:true});if(cfg.wall||cfg.corner||cfg.hazard||cfg.s||cfg.pin||cfg.final)surfs.push({x:700,y:220,w:25,h:300,a:Math.PI,sel:false});if(cfg.corner||cfg.s||cfg.pin||cfg.final)surfs.push({x:420,y:330,w:220,h:22,a:-Math.PI/2,sel:false});if(cfg.pin||cfg.final)surfs.push({x:180,y:210,w:22,h:210,a:0,sel:false});if(cfg.final)surfs.push({x:560,y:120,w:190,h:20,a:Math.PI/2,sel:false});state={cfg,ball:{x:120,y:450,r:18,vx:0,vy:0},surfs,sel:0,running:false,goal:{x:cfg.goal[0],y:cfg.goal[1],r:30},edits:0};
-$('#instructions').innerHTML='<b>Core mechanic:</b> Tippe eine Fläche und drehe ihren Pfeil. Beim Kontakt wird der Ball in Pfeilrichtung weggeschossen.';
-controls.innerHTML=`<div class="row">${btn('↺ -45°','rotL')}${btn('START','start','primary')}${btn('+45° ↻','rotR')}</div><div class="row two">${btn('STOP','stop')}${btn('RESET','restart')}</div>`;$('#status').textContent='Fläche 1 ausgewählt'}
-function normalAction(a){let s=state;if(a==='rotL'&&!s.running){s.surfs[s.sel].a-=Math.PI/4;s.edits++;}if(a==='rotR'&&!s.running){s.surfs[s.sel].a+=Math.PI/4;s.edits++;}if(a==='start'&&!s.running){s.running=true;s.ball.vx=300;s.ball.vy=-80;$('#status').textContent='RUN'}if(a==='stop'){s.running=false;s.ball.vx=s.ball.vy=0}if(a==='restart')loadLevel()}
-function normalTap(p){if(state.running)return;let best=-1,bd=80;state.surfs.forEach((r,i)=>{const cx=clamp(p.x,r.x,r.x+r.w),cy=clamp(p.y,r.y,r.y+r.h),d=Math.hypot(p.x-cx,p.y-cy);if(d<bd){bd=d;best=i}});if(best>=0){state.sel=best;$('#status').textContent='Fläche '+(best+1)+' ausgewählt'}}
-function updateNormal(dt){let s=state,b=s.ball;if(!s.running)return;b.vy+=430*dt;b.x+=b.vx*dt;b.y+=b.vy*dt;for(const r of s.surfs){if(hitCircleRect(b,r)){const sp=Math.max(330,Math.hypot(b.vx,b.vy)*.92);b.vx=Math.cos(r.a)*sp;b.vy=Math.sin(r.a)*sp;b.x+=Math.cos(r.a)*6;b.y+=Math.sin(r.a)*6}}
-if(dist(b,s.goal)<48)complete();if(b.x<-80||b.x>1040||b.y>680||b.y<-80){s.running=false;s.ball={x:120,y:450,r:18,vx:0,vy:0};$('#status').textContent='Nochmal versuchen'}}
-function drawNormal(){ctx.fillStyle='#08131a';ctx.fillRect(0,0,W,H);let s=state;circle(s.goal.x,s.goal.y,s.goal.r,'rgba(115,255,166,.12)','#73ffa6');s.surfs.forEach((r,i)=>{rect(r,i===s.sel?'#344b5f':'#243140',i===s.sel?'#75e6ff':'#6b7d92');const cx=r.x+r.w/2,cy=r.y+r.h/2;arrow(cx,cy,r.a,44,i===s.sel?'#75e6ff':'#d1d9e5')});circle(s.ball.x,s.ball.y,s.ball.r,'#fff2a8','#ffd36b');text('GOAL',s.goal.x,s.goal.y-45,16,'center','#73ffa6')}
+function showMenu(){cancelAnimationFrame(raf);game.style.display='none';menu.style.display='block';impactFlash.classList.remove('show')}
+function start(){menu.style.display='none';game.style.display='block';level=0;loadLevel()}
+function loadLevel(){cancelAnimationFrame(raf);won=false;last=0;const L=levels[level];state={L,ball:{...L.ball,r:18},surfaces:L.surfaces.map(s=>({...s,vx:0,vy:0,cool:0,rule:{who:'ball',dir:'l'}})),selected:'A',launched:false,paused:false,pending:null,hitSet:new Set(),goalDone:new Set()};
+ for(const s of state.surfaces){const p=L.preset&&L.preset[s.id];if(p)s.rule={who:p[0],dir:p[1]};}
+ $('#levelName').textContent=`${level+1}/10 · ${L.name}`;$('#levelSub').textContent=L.sub;$('#objective').textContent=L.objective;$('#instructions').innerHTML=L.instruction;launchBtn.textContent=L.live?'▶ START':'▶ LAUNCH';launchBtn.disabled=false;launchBtn.style.display='block';applyBtn.style.display='none';impactFlash.classList.remove('show');buildProgress();selectSurface(state.selected);syncEditor();updateStatus();raf=requestAnimationFrame(loop)}
+function complete(){if(won)return;won=true;say(level===9?'Hybrid test complete!':'Challenge complete!');setTimeout(()=>{if(level<9){level++;loadLevel()}else{showMenu();say('10/10 complete — what felt best?')}},850)}
+
+function selectSurface(id){state.selected=id;syncEditor();updateStatus()}
+function currentSurface(){return state.surfaces.find(s=>s.id===state.selected)}
+function setWho(who){const s=currentSurface();if(!s)return;s.rule.who=who;syncEditor();updateStatus()}
+function setDir(dir){const s=currentSurface();if(!s)return;s.rule.dir=dir;syncEditor();updateStatus()}
+function syncEditor(){if(!state)return;const s=currentSurface();$$('[data-who]').forEach(b=>b.classList.toggle('active',s&&b.dataset.who===s.rule.who));$$('[data-dir]').forEach(b=>b.classList.toggle('active',s&&b.dataset.dir===s.rule.dir))}
+function updateStatus(){if(!state)return;const s=currentSurface();$('#status').textContent=s?`${s.id}: ${s.rule.who==='ball'?'BALL':'SURFACE'} ${dirNames[s.rule.dir]}`:''}
+
+function launch(){if(!state||state.launched)return;state.launched=true;launchBtn.disabled=true;if(state.L.ball.enemy) state.ball.vx=state.L.ball.vx; say(state.L.live?'Collision incoming…':'Rules armed')}
+function reset(){loadLevel()}
+function applyPending(){if(!state.paused||!state.pending)return;const s=state.surfaces.find(q=>q.id===state.pending.surfaceId);state.selected=s.id;applyImpact(s,state.pending.incoming);state.paused=false;state.pending=null;applyBtn.style.display='none';impactFlash.classList.remove('show');updateStatus()}
+
+function beginImpact(s,incoming){state.selected=s.id;syncEditor();updateStatus();if(state.L.live){state.paused=true;state.pending={surfaceId:s.id,incoming:{...incoming}};state.ball.vx=0;state.ball.vy=0;impactFlash.classList.add('show');applyBtn.style.display='block';launchBtn.style.display='none'}else applyImpact(s,incoming)}
+function applyImpact(s,incoming){const d=DIRS[s.rule.dir];const speed=Math.max(410,Math.hypot(incoming.vx,incoming.vy));if(s.rule.who==='ball'){
+ state.ball.vx=d[0]*speed;state.ball.vy=d[1]*speed;
+ nudgeBall(s,d);
+}else{
+ const ps=s.push||300;s.vx=d[0]*ps;s.vy=d[1]*ps;
+ state.ball.vx=incoming.vx*.96;state.ball.vy=incoming.vy*.96;
+ separateBallAfterSurfacePush(s,incoming);
+}
+s.cool=.16;state.hitSet.add(s.id)}
+function nudgeBall(s,d){state.ball.x+=d[0]*8;state.ball.y+=d[1]*8}
+function separateBallAfterSurfacePush(s,incoming){const b=state.ball;if(Math.abs(incoming.vx)>=Math.abs(incoming.vy)){b.x=incoming.vx>=0?s.x+s.w+b.r+5:s.x-b.r-5}else{b.y=incoming.vy>=0?s.y+s.h+b.r+5:s.y-b.r-5}}
+
+function update(dt){if(!state||won||state.paused)return;for(const s of state.surfaces){if(s.cool>0)s.cool-=dt;s.x+=s.vx*dt;s.y+=s.vy*dt;s.vx*=.992;s.vy*=.992}
+ if(!state.launched)return;const b=state.ball;b.x+=b.vx*dt;b.y+=b.vy*dt;
+ for(const s of state.surfaces){if(s.cool<=0&&circleRect(b,s)){const incoming={vx:b.vx,vy:b.vy};beginImpact(s,incoming);break}}
+ checkGoals();
+ if(b.x<-90||b.x>W+90||b.y<-110||b.y>H+110){if(!won){say('Missed — reset');setTimeout(()=>{if(state&&!won)loadLevel()},550)}}
+}
+function checkGoals(){const L=state.L;for(let i=0;i<L.goals.length;i++){const g=L.goals[i];if(g.type==='ball'){if(insideRect(state.ball.x,state.ball.y,g))state.goalDone.add(i)}else{const s=state.surfaces.find(q=>q.id===g.id);if(s){const cx=s.x+s.w/2,cy=s.y+s.h/2;if(insideRect(cx,cy,g))state.goalDone.add(i)}}}
+ const needed=L.allGoals?L.goals.length:1;if(state.goalDone.size>=needed)complete()}
+
+function draw(){ctx.clearRect(0,0,W,H);const grd=ctx.createLinearGradient(0,0,0,H);grd.addColorStop(0,'#071423');grd.addColorStop(1,'#09101a');ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);
+ ctx.strokeStyle='#12243a';ctx.lineWidth=1;for(let x=0;x<W;x+=60){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}for(let y=0;y<H;y+=60){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+ state.L.goals.forEach((g,i)=>{ctx.save();ctx.globalAlpha=.75;rectDraw(g,'rgba(114,255,167,.14)',state.goalDone.has(i)?'#72ffa7':'#4bbd7b',3);text(g.type==='ball'?'BALL GOAL':`${g.id} DOCK`,g.x+g.w/2,g.y+g.h/2+5,15,'center','#72ffa7');ctx.restore()});
+ for(const s of state.surfaces){const sel=s.id===state.selected;rectDraw(s,sel?'#21455a':'#1b2d40',sel?'#6ee7ff':'#7090ac',sel?5:3);text(s.id,s.x+s.w/2,s.y+s.h/2+7,20,'center','#eaf6ff');const cx=s.x+s.w/2,cy=s.y-18;arrow(cx,cy,s.rule.dir,38,s.rule.who==='ball'?'#6ee7ff':'#ffd66e');text(s.rule.who==='ball'?'BALL':'SURFACE',cx,cy-22,10,'center',s.rule.who==='ball'?'#6ee7ff':'#ffd66e')}
+ const b=state.ball;circleDraw(b,b.enemy?'#ff718d':'#f1f7ff',b.enemy?'#ffb2c0':'#6ee7ff');arrow(b.x,b.y-35,vectorToDir(b.vx,b.vy),28,b.enemy?'#ff718d':'#bdefff');
+ if(!state.launched)text('TAP A SURFACE → SET WHO + WHERE → LAUNCH',W/2,565,15,'center','#6f859f');
+}
+function vectorToDir(vx,vy){if(Math.abs(vx)+Math.abs(vy)<2)return'r';const a=Math.atan2(vy,vx),oct=Math.round(a/(Math.PI/4));return ['r','dr','d','dl','l','ul','u','ur','r'][(oct+8)%8]||'r'}
+function loop(ts){const dt=Math.min(.03,(ts-last)/1000||.016);last=ts;update(dt);draw();raf=requestAnimationFrame(loop)}
+
+cv.addEventListener('pointerdown',e=>{e.preventDefault();if(!state||state.paused||state.launched)return;const p=pointerPos(e);for(const s of state.surfaces){if(insideRect(p.x,p.y,s)){selectSurface(s.id);say(`Surface ${s.id} selected`);break}}});
+$$('[data-who]').forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();setWho(b.dataset.who)}));
+$$('[data-dir]').forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();setDir(b.dataset.dir)}));
+$('#start').onclick=start;$('#home').onclick=showMenu;$('#reset').onclick=reset;launchBtn.onclick=launch;applyBtn.onclick=applyPending;
 })();
