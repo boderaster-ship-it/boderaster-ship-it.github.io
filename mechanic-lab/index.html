@@ -5,31 +5,73 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<title>3x10 Mechanic Lab</title>
-<link rel="stylesheet" href="style.css">
+<meta name="theme-color" content="#070b12" />
+<title>IMPACT LAB — Reaction × Normal</title>
+<link rel="stylesheet" href="style.css" />
 </head>
 <body>
 <div id="app">
-<header><div class="brand">MECHANIC LAB // 3×10</div><div class="badge">iPhone Touch Prototype</div></header>
-<section id="menu" class="panel">
-<h1>Which mechanic<br>deserves a game?</h1>
-<p class="lead">Drei Kernmechaniken. Je zehn kurze Challenges. Nicht schönreden – nur prüfen, ob das Grundprinzip Spaß macht.</p>
-<div class="modegrid">
-<button class="mode" data-mode="reaction"><strong>💥 REACTION</strong><span>Bestimme, <em>wer</em> bei einer Kollision den Impuls bekommt.</span><small>10 Challenges →</small></button>
-<button class="mode" data-mode="promise"><strong>🔮 PROMISE</strong><span>Setze einen zukünftigen Ort. Die Physik versucht, ihn zu erfüllen.</span><small>10 Challenges →</small></button>
-<button class="mode" data-mode="normal"><strong>➡️ NORMAL</strong><span>Drehe die Reaktionsrichtung einer Oberfläche und ändere den Bounce.</span><small>10 Challenges →</small></button>
+  <header>
+    <div class="brand">IMPACT LAB</div>
+    <div class="badge">REACTION × NORMAL</div>
+  </header>
+
+  <section id="menu" class="panel hero">
+    <div class="kicker">CORE MECHANIC TEST // iPHONE</div>
+    <h1>Choose <em>who</em> reacts.<br>Choose <em>where</em> it goes.</h1>
+    <p class="lead">Jede Kollision hat zwei veränderbare Regeln: <b>Empfänger</b> des Stoßes und <b>Richtung</b> des Stoßes. 10 kurze Challenges testen, ob daraus ein echtes Spiel werden kann.</p>
+    <div class="formula"><span>IMPACT</span><b>→</b><span>WHO?</span><b>+</b><span>WHERE?</span></div>
+    <button id="start" class="startbtn">START TEST <span>→</span></button>
+    <p class="hint">Touch only · Safari · kein Keyboard erforderlich</p>
+  </section>
+
+  <section id="game">
+    <div class="topbar">
+      <button id="home" class="iconbtn" aria-label="Hauptmenü">⌂</button>
+      <div class="leveltitle"><strong id="levelName"></strong><span id="levelSub"></span></div>
+      <button id="reset" class="btn">RESET</button>
+    </div>
+
+    <div class="panel stage">
+      <div class="canvaswrap">
+        <canvas id="c" width="960" height="600"></canvas>
+        <div id="overlay">
+          <span class="chip" id="objective"></span>
+          <span class="chip" id="status"></span>
+        </div>
+        <div id="impactFlash"><strong>IMPACT</strong><span>Choose the reaction.</span></div>
+      </div>
+
+      <div class="instructions" id="instructions"></div>
+
+      <div class="editor">
+        <div class="editorblock">
+          <div class="editorlabel">1 · WHO REACTS?</div>
+          <div class="whoRow">
+            <button class="ctrl who active" data-who="ball">⚪ BALL</button>
+            <button class="ctrl who" data-who="surface">▰ SURFACE</button>
+          </div>
+        </div>
+
+        <div class="editorblock">
+          <div class="editorlabel">2 · WHERE?</div>
+          <div class="dirpad" id="dirpad">
+            <button class="dir" data-dir="ul">↖</button><button class="dir" data-dir="u">↑</button><button class="dir" data-dir="ur">↗</button>
+            <button class="dir" data-dir="l">←</button><div class="dircore">VECTOR</div><button class="dir" data-dir="r">→</button>
+            <button class="dir" data-dir="dl">↙</button><button class="dir" data-dir="d">↓</button><button class="dir" data-dir="dr">↘</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="actionRow">
+        <button id="launch" class="action primary">▶ LAUNCH</button>
+        <button id="apply" class="action good">APPLY IMPACT</button>
+      </div>
+      <div class="progress" id="progress"></div>
+    </div>
+  </section>
 </div>
-</section>
-<section id="game">
-<div class="topbar"><button id="home" class="iconbtn">⌂</button><div class="leveltitle"><strong id="modeName"></strong><span id="levelName"></span></div><button id="reset" class="btn">Reset</button></div>
-<div class="panel stage">
-<div class="canvaswrap"><canvas id="c" width="960" height="600"></canvas><div id="overlay"><span class="chip" id="objective"></span><span class="chip" id="status"></span></div></div>
-<div class="instructions" id="instructions"></div>
-<div class="controls" id="controls"></div>
-<div class="progress" id="progress"></div>
-</div>
-</section>
-</div><div class="toast" id="toast"></div>
+<div class="toast" id="toast"></div>
 <script src="game.js"></script>
 </body>
 </html>
