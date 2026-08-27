@@ -10,7 +10,7 @@
 <title>IMPACT — Rewrite Collision</title>
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-<link rel="stylesheet" href="styles.css?v=3" />
+<link rel="stylesheet" href="styles.css?v=4" />
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"}}</script>
 </head>
 <body>
@@ -45,9 +45,9 @@
     <div class="hudTop">
       <button id="pauseBtn" class="iconBtn">Ⅱ</button>
       <div class="levelId"><span id="chapterText">SIGNAL HALLS</span><b id="levelText">01 · FIRST LAW</b></div>
-      <div class="hudTools"><button id="fitBtn" class="iconBtn small" title="Fit level">⌗</button><button id="resetBtn" class="iconBtn small">↻</button></div>
+      <div class="hudTools"><button id="fitBtn" class="iconBtn small fitBtn" aria-label="Fit full chamber">FIT</button><button id="resetBtn" class="iconBtn small">↻</button></div>
     </div>
-    <div id="objective" class="objective"><span>OBJECTIVE</span><b>Turn the core once.</b></div>
+    <div id="objective" class="objective"><div><span>OBJECTIVE</span><b>Turn the core once.</b></div><i>?</i></div>
     <div id="cameraHelp" class="cameraHelp">Drag to orbit · Pinch to zoom · Tap a machine</div>
 
     <div id="dock" class="dock">
@@ -76,10 +76,12 @@
   <section id="pause" class="overlay"><div class="modal"><span class="eyebrow">SYSTEM PAUSED</span><h2 id="pauseName">FIRST LAW</h2><button id="resumeBtn" class="wideBtn primary">RESUME</button><button id="retryBtn" class="wideBtn">RESTART LEVEL</button><button id="pauseLevels" class="wideBtn">LEVEL SELECT</button><button id="pauseMenu" class="wideBtn">MAIN MENU</button></div></section>
   <section id="result" class="overlay"><div class="modal resultModal"><span class="eyebrow">CHAMBER COMPLETE</span><h2 id="resultName">FIRST LAW</h2><div id="stars" class="stars">★★★</div><p id="resultCopy">Minimal intervention.</p><div class="statPair"><div><span>EDITS</span><b id="resultEdits">1</b></div><div><span>PAR</span><b id="resultPar">1</b></div></div><button id="nextBtn" class="wideBtn primary">NEXT CHAMBER <i>→</i></button><button id="resultLevels" class="wideBtn">LEVEL SELECT</button></div></section>
   <section id="hint" class="overlay"><div class="modal hintModal"><span class="eyebrow">SYSTEM ANALYSIS</span><h2>Hint</h2><p id="hintText"></p><button id="closeHint" class="wideBtn primary">UNDERSTOOD</button></div></section>
+
+  <section id="newConfirm" class="overlay"><div class="modal confirmModal"><span class="eyebrow">NEW CAMPAIGN</span><h2>Reset progress?</h2><p>This clears solved chambers and stars. Settings stay unchanged.</p><button id="confirmNew" class="wideBtn danger">RESET & START</button><button id="cancelNew" class="wideBtn">CANCEL</button></div></section>
   <section id="settings" class="overlay"><div class="modal settingsModal"><div class="modalHead"><div><span class="eyebrow">SYSTEM</span><h2>Settings</h2></div><button id="closeSettings" class="iconBtn">×</button></div><label><div><b>Soundscape</b><span>Ambient bed, machinery and impacts</span></div><input id="soundToggle" type="checkbox" checked></label><label><div><b>Haptics</b><span>Touch feedback where supported</span></div><input id="hapticToggle" type="checkbox" checked></label><label><div><b>Render quality</b><span>Adjust resolution and shadow cost</span></div><select id="quality"><option value="high">High</option><option value="balanced" selected>Balanced</option><option value="battery">Battery Saver</option></select></label><button id="settingsDone" class="wideBtn primary">DONE</button></div></section>
 </main>
 <div id="toast"></div>
 
-<script type="module" src="game.js?v=3"></script>
+<script type="module" src="game.js?v=4"></script>
 </body>
 </html>
