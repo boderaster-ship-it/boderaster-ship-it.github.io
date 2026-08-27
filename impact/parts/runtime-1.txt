@@ -40,12 +40,14 @@ class AudioEngine{
  setEnabled(on){save.settings.sound=on;persist();if(on){this.unlock();this.setChapter(this.chapter)}if(this.master)this.master.gain.setTargetAtTime(on ? .48 : 0,this.ctx.currentTime,.05)}
  tone(freq,dur=.12,type='sine',gain=.08,endFreq=null,when=0){if(!save.settings.sound)return;this.unlock();if(!this.ctx)return;const t=this.ctx.currentTime+when,o=this.ctx.createOscillator(),g=this.ctx.createGain();o.type=type;o.frequency.setValueAtTime(freq,t);if(endFreq)o.frequency.exponentialRampToValueAtTime(Math.max(20,endFreq),t+dur);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(gain,t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(this.fx);o.start(t);o.stop(t+dur+.03)}
  noiseBurst(dur=.12,gain=.08,cutoff=1700,when=0){if(!save.settings.sound)return;this.unlock();if(!this.ctx)return;const t=this.ctx.currentTime+when,src=this.ctx.createBufferSource(),f=this.ctx.createBiquadFilter(),g=this.ctx.createGain();src.buffer=this.noise;f.type='lowpass';f.frequency.value=cutoff;g.gain.setValueAtTime(gain,t);g.gain.exponentialRampToValueAtTime(.0001,t+dur);src.connect(f);f.connect(g);g.connect(this.fx);src.start(t);src.stop(t+dur+.02)}
- click(){this.tone(420,.035,'sine',.025,620);this.tone(880,.025,'sine',.012,720,.015)}
- select(){this.tone(520,.08,'sine',.045,760);this.tone(1040,.1,'sine',.018,820,.025)}
- launch(){this.noiseBurst(.18,.055,1200);this.tone(70,.28,'sine',.12,165);this.tone(330,.2,'triangle',.035,520,.04)}
- impactCore(){this.noiseBurst(.16,.12,2400);this.tone(118,.24,'sine',.15,54);this.tone(680,.21,'triangle',.055,290,.02)}
- impactSurface(){this.noiseBurst(.25,.16,1250);this.tone(76,.36,'sine',.19,38);this.tone(255,.28,'square',.035,145,.025)}
- gate(){this.noiseBurst(.38,.09,820);this.tone(92,.42,'sawtooth',.055,48);this.tone(310,.2,'triangle',.025,190,.16)}
+ metalHit(base=260,gain=.035,when=0){if(!save.settings.sound)return;this.unlock();if(!this.ctx)return;const t=this.ctx.currentTime+when;[1,1.41,2.17,3.73].forEach((mul,i)=>{const o=this.ctx.createOscillator(),g=this.ctx.createGain(),f=this.ctx.createBiquadFilter();o.type=i%2?'triangle':'sine';o.frequency.value=base*mul;f.type='bandpass';f.frequency.value=base*mul;f.Q.value=5+i*2;g.gain.setValueAtTime(gain/(1+i*.65),t);g.gain.exponentialRampToValueAtTime(.0001,t+.16+i*.07);o.connect(f);f.connect(g);g.connect(this.fx);o.start(t);o.stop(t+.32+i*.08)})}
+ whoosh(dur=.30,gain=.04,when=0){if(!save.settings.sound)return;this.unlock();if(!this.ctx)return;const t=this.ctx.currentTime+when,src=this.ctx.createBufferSource(),bp=this.ctx.createBiquadFilter(),g=this.ctx.createGain();src.buffer=this.noise;bp.type='bandpass';bp.frequency.setValueAtTime(260,t);bp.frequency.exponentialRampToValueAtTime(2100,t+dur);bp.Q.value=.8;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(gain,t+dur*.35);g.gain.exponentialRampToValueAtTime(.0001,t+dur);src.connect(bp);bp.connect(g);g.connect(this.fx);src.start(t);src.stop(t+dur+.02)}
+ click(){this.noiseBurst(.025,.012,2800);this.tone(420,.035,'sine',.018,620);this.metalHit(980,.005,.006)}
+ select(){this.tone(520,.08,'sine',.035,760);this.tone(1040,.1,'sine',.014,820,.025);this.metalHit(760,.008,.01)}
+ launch(){this.whoosh(.34,.055);this.noiseBurst(.18,.04,1200);this.tone(64,.32,'sine',.13,168);this.tone(330,.2,'triangle',.028,520,.04);this.metalHit(310,.012,.05)}
+ impactCore(){this.noiseBurst(.11,.095,3100);this.tone(112,.27,'sine',.15,48);this.metalHit(520,.032,.006);this.tone(1180,.10,'sine',.018,620,.025)}
+ impactSurface(){this.noiseBurst(.27,.14,1450);this.tone(68,.42,'sine',.20,34);this.metalHit(190,.07,.012);this.metalHit(430,.025,.04)}
+ gate(){this.whoosh(.46,.045);this.noiseBurst(.38,.065,820);this.tone(88,.48,'sawtooth',.05,42);this.metalHit(240,.025,.20)}
  relay(){this.tone(420,.12,'sine',.05,760);this.tone(680,.18,'sine',.04,1080,.06)}
  fail(){this.noiseBurst(.24,.1,900);this.tone(130,.4,'sawtooth',.08,42)}
  win(){[392,523.25,659.25,783.99].forEach((f,i)=>this.tone(f,.5,'sine',.065,f*1.01,i*.10));this.noiseBurst(.3,.035,3200,.18)}
@@ -60,19 +62,3 @@ class ImpactGame{
   this.camera=new THREE.PerspectiveCamera(47,1,.1,150);
   this.gameRoot=new THREE.Group();this.envRoot=new THREE.Group();this.fxRoot=new THREE.Group();this.scene.add(this.envRoot,this.gameRoot,this.fxRoot);
   this.clock=new THREE.Clock();this.raycaster=new THREE.Raycaster();this.pointerN=new THREE.Vector2();
-  this.surfaceRT=[];this.gateRT=[];this.beaconRT=[];this.socketRT=[];this.hazardRT=[];this.pickMeshes=[];this.anim=[];this.particles=[];this.activeDeps=new Set();this.selected=null;this.core=null;this.goal=null;this.launcher=null;this.running=false;this.complete=false;this.failTimer=0;this.current=null;this.edited=new Set();this.rules={};this.screen='menu';this.lastTrail=0;
-  this.cam={target:new THREE.Vector3(0,1,0),desired:new THREE.Vector3(0,1,0),yaw:-.75,yawD:-.75,pitch:.36,pitchD:.36,dist:18,distD:18,min:5,max:42,fit:18};
-  this.pointers=new Map();this.pinchStart=null;this.selectedFx=null;this.previewFx=null;this.menuObjects=[];
-  this.makeLights();this.makeSky();this.makeDust();this.bindUI();this.bindTouch();this.applySettings();this.updateMenu();this.showMenuScene();this.resize();window.addEventListener('resize',()=>this.resize());
-  this.renderer.setAnimationLoop(()=>this.frame());
-  setTimeout(()=>$('#boot').classList.add('done'),650);
-  if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
-  const q=new URLSearchParams(location.search);if(q.get('level'))setTimeout(()=>this.startLevel(Number(q.get('level'))),150);
- }
- makeLights(){
-  this.hemi=new THREE.HemisphereLight(0x8edfff,0x08090d,1.15);this.scene.add(this.hemi);
-  this.key=new THREE.DirectionalLight(0xd8f4ff,2.4);this.key.position.set(-6,12,7);this.key.castShadow=true;this.key.shadow.mapSize.set(1024,1024);this.key.shadow.camera.left=-15;this.key.shadow.camera.right=15;this.key.shadow.camera.top=15;this.key.shadow.camera.bottom=-15;this.key.shadow.camera.near=1;this.key.shadow.camera.far=40;this.scene.add(this.key);
-  this.rim=new THREE.PointLight(0x56e8ff,28,26,2);this.rim.position.set(4,4,-5);this.scene.add(this.rim);
-  this.fill=new THREE.PointLight(0x8b7cff,18,22,2);this.fill.position.set(-5,2,6);this.scene.add(this.fill);
- }
- makeSky(){
