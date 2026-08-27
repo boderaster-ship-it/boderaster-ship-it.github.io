@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<title>3x10 Mechanic Lab</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+<header><div class="brand">MECHANIC LAB // 3×10</div><div class="badge">iPhone Touch Prototype</div></header>
+<section id="menu" class="panel">
+<h1>Which mechanic<br>deserves a game?</h1>
+<p class="lead">Drei Kernmechaniken. Je zehn kurze Challenges. Nicht schönreden – nur prüfen, ob das Grundprinzip Spaß macht.</p>
+<div class="modegrid">
+<button class="mode" data-mode="reaction"><strong>💥 REACTION</strong><span>Bestimme, <em>wer</em> bei einer Kollision den Impuls bekommt.</span><small>10 Challenges →</small></button>
+<button class="mode" data-mode="promise"><strong>🔮 PROMISE</strong><span>Setze einen zukünftigen Ort. Die Physik versucht, ihn zu erfüllen.</span><small>10 Challenges →</small></button>
+<button class="mode" data-mode="normal"><strong>➡️ NORMAL</strong><span>Drehe die Reaktionsrichtung einer Oberfläche und ändere den Bounce.</span><small>10 Challenges →</small></button>
+</div>
+</section>
+<section id="game">
+<div class="topbar"><button id="home" class="iconbtn">⌂</button><div class="leveltitle"><strong id="modeName"></strong><span id="levelName"></span></div><button id="reset" class="btn">Reset</button></div>
+<div class="panel stage">
+<div class="canvaswrap"><canvas id="c" width="960" height="600"></canvas><div id="overlay"><span class="chip" id="objective"></span><span class="chip" id="status"></span></div></div>
+<div class="instructions" id="instructions"></div>
+<div class="controls" id="controls"></div>
+<div class="progress" id="progress"></div>
+</div>
+</section>
+</div><div class="toast" id="toast"></div>
+<script src="game.js"></script>
+</body>
+</html>
