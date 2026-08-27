@@ -1,0 +1,13 @@
+{
+  "name":"IMPACT — Physics Puzzle",
+  "short_name":"IMPACT",
+  "start_url":"./",
+  "display":"standalone",
+  "orientation":"any",
+  "background_color":"#060910",
+  "theme_color":"#060910",
+  "description":"A 3D physics puzzle about rewriting collision reactions.",
+  "icons":[
+    {"src":"favicon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}
