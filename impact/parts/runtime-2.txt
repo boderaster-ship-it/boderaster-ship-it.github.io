@@ -1,3 +1,19 @@
+  this.surfaceRT=[];this.gateRT=[];this.beaconRT=[];this.socketRT=[];this.hazardRT=[];this.pickMeshes=[];this.anim=[];this.particles=[];this.activeDeps=new Set();this.selected=null;this.core=null;this.goal=null;this.launcher=null;this.running=false;this.complete=false;this.failTimer=0;this.current=null;this.edited=new Set();this.rules={};this.screen='menu';this.lastTrail=0;
+  this.cam={target:new THREE.Vector3(0,1,0),desired:new THREE.Vector3(0,1,0),yaw:-.75,yawD:-.75,pitch:.36,pitchD:.36,dist:18,distD:18,min:5,max:42,fit:18};
+  this.pointers=new Map();this.pinchStart=null;this.selectedFx=null;this.previewFx=null;this.menuObjects=[];
+  this.makeLights();this.makeSky();this.makeDust();this.bindUI();this.bindTouch();this.applySettings();this.updateMenu();this.showMenuScene();this.resize();window.addEventListener('resize',()=>this.resize());
+  this.renderer.setAnimationLoop(()=>this.frame());
+  setTimeout(()=>$('#boot').classList.add('done'),650);
+  if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  const q=new URLSearchParams(location.search);if(q.get('level'))setTimeout(()=>this.startLevel(Number(q.get('level'))),150);
+ }
+ makeLights(){
+  this.hemi=new THREE.HemisphereLight(0x8edfff,0x08090d,1.15);this.scene.add(this.hemi);
+  this.key=new THREE.DirectionalLight(0xd8f4ff,2.4);this.key.position.set(-6,12,7);this.key.castShadow=true;this.key.shadow.mapSize.set(1024,1024);this.key.shadow.camera.left=-15;this.key.shadow.camera.right=15;this.key.shadow.camera.top=15;this.key.shadow.camera.bottom=-15;this.key.shadow.camera.near=1;this.key.shadow.camera.far=40;this.scene.add(this.key);
+  this.rim=new THREE.PointLight(0x56e8ff,28,26,2);this.rim.position.set(4,4,-5);this.scene.add(this.rim);
+  this.fill=new THREE.PointLight(0x8b7cff,18,22,2);this.fill.position.set(-5,2,6);this.scene.add(this.fill);
+ }
+ makeSky(){
   const g=new THREE.SphereGeometry(70,24,14),m=new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,uniforms:{top:{value:new THREE.Color(0x0c2030)},bottom:{value:new THREE.Color(0x020509)},offset:{value:4},exponent:{value:.8}},vertexShader:`varying vec3 vWorld;void main(){vec4 w=modelMatrix*vec4(position,1.);vWorld=w.xyz;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,fragmentShader:`uniform vec3 top;uniform vec3 bottom;uniform float offset;uniform float exponent;varying vec3 vWorld;void main(){float h=normalize(vWorld+vec3(0.,offset,0.)).y;float f=pow(max(h,0.),exponent);gl_FragColor=vec4(mix(bottom,top,f),1.);}`});
   this.skyMat=m;this.sky=new THREE.Mesh(g,m);this.scene.add(this.sky);
  }
@@ -33,12 +49,3 @@
  open(id){$(id).classList.add('open')}close(id){$(id).classList.remove('open')}
  updateMenu(){const cur=levelById(save.current||1);$('#continueMeta').textContent=`Level ${String(cur.id).padStart(2,'0')} · ${cur.name}`;$('#progressMeta').textContent=`${Object.keys(save.stars).length} / 12 solved`;const total=Object.values(save.stars).reduce((a,b)=>a+b,0);$('#totalStars').textContent=`${total} / 36 ★`}
  showMenu(){this.screen='menu';this.running=false;this.current=null;this.showScreen('#menu');$('#worldTag').classList.remove('show');this.updateMenu();this.showMenuScene()}
- showLevels(){this.screen='levels';this.running=false;this.current=null;this.showScreen('#levelScreen');$('#worldTag').classList.remove('show');this.buildLevelSelect();this.showMenuScene(true)}
- buildLevelSelect(){const root=$('#chapterList');root.innerHTML='';for(const ch of CHAPTERS){const wrap=document.createElement('section');wrap.className='chapter';wrap.innerHTML=`<div class="chapterHead"><div><span class="eyebrow">CHAPTER ${ch.id}</span><h3>${ch.name}</h3></div><p>${ch.subtitle}</p></div><div class="levelGrid"></div>`;const grid=wrap.querySelector('.levelGrid');LEVELS.filter(l=>l.chapter===ch.id).forEach(l=>{const locked=l.id>save.unlocked,stars=save.stars[l.id]||0,b=document.createElement('button');b.className='levelCard'+(locked?' locked':'');b.style.setProperty('--accent',ch.accent);b.innerHTML=`<span class="num">${String(l.id).padStart(2,'0')}</span><b>${l.name}</b><span class="cardStars">${'★'.repeat(stars)}${'☆'.repeat(3-stars)}</span>`;if(!locked)b.onclick=()=>this.startLevel(l.id);grid.appendChild(b)});root.appendChild(wrap)}this.updateMenu()}
- showMenuScene(quiet=false){this.clearGameplay();this.clearGroup(this.envRoot);const ch=CHAPTERS[0];this.applyChapter(ch);this.buildArchitecturalBase('menu',new THREE.Vector3(-1,0,0),new THREE.Vector3(11,7,9));
-  const reactor=new THREE.Group();for(let i=0;i<4;i++){const t=new THREE.Mesh(new THREE.TorusGeometry(2+i*.34,.055,10,80),new THREE.MeshStandardMaterial({color:i%2?0x8b7cff:0x56e8ff,emissive:i%2?0x8b7cff:0x56e8ff,emissiveIntensity:2.6,metalness:.2,roughness:.18}));t.rotation.set(i*.35,Math.PI/2+i*.14,i*.18);reactor.add(t);this.anim.push({obj:t,type:'spin',speed:(i%2?-.12:.1)*(i+1)})}reactor.position.set(5,1.2,0);this.envRoot.add(reactor);
-  const orb=this.createCore(0x56e8ff,.85);orb.position.set(5,1.2,0);this.envRoot.add(orb);this.anim.push({obj:orb,type:'float',baseY:1.2,amp:.18,speed:1.1});
-  for(let i=0;i<4;i++){const g=this.createDecorativePanel(String.fromCharCode(65+i),0x56e8ff);g.position.set(2.6+i*1.6,-1.1+(i%2)*4,-2.7+(i%3)*2.7);g.rotation.y=i*.4;this.envRoot.add(g);this.anim.push({obj:g,type:'float',baseY:g.position.y,amp:.08,speed:.7+i*.13})}
-  this.cam.desired.set(1,1,0);this.cam.target.copy(this.cam.desired);this.cam.yawD=this.cam.yaw=-.15;this.cam.pitchD=this.cam.pitch=.25;this.cam.distD=this.cam.dist=15;if(quiet)this.cam.yawD=-.5;
- }
- clearGameplay(){this.surfaceRT=[];this.gateRT=[];this.beaconRT=[];this.socketRT=[];this.hazardRT=[];this.pickMeshes=[];this.activeDeps.clear();this.selected=null;this.edited.clear();this.rules={};this.anim=[];this.particles=[];this.core=null;this.goal=null;this.launcher=null;this.complete=false;this.failTimer=0;this.clearGroup(this.gameRoot);this.clearGroup(this.fxRoot);if(this.selectedFx){disposeObject(this.selectedFx);this.scene.remove(this.selectedFx);this.selectedFx=null}if(this.previewFx){disposeObject(this.previewFx);this.scene.remove(this.previewFx);this.previewFx=null}}
