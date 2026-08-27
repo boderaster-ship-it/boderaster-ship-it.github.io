@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+  <meta name="theme-color" content="#060910" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="IMPACT" />
+  <title>IMPACT — Redirect the Laws of Collision</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="styles.css?v=1" />
+  <script type="importmap">
+  {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
+  </script>
+</head>
+<body>
+  <div id="boot" class="boot"><div class="bootMark">IMPACT</div><div class="bootLine"><span></span></div></div>
+  <canvas id="scene"></canvas>
+  <div id="vignette"></div>
+  <div id="grain"></div>
+
+  <main id="ui">
+    <section id="mainMenu" class="screen active">
+      <div class="menuTop">
+        <div class="wordmark"><span class="markDot"></span>IMPACT</div>
+        <button class="glass icon" id="menuSettings" aria-label="Settings">⚙︎</button>
+      </div>
+      <div class="heroCopy">
+        <div class="eyebrow">A PHYSICS PUZZLE</div>
+        <h1>Choose <em>who</em> reacts.<br>Choose <em>where</em> it goes.</h1>
+        <p>You do not move objects. You rewrite the reaction to impact.</p>
+        <div class="heroFormula"><span>IMPACT</span><b>→</b><span>WHO?</span><b>+</b><span>WHERE?</span></div>
+      </div>
+      <div class="menuActions">
+        <button id="continueBtn" class="cta primary"><span>CONTINUE</span><small id="continueMeta">Level 01</small></button>
+        <button id="newGameBtn" class="cta"><span>NEW GAME</span><small>Start from First Contact</small></button>
+        <button id="levelSelectBtn" class="cta"><span>LEVEL SELECT</span><small id="progressMeta">0 / 50 solved</small></button>
+      </div>
+      <div class="menuFooter"><span>Designed for touch</span><span>Headphones recommended</span></div>
+    </section>
+
+    <section id="worldSelect" class="screen">
+      <div class="screenHeader"><button class="glass icon back" data-back="mainMenu">←</button><div><span class="eyebrow">CAMPAIGN</span><h2>Choose a world</h2></div><div class="spacer"></div></div>
+      <div id="worldCards" class="worldCards"></div>
+    </section>
+
+    <section id="levelSelect" class="screen">
+      <div class="screenHeader"><button class="glass icon" id="levelBack">←</button><div><span id="levelWorldEyebrow" class="eyebrow"></span><h2 id="levelWorldTitle"></h2></div><div class="worldStars" id="worldStars"></div></div>
+      <div id="levelGrid" class="levelGrid"></div>
+    </section>
+
+    <section id="gameHud" class="screen gameScreen">
+      <div class="hudTop">
+        <button id="pauseBtn" class="glass icon">Ⅱ</button>
+        <div class="levelIdentity"><span id="hudWorld">WORLD 1</span><strong id="hudLevel">01 · THE TURN</strong></div>
+        <button id="resetBtn" class="glass icon">↻</button>
+      </div>
+      <div id="objectiveCard" class="objectiveCard"><span>OBJECTIVE</span><b>Route the core into the exit.</b></div>
+      <div id="selectionTag" class="selectionTag"><span>SELECT A SURFACE</span></div>
+
+      <div id="impactConsole" class="impactConsole">
+        <div class="consoleHeader"><div><span>IMPACT RULE</span><strong id="surfaceName">NO SURFACE</strong></div><button id="hintBtn" class="miniBtn">HINT</button></div>
+        <div class="consoleBody">
+          <div class="receiverBlock">
+            <div class="consoleLabel">WHO REACTS?</div>
+            <div class="segmented"><button data-receiver="orb" class="receiver active">CORE</button><button data-receiver="surface" class="receiver">SURFACE</button></div>
+          </div>
+          <div class="vectorBlock">
+            <div class="consoleLabel">WHERE?</div>
+            <div class="vectorPad">
+              <button data-dir="yp" class="vector v-up">↑<small>UP</small></button>
+              <button data-dir="xm" class="vector v-left">←<small>LEFT</small></button>
+              <button data-dir="zp" class="vector v-front">●<small>FRONT</small></button>
+              <button data-dir="zm" class="vector v-back">○<small>BACK</small></button>
+              <button data-dir="xp" class="vector v-right active">→<small>RIGHT</small></button>
+              <button data-dir="ym" class="vector v-down">↓<small>DOWN</small></button>
+            </div>
+          </div>
+        </div>
+        <div class="consoleFooter">
+          <div class="editCounter"><span>EDITS</span><strong id="editCount">0</strong><small id="parCount">PAR 1</small></div>
+          <button id="launchBtn" class="launch"><span>LAUNCH CORE</span><b>▶</b></button>
+        </div>
+      </div>
+      <div class="cameraHint">Drag scene to orbit · Pinch to zoom · Tap a glowing surface</div>
+    </section>
+
+    <section id="pauseOverlay" class="overlayScreen">
+      <div class="modal">
+        <span class="eyebrow">PAUSED</span><h2 id="pauseTitle">THE TURN</h2>
+        <button id="resumeBtn" class="cta primary"><span>RESUME</span></button>
+        <button id="restartBtn" class="cta"><span>RESTART LEVEL</span></button>
+        <button id="pauseLevelsBtn" class="cta"><span>LEVEL SELECT</span></button>
+        <button id="pauseMenuBtn" class="cta"><span>MAIN MENU</span></button>
+      </div>
+    </section>
+
+    <section id="resultOverlay" class="overlayScreen">
+      <div class="modal resultModal">
+        <span class="eyebrow">LEVEL COMPLETE</span><h2 id="resultTitle">THE TURN</h2>
+        <div id="resultStars" class="resultStars">★★★</div>
+        <p id="resultCopy">Perfect solution.</p>
+        <div class="resultStats"><div><span>EDITS</span><b id="resultEdits">1</b></div><div><span>PAR</span><b id="resultPar">1</b></div></div>
+        <button id="nextBtn" class="cta primary"><span>NEXT LEVEL</span><small>Continue campaign</small></button>
+        <button id="resultLevelsBtn" class="cta"><span>LEVEL SELECT</span></button>
+      </div>
+    </section>
+
+    <section id="settingsOverlay" class="overlayScreen">
+      <div class="modal settingsModal">
+        <div class="modalHead"><div><span class="eyebrow">SYSTEM</span><h2>Settings</h2></div><button id="closeSettings" class="glass icon">×</button></div>
+        <label class="setting"><div><b>Sound</b><span>Impact, interface and ambience</span></div><input id="soundToggle" type="checkbox" checked></label>
+        <label class="setting"><div><b>Haptics</b><span>Supported iPhone feedback</span></div><input id="hapticToggle" type="checkbox" checked></label>
+        <label class="setting"><div><b>Quality</b><span>Visual effects and shadows</span></div><select id="qualitySelect"><option value="high">High</option><option value="balanced">Balanced</option><option value="battery">Battery Saver</option></select></label>
+        <button id="resetProgress" class="dangerBtn">RESET SAVE DATA</button>
+      </div>
+    </section>
+
+    <div id="toast" class="toast"></div>
+    <div id="orientation" class="orientation"><div class="phoneIcon">▯</div><b>Landscape feels best</b><span>You can still play in portrait.</span></div>
+  </main>
+
+  <script type="module" src="game.js?v=1"></script>
+</body>
+</html>
