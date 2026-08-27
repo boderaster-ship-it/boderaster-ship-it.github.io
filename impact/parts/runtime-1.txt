@@ -18,7 +18,7 @@ function support(size,dir){const d=DIRV[dir];return Math.abs(d.x)*size[0]/2+Math
 function disposeObject(obj){obj.traverse(o=>{o.geometry?.dispose?.();if(o.material){const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(m=>{if(m.map)m.map.dispose?.();m.dispose?.()})}})}
 
 class AudioEngine{
- constructor(){this.ctx=null;this.master=null;this.fx=null;this.amb=null;this.started=false;this.noise=null;this.reverb=null}
+ constructor(){this.ctx=null;this.master=null;this.fx=null;this.amb=null;this.started=false;this.noise=null;this.reverb=null;this.chapter=1;this.nextAmbient=0;this.ambient=null}
  unlock(){if(!save.settings.sound)return;if(this.ctx){this.ctx.resume?.();return}try{
   const C=window.AudioContext||window.webkitAudioContext;this.ctx=new C();
   this.master=this.ctx.createGain();this.master.gain.value=.48;this.master.connect(this.ctx.destination);
@@ -35,7 +35,9 @@ class AudioEngine{
   const src=this.ctx.createBufferSource(),bp=this.ctx.createBiquadFilter(),ng=this.ctx.createGain();src.buffer=this.noise;src.loop=true;bp.type='bandpass';bp.frequency.value=540;bp.Q.value=.5;ng.gain.value=.045;src.connect(bp);bp.connect(ng);ng.connect(this.amb);src.start(t);
   this.ambient={low,mid,g,filter,src,bp,ng};
  }
- setEnabled(on){save.settings.sound=on;persist();if(on)this.unlock();if(this.master)this.master.gain.setTargetAtTime(on ? .48 : 0,this.ctx.currentTime,.05)}
+ setChapter(id){this.chapter=id||1;if(!this.ctx||!this.ambient)return;const now=this.ctx.currentTime;const cfg={1:[42,63.5,430,.13],2:[36,54,290,.15],3:[47,70.5,610,.12]}[this.chapter]||[42,63.5,430,.13];this.ambient.low.frequency.setTargetAtTime(cfg[0],now,.8);this.ambient.mid.frequency.setTargetAtTime(cfg[1],now,.8);this.ambient.filter.frequency.setTargetAtTime(cfg[2],now,.7);this.amb.gain.setTargetAtTime(cfg[3],now,.6)}
+ ambientTick(t){if(!save.settings.sound||!this.ctx||t<this.nextAmbient)return;this.nextAmbient=t+2.7+Math.random()*4.2;const id=this.chapter;if(id===1){this.tone(520+Math.random()*140,.28,'sine',.012,760+Math.random()*180);this.tone(1040,.08,'sine',.006,920,.07)}else if(id===2){this.noiseBurst(.18,.018,520);this.tone(80+Math.random()*30,.28,'triangle',.022,48)}else{this.tone(240+Math.random()*160,.5,'sine',.012,110);this.tone(760+Math.random()*360,.18,'sine',.007,520,.16)}}
+ setEnabled(on){save.settings.sound=on;persist();if(on){this.unlock();this.setChapter(this.chapter)}if(this.master)this.master.gain.setTargetAtTime(on ? .48 : 0,this.ctx.currentTime,.05)}
  tone(freq,dur=.12,type='sine',gain=.08,endFreq=null,when=0){if(!save.settings.sound)return;this.unlock();if(!this.ctx)return;const t=this.ctx.currentTime+when,o=this.ctx.createOscillator(),g=this.ctx.createGain();o.type=type;o.frequency.setValueAtTime(freq,t);if(endFreq)o.frequency.exponentialRampToValueAtTime(Math.max(20,endFreq),t+dur);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(gain,t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(this.fx);o.start(t);o.stop(t+dur+.03)}
  noiseBurst(dur=.12,gain=.08,cutoff=1700,when=0){if(!save.settings.sound)return;this.unlock();if(!this.ctx)return;const t=this.ctx.currentTime+when,src=this.ctx.createBufferSource(),f=this.ctx.createBiquadFilter(),g=this.ctx.createGain();src.buffer=this.noise;f.type='lowpass';f.frequency.value=cutoff;g.gain.setValueAtTime(gain,t);g.gain.exponentialRampToValueAtTime(.0001,t+dur);src.connect(f);f.connect(g);g.connect(this.fx);src.start(t);src.stop(t+dur+.02)}
  click(){this.tone(420,.035,'sine',.025,620);this.tone(880,.025,'sine',.012,720,.015)}
@@ -60,7 +62,7 @@ class ImpactGame{
   this.clock=new THREE.Clock();this.raycaster=new THREE.Raycaster();this.pointerN=new THREE.Vector2();
   this.surfaceRT=[];this.gateRT=[];this.beaconRT=[];this.socketRT=[];this.hazardRT=[];this.pickMeshes=[];this.anim=[];this.particles=[];this.activeDeps=new Set();this.selected=null;this.core=null;this.goal=null;this.launcher=null;this.running=false;this.complete=false;this.failTimer=0;this.current=null;this.edited=new Set();this.rules={};this.screen='menu';this.lastTrail=0;
   this.cam={target:new THREE.Vector3(0,1,0),desired:new THREE.Vector3(0,1,0),yaw:-.75,yawD:-.75,pitch:.36,pitchD:.36,dist:18,distD:18,min:5,max:42,fit:18};
-  this.pointers=new Map();this.lastPinch=null;this.selectedFx=null;this.previewFx=null;this.menuObjects=[];
+  this.pointers=new Map();this.pinchStart=null;this.selectedFx=null;this.previewFx=null;this.menuObjects=[];
   this.makeLights();this.makeSky();this.makeDust();this.bindUI();this.bindTouch();this.applySettings();this.updateMenu();this.showMenuScene();this.resize();window.addEventListener('resize',()=>this.resize());
   this.renderer.setAnimationLoop(()=>this.frame());
   setTimeout(()=>$('#boot').classList.add('done'),650);
@@ -74,14 +76,3 @@ class ImpactGame{
   this.fill=new THREE.PointLight(0x8b7cff,18,22,2);this.fill.position.set(-5,2,6);this.scene.add(this.fill);
  }
  makeSky(){
-  const g=new THREE.SphereGeometry(70,24,14),m=new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,uniforms:{top:{value:new THREE.Color(0x0c2030)},bottom:{value:new THREE.Color(0x020509)},offset:{value:4},exponent:{value:.8}},vertexShader:`varying vec3 vWorld;void main(){vec4 w=modelMatrix*vec4(position,1.);vWorld=w.xyz;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,fragmentShader:`uniform vec3 top;uniform vec3 bottom;uniform float offset;uniform float exponent;varying vec3 vWorld;void main(){float h=normalize(vWorld+vec3(0.,offset,0.)).y;float f=pow(max(h,0.),exponent);gl_FragColor=vec4(mix(bottom,top,f),1.);}`});
-  this.skyMat=m;this.sky=new THREE.Mesh(g,m);this.scene.add(this.sky);
- }
- makeDust(){const n=380,pos=new Float32Array(n*3);for(let i=0;i<n;i++){pos[i*3]=(Math.random()-.5)*34;pos[i*3+1]=Math.random()*15-3;pos[i*3+2]=(Math.random()-.5)*26}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));const m=new THREE.PointsMaterial({color:0xaadbea,size:.025,transparent:true,opacity:.38,depthWrite:false});this.dust=new THREE.Points(g,m);this.scene.add(this.dust)}
- makeMetal(color=0x172330,emissive=0x000000,ei=0){return new THREE.MeshStandardMaterial({color,metalness:.8,roughness:.29,emissive,emissiveIntensity:ei})}
- makeGlass(color,opacity=.18){return new THREE.MeshPhysicalMaterial({color,metalness:.1,roughness:.12,transparent:true,opacity,transmission:.15,thickness:.4,depthWrite:false,emissive:color,emissiveIntensity:.18})}
- clearGroup(group){while(group.children.length){const c=group.children.pop();disposeObject(c)}}
- applyChapter(ch){const a=hexNum(ch.accent),b=hexNum(ch.secondary);this.rim.color.setHex(a);this.fill.color.setHex(b);this.skyMat.uniforms.top.value.setHex(ch.id===1?0x102d3d:ch.id===2?0x302014:0x241633);this.skyMat.uniforms.bottom.value.setHex(ch.id===3?0x05040b:0x020509);this.scene.fog.color.setHex(ch.id===2?0x120b08:ch.id===3?0x0a0610:0x07101a)}
- 
- bindUI(){
-  $('#continueBtn').onclick=()=>this.startLevel(save.current||1);$('#levelsBtn').onclick=()=>this.showLevels();$('#newBtn').onclick=()=>{if(confirm('Reset all campaign progress?')){save=defaultSave();persist();this.updateMenu();this.startLevel(1)}};
