@@ -12,5 +12,3 @@
  }
  frame(){const dt=Math.min(.033,this.clock.getDelta()),t=performance.now()/1000;audio.ambientTick(t);this.updateCamera(dt);if(this.screen==='game')this.updatePhysics(dt);this.updateParticles(dt);this.animateScene(t,dt);this.updateWorldTag();this.renderer.render(this.scene,this.camera)}
 }
-
-new ImpactGame();
