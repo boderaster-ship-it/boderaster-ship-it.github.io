@@ -1,0 +1,14 @@
+{
+  "name": "NEON DESCENT — Daily Game Lab 001",
+  "short_name": "NEON DESCENT",
+  "description": "One-thumb neon survival shooter built for iPhone.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#050711",
+  "theme_color": "#060913",
+  "icons": [
+    {"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}
