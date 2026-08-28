@@ -1,0 +1,58 @@
+/* IMPACT v5 — iPhone camera/UI hotfix */
+
+/* The active gameplay screen must never become an invisible touch shield over WebGL. */
+.screen.gameScreen.active{pointer-events:none!important}
+.gameScreen .hudTop,.gameScreen .objective,.gameScreen .dock{pointer-events:auto!important}
+.gameScreen .cameraHelp{pointer-events:none!important}
+#scene{touch-action:none!important}
+
+/* Keep the playable view dominant. */
+.objective{max-width:min(390px,42vw)}
+.dock{max-width:1500px;margin-inline:auto}
+
+@media (orientation:landscape){
+  .dock{left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));bottom:max(8px,env(safe-area-inset-bottom));min-height:108px;padding:10px 12px;grid-template-columns:minmax(150px,1.05fr) minmax(130px,.72fr) minmax(330px,1.8fr) minmax(170px,.9fr)}
+  .seg,.dirs{height:54px}
+  .selectedBlock small{display:none}
+  .hudTop{top:max(8px,env(safe-area-inset-top))}
+  .objective{top:72px}
+}
+
+/* Portrait is a playable mode, not a giant settings sheet. */
+@media (orientation:portrait){
+  .hudTop{left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));top:max(8px,env(safe-area-inset-top));gap:8px}
+  .iconBtn{width:48px;height:48px;border-radius:15px}
+  .iconBtn.small{width:44px;height:44px}
+  .levelId span{font-size:8px}.levelId b{font-size:14px}
+  .objective{top:66px;left:max(10px,env(safe-area-inset-left));max-width:calc(100vw - 20px);padding:8px 11px;border-radius:13px}
+  .objective b{font-size:11px}
+  .cameraHelp{display:none}
+
+  .dock{
+    left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));bottom:max(7px,env(safe-area-inset-bottom));
+    min-height:0;max-height:230px;padding:9px 10px;border-radius:19px;
+    display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);grid-template-areas:"selected run" "who dirs";
+    grid-template-rows:auto auto;gap:8px 10px;align-items:stretch;
+  }
+  .selectedBlock{grid-area:selected;border-right:0;border-bottom:1px solid var(--line);padding:2px 8px 7px 0;min-width:0}
+  .selectedRow{gap:6px;flex-wrap:nowrap}.selectedRow b{font-size:13px;white-space:nowrap}.selectedRow span{font-size:7px;padding:4px 6px;white-space:nowrap}
+  .selectedBlock small{display:none}
+  .whoBlock{grid-area:who;padding:0}
+  .dirBlock{grid-area:dirs;padding:0}
+  .runBlock{grid-area:run;display:grid;grid-template-columns:62px 1fr;gap:6px;padding:0;border-bottom:1px solid var(--line);padding-bottom:7px}
+  .dockLabel{font-size:7px;margin-bottom:5px}
+  .seg{height:50px;grid-template-columns:1fr 1fr;gap:5px}.receiver{font-size:12px;border-radius:11px}
+  .dirs{height:auto;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,45px);gap:5px}.dir{font-size:18px;border-radius:11px}.dir small{font-size:6px;margin-top:3px}
+  .editStat{padding:5px 7px;border-radius:11px}.editStat span{font-size:6px}.editStat b{font-size:20px}.editStat small{font-size:6px}
+  .launchBtn{min-height:58px;border-radius:12px;padding:0 10px;font-size:11px}.launchBtn i{font-size:17px}
+  .dockToggle{width:48px;height:25px;top:-24px;border-radius:12px 12px 0 0}
+  .dock.collapsed{transform:translateY(calc(100% - 35px))}
+  .worldTag{font-size:9px;transform:translate(-50%,-110%)}
+}
+
+/* Very short landscape phones: further compress chrome. */
+@media (orientation:landscape) and (max-height:430px){
+  .hudTop{top:5px}.objective{top:58px;padding:7px 10px}.objective span{font-size:8px}.objective b{font-size:11px}
+  .dock{min-height:92px;padding:7px 9px;border-radius:18px;gap:8px}.seg,.dirs{height:46px}
+  .selectedRow b{font-size:13px}.dockLabel{font-size:7px}.dir{font-size:16px}.receiver{font-size:11px}.launchBtn{font-size:11px}
+}
