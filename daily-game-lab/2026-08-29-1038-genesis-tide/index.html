@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+  <meta name="theme-color" content="#06111b" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Genesis Tide" />
+  <title>Genesis Tide</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main id="app">
+    <canvas id="world" aria-label="Evolutionssimulation"></canvas>
+    <header class="hud glass">
+      <div><span class="eyebrow">GENESIS TIDE</span><strong id="era">Ära 1</strong></div>
+      <div class="hudStat"><span>Population</span><b id="pop">0</b></div>
+      <div class="hudStat"><span>Diversität</span><b id="diversity">0</b></div>
+      <button id="pauseBtn" class="iconBtn" aria-label="Pause">Ⅱ</button>
+    </header>
+
+    <section id="intro" class="modal show">
+      <div class="modalCard glass">
+        <span class="eyebrow">EVOLUTIONSSIMULATION</span>
+        <h1>Forme eine Spezies.<br/>Nicht ihr Schicksal.</h1>
+        <p>Setze Nahrung, Wärme und Toxine ins Becken. Die Organismen reagieren nicht auf Befehle – nur ihre Gene entscheiden, wer überlebt und sich fortpflanzt.</p>
+        <div class="traitGrid">
+          <div><i>⚡</i><b>Tempo</b><small>schneller, aber teuer</small></div>
+          <div><i>◉</i><b>Sinne</b><small>findet Ressourcen früher</small></div>
+          <div><i>⬡</i><b>Panzer</b><small>robust, aber langsam</small></div>
+          <div><i>✦</i><b>Effizienz</b><small>weniger Energiebedarf</small></div>
+        </div>
+        <button id="startBtn" class="primary">Becken erschaffen</button>
+      </div>
+    </section>
+
+    <section id="eventCard" class="eventCard glass" aria-live="polite"></section>
+
+    <section class="bottomPanel glass">
+      <div class="meterRow">
+        <div><span>Energiefluss</span><div class="meter"><i id="energyBar"></i></div></div>
+        <div><span>Genetische Breite</span><div class="meter"><i id="geneBar"></i></div></div>
+      </div>
+      <div class="tools" role="toolbar" aria-label="Umwelteingriffe">
+        <button class="tool active" data-tool="food"><span>✦</span><b>Nahrung</b><small>+Energie</small></button>
+        <button class="tool" data-tool="heat"><span>☀</span><b>Wärme</b><small>+Selektion</small></button>
+        <button class="tool" data-tool="toxin"><span>☣</span><b>Toxin</b><small>+Stress</small></button>
+        <button class="tool" data-tool="current"><span>≋</span><b>Strömung</b><small>+Tempo</small></button>
+      </div>
+      <div class="hint" id="hint">Tippe oder ziehe im Becken, um Nahrung zu verteilen.</div>
+    </section>
+
+    <aside id="lab" class="lab glass">
+      <button id="labClose">×</button>
+      <span class="eyebrow">GENOM-SCAN</span>
+      <h2 id="labTitle">Linie A</h2>
+      <div id="geneStats"></div>
+      <p id="lineageText"></p>
+    </aside>
+  </main>
+  <script src="./app.js" defer></script>
+</body>
+</html>
