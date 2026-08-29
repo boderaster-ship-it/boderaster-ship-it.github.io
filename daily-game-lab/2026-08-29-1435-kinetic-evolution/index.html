@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+<meta name="theme-color" content="#08111f" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Kinetic Evolution" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<title>Kinetic Evolution</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="app">
+  <header class="topbar"><div><div class="eyebrow">EVOLUTION PHYSICS LAB</div><h1>KINETIC EVOLUTION</h1></div><button id="soundBtn" class="iconBtn" aria-label="Sound umschalten">🔊</button></header>
+  <section class="hud"><div class="stat"><span>Generation</span><strong id="genOut">1</strong></div><div class="stat"><span>Population</span><strong id="popOut">18</strong></div><div class="stat"><span>Bestweite</span><strong id="bestOut">0.0 m</strong></div><div class="stat"><span>Restzeit</span><strong id="timeOut">30.0 s</strong></div></section>
+  <main>
+    <section class="simCard"><canvas id="sim" aria-label="Physik-Simulationsarena"></canvas><div class="overlayTop"><div class="toolPill"><span id="toolLabel">Terrain anheben</span><small>Finger über Boden ziehen</small></div><div class="speedGroup" role="group" aria-label="Simulationsgeschwindigkeit"><button data-speed="0" class="speedBtn">Ⅱ</button><button data-speed="1" class="speedBtn active">1×</button><button data-speed="2" class="speedBtn">2×</button><button data-speed="4" class="speedBtn">4×</button></div></div><div class="legend"><span><i class="dot cyan"></i>Lebend</span><span><i class="dot gold"></i>Ausgewählt</span><span><i class="dot red"></i>Erschöpft</span></div></section>
+    <section class="toolRow" aria-label="Eingriffe"><button class="tool active" data-tool="raise"><b>⛰</b><span>Anheben</span></button><button class="tool" data-tool="lower"><b>⌄</b><span>Absenken</span></button><button class="tool" data-tool="food"><b>✦</b><span>Energie</span></button><button class="tool" data-tool="beacon"><b>◎</b><span>Ziel</span></button><button class="tool" data-tool="inspect"><b>⌖</b><span>Prüfen</span></button></section>
+    <section class="panel inspector"><div class="panelHead"><div><div class="eyebrow">AGENTENINSPEKTOR</div><h2 id="creatureName">Linie A-01</h2></div><button id="pinBtn" class="secondary">☆ Zuchtfavorit</button></div><div class="inspectorGrid"><div class="miniCreature"><canvas id="preview"></canvas></div><div class="genes" id="genes"></div></div><div class="metricRow"><div><span>Distanz</span><strong id="distOut">0.0 m</strong></div><div><span>Energie</span><strong id="energyOut">100%</strong></div><div><span>Nachkommen</span><strong id="childOut">0</strong></div><div><span>Fitness</span><strong id="fitOut">0</strong></div></div></section>
+    <section class="panel charts"><div class="tabs" role="tablist"><button class="tab active" data-chart="fitness">Fitness</button><button class="tab" data-chart="traits">Traits</button><button class="tab" data-chart="lineage">Abstammung</button></div><canvas id="chart" aria-label="Evolutionsanalyse"></canvas><p id="chartNote" class="chartNote">Jede Generation zeigt mittlere und beste erreichte Distanz.</p></section>
+    <section class="controls panel"><button id="nextGen" class="primary">Generation jetzt auswerten</button><button id="resetBtn" class="danger">Neue Evolution starten</button></section>
+  </main><div id="toast" role="status" aria-live="polite"></div>
+</div>
+<script src="app.js"></script><script>if('serviceWorker' in navigator){addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script>
+</body></html>
