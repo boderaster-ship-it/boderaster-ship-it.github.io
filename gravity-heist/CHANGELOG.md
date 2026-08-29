@@ -1,16 +1,18 @@
 # GRAVITY HEIST changelog
 
-## v0001 — Museum Break-In Foundation — 2026-08-30
-- Established modular production structure across app, state, input, physics, renderer, audio, UI, persistence, tests, PWA and assets.
-- Added playable Museum Break-In loop: swipe gravity, collect Aurora loot, reach extraction, score and retry.
-- Added gesture state machine with Pointer Events, pointer capture, dead zone and velocity threshold.
-- Added gravity interpolation, bounded dynamic bodies and mobile-friendly 2D physics foundation.
-- Added premium-styled architectural canvas presentation, gravity preview, heat HUD, loot/extraction feedback and synthetic audio cues.
-- Added landscape/safe-area UX, PWA manifest, icon and cache-first fallback service worker.
-- Added runtime self-tests for swipe classification and physics sanity.
+## v0002 — Security Escalation — 2026-08-30
+- Added dedicated SecuritySystem with three laser grids and two patrolling guards.
+- Added STEALTH, SUSPICIOUS, ALERT and LOCKDOWN states.
+- Security reacts to gravity shifts, laser contact, guard proximity and stealing the Aurora.
+- High alert now boosts score up to x1.75, creating deliberate risk/reward.
+- Added security HUD, vision cones, laser animation, danger lighting and alarm audio.
+- Expanded runtime self-tests from 5 to 7 assertions.
+- Advanced service-worker cache to v0002.
 
 ### Known gaps
-- Physical-iPhone gesture feel and WebKit behavior still require real-device confirmation.
-- Physics currently circle-body based; no polygon collision or guard AI yet.
-- Visuals are art-directed canvas 2.5D rather than final 3D WebGL assets.
-- Audio is procedural foundation, not final mastered sound design.
+- Physical iPhone validation still required.
+- Guard perception is distance-based, without wall occlusion.
+- Circle physics and 2.5D canvas remain interim systems.
+
+## v0001 — Museum Break-In Foundation — 2026-08-30
+- Established modular architecture and playable gravity/loot/extraction loop.
