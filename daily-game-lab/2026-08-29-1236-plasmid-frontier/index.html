@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+<meta name="theme-color" content="#070b12" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Plasmid Frontier" />
+<link rel="manifest" href="./manifest.json" />
+<link rel="icon" href="./icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="./icon.svg" />
+<title>Plasmid Frontier</title>
+<style>
+:root{--bg:#070b12;--panel:#0f1726cc;--line:#25344a;--text:#ecf7ff;--muted:#8fa8bc;--good:#7fffd4;--warn:#ffce6b;--bad:#ff6f91}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:radial-gradient(circle at 50% 0%,#17263c 0%,#070b12 58%);color:var(--text);font-family:Inter,ui-rounded,system-ui,-apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif;touch-action:none}
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+#app{height:100%;display:grid;grid-template-rows:auto 1fr auto;gap:8px;padding:10px;max-width:760px;margin:auto}
+.top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.brand h1{font-size:18px;letter-spacing:.18em;margin:0;font-weight:900}.brand p{margin:3px 0 0;color:var(--muted);font-size:11px;letter-spacing:.08em}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;min-width:210px}.stat{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:6px 7px;text-align:center;box-shadow:inset 0 1px 0 #ffffff0b}.stat b{display:block;font-size:14px}.stat span{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.stage{position:relative;min-height:0;border:1px solid #2b415e;border-radius:24px;overflow:hidden;background:#071119;box-shadow:0 16px 50px #0009,inset 0 0 80px #0d2841aa}
+canvas{width:100%;height:100%;display:block}
+.overlay{position:absolute;inset:10px 10px auto;display:flex;justify-content:space-between;pointer-events:none}.pill{background:#0a1320cc;border:1px solid #2b415e;border-radius:999px;padding:7px 10px;font-size:10px;letter-spacing:.08em;color:#d9e9f3;backdrop-filter:blur(8px)}
+#toast{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);background:#08111dec;border:1px solid #395476;border-radius:18px;padding:16px 18px;min-width:220px;text-align:center;opacity:0;transition:.18s;pointer-events:none;box-shadow:0 18px 50px #000b}#toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}#toast b{display:block;font-size:16px;margin-bottom:3px}#toast span{font-size:11px;color:var(--muted)}
+.controls{display:grid;gap:8px}.meter{display:grid;grid-template-columns:60px 1fr 52px;align-items:center;gap:8px;color:var(--muted);font-size:10px;letter-spacing:.08em;text-transform:uppercase}.bar{height:8px;background:#121d2c;border-radius:99px;border:1px solid #24354a;overflow:hidden}.fill{height:100%;width:0;background:linear-gradient(90deg,#56f0c4,#65c3ff);transition:width .25s}.meter strong{text-align:right;color:var(--text);font-size:11px}
+.buttons{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.btn{border:1px solid #2a405a;background:linear-gradient(#17263a,#0e1825);color:var(--text);border-radius:14px;padding:10px 5px;min-height:54px;font-weight:800;font-size:10px;letter-spacing:.06em;box-shadow:inset 0 1px #ffffff12,0 5px 14px #0005}.btn small{display:block;color:var(--muted);font-size:8px;margin-top:3px;font-weight:600}.btn.active{border-color:#7fffd4;box-shadow:0 0 0 1px #7fffd455,inset 0 1px #fff2}.btn:active{transform:translateY(1px);filter:brightness(1.16)}
+.footer{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:9px;padding:0 2px}.danger{color:var(--bad)}.good{color:var(--good)}
+@media (max-height:700px){#app{padding:6px;gap:5px}.brand p{display:none}.buttons .btn{min-height:46px;padding:7px 3px}.stat{padding:4px}.meter{display:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div class="brand"><h1>PLASMID FRONTIER</h1><p>EVOLUTION UNDER PRESSURE</p></div>
+    <div class="stats">
+      <div class="stat"><b id="pop">0</b><span>Cells</span></div>
+      <div class="stat"><b id="gen">1</b><span>Gen</span></div>
+      <div class="stat"><b id="score">0</b><span>Score</span></div>
+    </div>
+  </header>
+  <main class="stage" id="stage">
+    <canvas id="c"></canvas>
+    <div class="overlay"><div class="pill" id="phase">STABLE MEDIUM</div><div class="pill" id="diversity">DIVERSITY 0%</div></div>
+    <div id="toast"><b></b><span></span></div>
+  </main>
+  <section class="controls">
+    <div class="meter"><span>Adaptation</span><div class="bar"><div class="fill" id="adaptFill"></div></div><strong id="adaptText">0%</strong></div>
+    <div class="buttons">
+      <button class="btn active" data-mode="feed">NUTRIENT<small>tap plate</small></button>
+      <button class="btn" data-mode="a">DRUG A<small>selection</small></button>
+      <button class="btn" data-mode="b">DRUG B<small>selection</small></button>
+      <button class="btn" data-mode="flush">FLUSH<small>reset stress</small></button>
+    </div>
+    <div class="footer"><span id="hint">Tap the dish to place a nutrient bloom.</span><span>BEST <b id="best">0</b></span></div>
+  </section>
+</div>
+<script>
+(() => {
+'use strict';
+const canvas=document.getElementById('c'), ctx=canvas.getContext('2d',{alpha:false});
+const stage=document.getElementById('stage');
+const ui={pop:document.getElementById('pop'),gen:document.getElementById('gen'),score:document.getElementById('score'),best:document.getElementById('best'),phase:document.getElementById('phase'),div:document.getElementById('diversity'),fill:document.getElementById('adaptFill'),adapt:document.getElementById('adaptText'),hint:document.getElementById('hint'),toast:document.getElementById('toast')};
+let W=1,H=1,dpr=1,last=0,acc=0,mode='feed',score=0,generation=1,drugA=0,drugB=0,flash=0,started=false;
+let best=Number(localStorage.getItem('pf-best')||0);ui.best.textContent=best;
+const TAU=Math.PI*2, cells=[], food=[], particles=[];
+const rng=(a=1,b=0)=>b+Math.random()*(a-b), clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function resize(){const r=stage.getBoundingClientRect();dpr=Math.min(devicePixelRatio||1,2);W=Math.max(1,r.width);H=Math.max(1,r.height);canvas.width=Math.floor(W*dpr);canvas.height=Math.floor(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
+addEventListener('resize',resize,{passive:true});resize();
+function cell(x,y,parent){
+ const g=parent?{a:clamp(parent.a+rng(.08,-.08),0,1),b:clamp(parent.b+rng(.08,-.08),0,1),m:clamp(parent.m+rng(.07,-.07),.15,1),t:clamp(parent.t+rng(.08,-.08),0,1),p:Math.random()<.12?1-parent.p:parent.p}:{a:rng(.22),b:rng(.22),m:rng(.75,.4),t:rng(.8,.2),p:Math.random()<.18?1:0};
+ return {x,y,vx:rng(.3,-.3),vy:rng(.3,-.3),e:rng(.75,.52),age:0,g,ang:rng(TAU),pulse:rng(TAU),dead:false};
+}
+function seed(n=42){cells.length=0;food.length=0;for(let i=0;i<n;i++)cells.push(cell(rng(W*.85,W*.15),rng(H*.82,H*.14)));for(let i=0;i<25;i++)spawnFood(rng(W*.92,W*.08),rng(H*.88,H*.12),rng(1,.4))}
+function spawnFood(x,y,q=1){food.push({x,y,q,r:rng(18,8),life:rng(20,10)})}
+function burst(x,y,color,n=8){for(let i=0;i<n;i++)particles.push({x,y,vx:rng(1.6,-1.6),vy:rng(1.6,-1.6),life:rng(1,.35),color})}
+function audio(freq=300,dur=.05,type='sine',vol=.035){try{const A=audio.ctx||(audio.ctx=new (window.AudioContext||window.webkitAudioContext)());if(A.state==='suspended')A.resume();const o=A.createOscillator(),g=A.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(vol,A.currentTime);g.gain.exponentialRampToValueAtTime(.001,A.currentTime+dur);o.connect(g);g.connect(A.destination);o.start();o.stop(A.currentTime+dur)}catch(e){}}
+function showToast(title,text){ui.toast.querySelector('b').textContent=title;ui.toast.querySelector('span').textContent=text;ui.toast.classList.add('show');setTimeout(()=>ui.toast.classList.remove('show'),1250)}
+function applyMode(x,y){started=true;if(mode==='feed'){for(let i=0;i<9;i++)spawnFood(x+rng(34,-34),y+rng(34,-34),rng(1,.55));score=Math.max(0,score-3);audio(420,.06,'sine');burst(x,y,'#7fffd4',14)}
+ else if(mode==='a'){drugA=1;drugB*=.35;score+=4;audio(180,.12,'sawtooth');showToast('DRUG A APPLIED','Low A-resistance cells are selected out.');}
+ else if(mode==='b'){drugB=1;drugA*=.35;score+=4;audio(145,.12,'square');showToast('DRUG B APPLIED','A different resistance pathway is now favored.');}
+ else if(mode==='flush'){drugA*=.12;drugB*=.12;for(let i=0;i<8;i++)spawnFood(rng(W*.9,W*.1),rng(H*.86,H*.14),.8);audio(520,.08,'triangle');showToast('MEDIUM FLUSHED','Selection pressure drops; costly resistance may recede.');}}
+function dist2(a,b){const dx=a.x-b.x,dy=a.y-b.y;return dx*dx+dy*dy}
+function step(dt){
+ drugA*=Math.pow(.997,dt*60);drugB*=Math.pow(.997,dt*60);flash*=.9;
+ for(const f of food){f.life-=dt;f.q-=dt*.018;if(f.life<0||f.q<=0)f.dead=true}
+ for(let i=food.length-1;i>=0;i--)if(food[i].dead)food.splice(i,1);
+ if(Math.random()<dt*.95&&food.length<45)spawnFood(rng(W*.94,W*.06),rng(H*.9,H*.1),rng(.8,.35));
+ const newborn=[];
+ for(const c of cells){
+   c.age+=dt;c.pulse+=dt*4;c.ang+=rng(.18,-.18)*dt*8;
+   const speed=.14+.48*c.g.m; c.vx+=Math.cos(c.ang)*speed*dt*2;c.vy+=Math.sin(c.ang)*speed*dt*2;c.vx*=.985;c.vy*=.985;c.x+=c.vx*dt*60;c.y+=c.vy*dt*60;
+   if(c.x<10||c.x>W-10)c.vx*=-1;if(c.y<10||c.y>H-10)c.vy*=-1;c.x=clamp(c.x,8,W-8);c.y=clamp(c.y,8,H-8);
+   let nearest=null,nd=1e9;for(const f of food){const d=dist2(c,f);if(d<nd){nd=d;nearest=f}}
+   if(nearest&&nd<1600){const d=Math.sqrt(nd)||1;c.vx+=(nearest.x-c.x)/d*.012;c.vy+=(nearest.y-c.y)/d*.012;if(d<8+nearest.r*.3){const bite=Math.min(nearest.q,.009+.013*c.g.m);nearest.q-=bite;c.e+=bite*.82}}
+   const resistance=(1-drugA*(1-c.g.a)*1.7)*(1-drugB*(1-c.g.b)*1.7);const stress=Math.max(0,1-resistance);
+   const plasmidCost=c.g.p?.012:0, resistanceCost=(c.g.a+c.g.b)*.006; c.e-=dt*(.012+.017*c.g.m+plasmidCost+resistanceCost+stress*.11);
+   if(c.g.p&&Math.random()<dt*.18){for(const o of cells){if(o!==c&&!o.g.p&&dist2(c,o)<225&&Math.random()<.08){o.g.p=1;o.g.a=clamp(Math.max(o.g.a,c.g.a*.8),0,1);o.g.b=clamp(Math.max(o.g.b,c.g.b*.8),0,1);burst(o.x,o.y,'#d78cff',5);break}}}
+   if(c.e>1.13&&cells.length+newborn.length<180){c.e*=.52;const child=cell(c.x+rng(10,-10),c.y+rng(10,-10),c.g);newborn.push(child);if(Math.random()<.35)burst(c.x,c.y,'#7fffd4',4)}
+   if(c.e<=0||c.age>rng(42,27)){c.dead=true;burst(c.x,c.y,'#ff6f91',3)}
+ }
+ cells.push(...newborn);
+ for(let i=cells.length-1;i>=0;i--)if(cells[i].dead)cells.splice(i,1);
+ for(const p of particles){p.x+=p.vx*dt*60;p.y+=p.vy*dt*60;p.vx*=.96;p.vy*=.96;p.life-=dt}for(let i=particles.length-1;i>=0;i--)if(particles[i].life<=0)particles.splice(i,1);
+ generation+=newborn.length*.018;score+=newborn.length*.12;
+ if(cells.length===0){seed(36);drugA=drugB=0;score=Math.floor(score*.72);showToast('POPULATION BOTTLENECK','A remnant population reseeded the dish.');audio(90,.28,'sawtooth',.05)}
+ updateUI();
+}
+function updateUI(){
+ let avA=0,avB=0,plas=0,types=new Set();for(const c of cells){avA+=c.g.a;avB+=c.g.b;plas+=c.g.p;types.add(`${Math.round(c.g.a*4)}${Math.round(c.g.b*4)}${c.g.p}`)}
+ const n=Math.max(1,cells.length);avA/=n;avB/=n;const diversity=clamp(types.size/18,0,1);const pressure=Math.max(drugA,drugB);const target=drugA>drugB?avA:avB;
+ ui.pop.textContent=cells.length;ui.gen.textContent=Math.max(1,Math.floor(generation));ui.score.textContent=Math.floor(score);ui.div.textContent=`DIVERSITY ${Math.round(diversity*100)}%`;ui.fill.style.width=`${Math.round(target*100)}%`;ui.adapt.textContent=`${Math.round(target*100)}%`;
+ if(pressure<.16){ui.phase.textContent='STABLE MEDIUM';ui.phase.style.color='#d9e9f3'} else if(drugA>drugB){ui.phase.textContent='DRUG A PRESSURE';ui.phase.style.color='#ffce6b'} else {ui.phase.textContent='DRUG B PRESSURE';ui.phase.style.color='#ff8fb1'}
+ if(score>best){best=Math.floor(score);localStorage.setItem('pf-best',best);ui.best.textContent=best}
+}
+function draw(){
+ const g=ctx.createRadialGradient(W*.5,H*.42,0,W*.5,H*.5,Math.max(W,H)*.7);g.addColorStop(0,'#10253a');g.addColorStop(1,'#03070c');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ ctx.save();ctx.globalCompositeOperation='lighter';
+ if(drugA>.02){const a=ctx.createLinearGradient(0,0,W,H);a.addColorStop(0,`rgba(255,190,80,${drugA*.12})`);a.addColorStop(1,'transparent');ctx.fillStyle=a;ctx.fillRect(0,0,W,H)}
+ if(drugB>.02){const b=ctx.createLinearGradient(W,0,0,H);b.addColorStop(0,`rgba(255,70,130,${drugB*.10})`);b.addColorStop(1,'transparent');ctx.fillStyle=b;ctx.fillRect(0,0,W,H)}
+ for(const f of food){const r=Math.max(5,f.r*f.q);const grd=ctx.createRadialGradient(f.x,f.y,0,f.x,f.y,r);grd.addColorStop(0,'rgba(120,255,200,.22)');grd.addColorStop(1,'rgba(70,170,255,0)');ctx.fillStyle=grd;ctx.beginPath();ctx.arc(f.x,f.y,r,0,TAU);ctx.fill()}
+ for(const c of cells){const rr=4.3+c.g.t*2;const red=Math.round(80+175*c.g.b),green=Math.round(120+110*c.g.m),blue=Math.round(125+130*c.g.a);ctx.shadowBlur=12;ctx.shadowColor=`rgba(${red},${green},${blue},.65)`;ctx.fillStyle=`rgb(${red},${green},${blue})`;ctx.beginPath();ctx.ellipse(c.x,c.y,rr*(1.25+.08*Math.sin(c.pulse)),rr, c.ang,0,TAU);ctx.fill();ctx.shadowBlur=0;if(c.g.p){ctx.strokeStyle='#dc9cff';ctx.lineWidth=1.2;ctx.beginPath();ctx.arc(c.x,c.y,rr+2,0,TAU);ctx.stroke()}}
+ for(const p of particles){ctx.globalAlpha=clamp(p.life,0,1);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,2,0,TAU);ctx.fill()}ctx.globalAlpha=1;ctx.restore();
+ ctx.strokeStyle='#29445c';ctx.lineWidth=1.4;ctx.beginPath();ctx.roundRect(1,1,W-2,H-2,22);ctx.stroke();
+}
+function loop(t){const dt=Math.min(.035,(t-last)/1000||.016);last=t;acc+=dt;while(acc>.016){step(.016);acc-=.016}draw();requestAnimationFrame(loop)}
+function pos(e){const r=canvas.getBoundingClientRect(),p=e.touches?e.touches[0]:e;return{x:(p.clientX-r.left)*W/r.width,y:(p.clientY-r.top)*H/r.height}}
+canvas.addEventListener('pointerdown',e=>{e.preventDefault();const p=pos(e);applyMode(p.x,p.y)});
+document.querySelectorAll('.btn').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;document.querySelectorAll('.btn').forEach(x=>x.classList.toggle('active',x===b));ui.hint.textContent=mode==='feed'?'Tap the dish to place a nutrient bloom.':mode==='a'?'Tap anywhere to apply Drug A selection pressure.':mode==='b'?'Tap anywhere to apply Drug B selection pressure.':'Tap anywhere to flush the medium and reduce stress.';audio(300,.035,'sine',.02)}));
+seed();updateUI();requestAnimationFrame(loop);
+if('serviceWorker' in navigator) addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+})();
+</script>
+</body>
+</html>
