@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#d9d2b8">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>TIDEHAND — Evolve Between Land and Sea</title>
+<style>
+:root{--paper:#d9d2b8;--ink:#2e2b27;--sea:#4f8ca1;--deep:#2f6476;--shore:#d6b46d;--leaf:#667b52;--card:#f2ead7ee}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--paper);color:var(--ink);font-family:ui-rounded,"SF Pro Rounded",system-ui,sans-serif;touch-action:none;overscroll-behavior:none}
+#world{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#hud{position:fixed;left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));top:max(10px,env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none;z-index:5}
+.brand{font-family:Georgia,serif;font-weight:900;font-size:20px;letter-spacing:.08em;line-height:.9;text-shadow:0 1px 0 #fff8}.brand small{display:block;margin-top:6px;font:700 9px/1.15 system-ui;letter-spacing:.18em;color:#625d52}
+.sys{display:flex;gap:7px;pointer-events:auto}.sys button{width:38px;height:38px;border:none;border-radius:50%;background:#f7eedddc;color:#2e2b27;box-shadow:0 4px 14px #463d2b2d;font-size:17px}
+#goal{position:fixed;left:50%;transform:translateX(-50%);top:max(68px,calc(env(safe-area-inset-top) + 58px));width:min(90vw,440px);padding:10px 14px;border-radius:18px;background:#f7eeddd9;border:1px solid #715f3b22;box-shadow:0 7px 24px #4a412b26;text-align:center;z-index:4;pointer-events:none;font-size:12px;line-height:1.3}
+#goal b{font-family:Georgia,serif}.track{height:6px;margin-top:7px;background:#cbbfa5;border-radius:999px;overflow:hidden}.track i{display:block;height:100%;width:0;background:#6b7652;transition:width .25s}
+#meter{position:fixed;left:max(14px,env(safe-area-inset-left));bottom:max(20px,env(safe-area-inset-bottom));width:62px;height:178px;background:#f7eeddd8;border-radius:22px;box-shadow:0 6px 20px #40392726;border:1px solid #6c5d4224;z-index:4;pointer-events:none;padding:10px 8px;display:flex;flex-direction:column;align-items:center;gap:8px}
+#meter .label{font-size:9px;font-weight:800;letter-spacing:.08em;color:#615b4f}.tube{position:relative;flex:1;width:20px;border-radius:999px;background:#cbbfa5;overflow:hidden;border:1px solid #756a5833}.tube i{position:absolute;left:0;right:0;bottom:0;height:50%;background:linear-gradient(#6aa4b7,#346d82);transition:height .08s linear}.meterVal{font:800 12px Georgia,serif}
+#journal{position:fixed;right:max(12px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom));width:min(47vw,190px);background:#f7eedddf;border:1px solid #6c5d4224;border-radius:18px;padding:10px 12px;z-index:4;pointer-events:none;box-shadow:0 6px 20px #40392726;font-size:10px;line-height:1.35}
+#journal b{font:800 13px Georgia,serif;display:block;margin-bottom:4px}.genes{display:grid;grid-template-columns:1fr 1fr;gap:3px 8px;margin-top:6px}.genes span{display:flex;justify-content:space-between;gap:6px}
+#hint{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom));transform:translateX(-50%);background:#2e2b27e8;color:#fff9eb;padding:10px 14px;border-radius:999px;z-index:8;font-size:12px;white-space:nowrap;pointer-events:none;transition:opacity .4s}
+#toast{position:fixed;left:50%;top:48%;transform:translate(-50%,-50%) scale(.94);background:#2f2b25;color:#fff9eb;border-radius:16px;padding:15px 18px;max-width:78vw;text-align:center;z-index:20;opacity:0;pointer-events:none;transition:.22s;font:700 13px/1.35 Georgia,serif}#toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+@media (max-height:600px){#goal{top:12px;left:54%;width:55vw}.brand{font-size:16px}#meter{height:132px}.sys button{width:34px;height:34px}}
+</style>
+</head>
+<body>
+<canvas id="world" aria-label="Tide evolution simulation"></canvas>
+<div id="hud"><div class="brand">TIDEHAND<small>EVOLVE BETWEEN LAND & SEA</small></div><div class="sys"><button id="pause" aria-label="Pause">Ⅱ</button><button id="reset" aria-label="Restart">↻</button></div></div>
+<div id="goal"><b>THE AMPHIBIOUS LINE</b><div id="goalText">Pinch with two fingers to raise or lower the sea. Keep the lineage alive through alternating flood and drought until an amphibious branch emerges.</div><div class="track"><i id="goalBar"></i></div></div>
+<div id="meter"><div class="label">SEA</div><div class="tube"><i id="waterFill"></i></div><div class="meterVal" id="waterVal">50%</div></div>
+<div id="journal"><b>Field lineage</b><div id="stats">Population 0 · Gen 0</div><div class="genes" id="genes"></div></div>
+<div id="hint">Use TWO fingers: pinch inward = flood • spread outward = drought</div>
+<div id="toast"></div>
+<script>
+'use strict';
+const canvas=document.getElementById('world'),ctx=canvas.getContext('2d',{alpha:false});
+const pauseBtn=document.getElementById('pause'),resetBtn=document.getElementById('reset');
+const waterFill=document.getElementById('waterFill'),waterVal=document.getElementById('waterVal'),statsEl=document.getElementById('stats'),genesEl=document.getElementById('genes'),goalBar=document.getElementById('goalBar'),goalText=document.getElementById('goalText'),hint=document.getElementById('hint'),toast=document.getElementById('toast');
+let W=innerWidth,H=innerHeight,DPR=Math.min(devicePixelRatio||1,2),water=.50,paused=false,last=performance.now(),acc=0,simTime=0,nextId=1,agents=[],pinch=null,historyHigh=false,historyLow=false,won=false;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)); const rnd=(a=1,b=0)=>b+Math.random()*(a-b); const lerp=(a,b,t)=>a+(b-a)*t;
+function resize(){W=innerWidth;H=innerHeight;DPR=Math.min(devicePixelRatio||1,2);canvas.width=W*DPR;canvas.height=H*DPR;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(DPR,0,0,DPR,0,0)} addEventListener('resize',resize);
+function terrainY(x){const u=x/W;return H*(.67-.12*Math.sin(u*Math.PI*1.7)-.055*Math.sin(u*Math.PI*5.1+.8)+.035*Math.cos(u*Math.PI*9.2))}
+function waterY(){return H*(.86-water*.58)}
+const NAMES=['gill','lung','salt','limb','brood','roam'];
+function mutate(v,rate=.16,amt=.11){return Math.random()<rate?clamp(v+rnd(amt,-amt),0,1):v}
+function makeGenome(seed){if(!seed)return [rnd(.75,.25),rnd(.75,.25),rnd(.7,.3),rnd(.7,.3),rnd(.72,.28),rnd(.7,.3)];return seed.map(v=>mutate(v))}
+function spawn(g=null,parents=[]){const x=rnd(W*.88,W*.12),ty=terrainY(x),wy=waterY(),shore=ty-wy;const wet=shore<0;const a={id:nextId++,x,y:wet?wy-rnd(26,5):ty-rnd(7,2),vx:rnd(8,-8),vy:0,g:g||makeGenome(),energy:rnd(1.15,.78),age:0,gen:parents.length?Math.max(...parents.map(p=>p.gen))+1:0,cool:rnd(4,0),alive:true,children:0,wet};agents.push(a);return a}
+function reset(){water=.50;simTime=0;nextId=1;agents=[];historyHigh=false;historyLow=false;won=false;for(let i=0;i<48;i++){const bias=i<24?[.62,.38,.58,.43,.5,.5]:[.4,.62,.5,.62,.5,.5];spawn(makeGenome(bias))}updateHud();toastMsg('A new shoreline begins. Shape the tide with two fingers.');}
+function environment(a){const ty=terrainY(a.x),wy=waterY();const submerged=a.y>wy-3;const near=Math.abs(ty-wy)<H*.10;return {ty,wy,submerged,near}}
+function step(dt){simTime+=dt;if(water>.72)historyHigh=true;if(water<.28)historyLow=true;
+ const alive=agents.filter(a=>a.alive);
+ for(const a of alive){const e=environment(a);a.age+=dt;a.cool-=dt;a.wet=e.submerged;
+   const gill=a.g[0],lung=a.g[1],salt=a.g[2],limb=a.g[3],brood=a.g[4],roam=a.g[5];
+   const breath=e.submerged?(.18+.82*gill):(.18+.82*lung); const salFit=1-Math.abs(salt-water)*.62; const move=e.submerged?(.35+.8*gill):(.3+.9*limb); const metabolism=.009+.008*(gill+lung)+.004*roam;
+   let targetX=a.x+Math.sign(rnd(1,-1))*roam*40; if(Math.random()<.025)targetX=rnd(W*.92,W*.08); const dir=Math.sign(targetX-a.x)||1; a.vx=lerp(a.vx,dir*(12+28*move),dt*.7); a.x=clamp(a.x+a.vx*dt,6,W-6);
+   const ne=environment(a); if(ne.submerged){a.y=lerp(a.y,ne.wy+rnd(24,6),dt*(.8+gill));}else{a.y=lerp(a.y,ne.ty-4,dt*(1+limb));}
+   const foodBand=ne.near?1.18:.74; const gain=.017*foodBand*(.65+salFit*.35)*dt; a.energy+=gain*breath; a.energy-=metabolism*dt*(1.3-.4*breath); a.energy=clamp(a.energy,0,2.1);
+   if(a.energy<=0||a.age>58+rnd(28)){a.alive=false;continue}
+   const idealBrood=.25+.5*(1-Math.abs(water-.5)*2); const broodFit=1-Math.abs(brood-idealBrood);
+   if(a.energy>1.25&&a.age>5&&a.cool<=0&&Math.random()<dt*.24*(.35+.65*broodFit)){
+     let mate=null,bd=85;for(const m of alive){if(m===a||!m.alive||m.cool>0||m.energy<1.0)continue;const d=Math.abs(m.x-a.x);if(d<bd){mate=m;bd=d}}
+     if(mate&&alive.length<190){const child=[];for(let k=0;k<6;k++){let v=Math.random()<.5?a.g[k]:mate.g[k];child.push(mutate(v,.20,.12))}const c=spawn(child,[a,mate]);c.x=(a.x+mate.x)/2;c.y=Math.min(terrainY(c.x)-3,waterY()+8);c.energy=.82;a.energy-=.36;mate.energy-=.24;a.cool=mate.cool=4.2;a.children++;mate.children++}
+   }
+ }
+ agents=agents.filter(a=>a.alive);
+ if(agents.length<18){const sorted=alive.filter(a=>a.alive).sort((a,b)=>b.energy-a.energy);for(let i=0;i<Math.min(5,sorted.length);i++)spawn(makeGenome(sorted[i].g),[sorted[i]])}
+ if(Math.floor(simTime*2)%4===0)updateHud();
+}
+function meanGenes(){const a=agents;if(!a.length)return Array(6).fill(0);return Array.from({length:6},(_,k)=>a.reduce((s,o)=>s+o.g[k],0)/a.length)}
+function updateHud(){const m=meanGenes(),maxGen=agents.reduce((x,a)=>Math.max(x,a.gen),0);waterFill.style.height=(water*100)+'%';waterVal.textContent=Math.round(water*100)+'%';statsEl.textContent=`Population ${agents.length} · Gen ${maxGen}`;genesEl.innerHTML=NAMES.map((n,i)=>`<span>${n}<strong>${Math.round(m[i]*100)}</strong></span>`).join('');const amph=(m[0]+m[1]+m[3])/3;let progress=clamp((amph-.46)/.28,0,1);if(historyHigh&&historyLow)progress=Math.max(progress,.38);goalBar.style.width=(progress*100)+'%';if(!won&&historyHigh&&historyLow&&maxGen>=4&&m[0]>.52&&m[1]>.52&&m[3]>.50&&agents.length>22){won=true;goalText.textContent='Amphibious branch established — both air and water traits persist across generations.';goalBar.style.width='100%';toastMsg('AMPHIBIOUS LINE ESTABLISHED — your tides created a stable dual-breathing lineage.')}}
+function drawTerrain(){const wy=waterY();ctx.fillStyle='#d9d2b8';ctx.fillRect(0,0,W,H);ctx.beginPath();ctx.moveTo(0,H);for(let x=0;x<=W;x+=6)ctx.lineTo(x,terrainY(x));ctx.lineTo(W,H);ctx.closePath();const gr=ctx.createLinearGradient(0,H*.45,0,H);gr.addColorStop(0,'#8b8a63');gr.addColorStop(.3,'#b19a61');gr.addColorStop(1,'#66523d');ctx.fillStyle=gr;ctx.fill();ctx.fillStyle='rgba(70,120,145,.73)';ctx.fillRect(0,wy,W,H-wy);ctx.fillStyle='rgba(175,225,231,.28)';ctx.fillRect(0,wy,W,8);
+ for(let x=16;x<W;x+=34){const ty=terrainY(x);if(Math.abs(ty-wy)<70){ctx.fillStyle='rgba(238,212,134,.42)';ctx.beginPath();ctx.arc(x,ty-rnd(9,2),rnd(3,1),0,Math.PI*2);ctx.fill()}}
+}
+function drawAgent(a){const e=environment(a),size=3.8+a.g[3]*3.2;const hue=45+a.g[2]*125;ctx.save();ctx.translate(a.x,a.y);ctx.scale(Math.sign(a.vx)||1,1);ctx.fillStyle=`hsl(${hue} 42% ${38+a.g[1]*18}%)`;ctx.strokeStyle='rgba(44,38,30,.6)';ctx.lineWidth=1;ctx.beginPath();ctx.ellipse(0,0,size*1.35,size*.72,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.strokeStyle=`rgba(235,244,223,${.35+.6*a.g[0]})`;ctx.beginPath();ctx.moveTo(-size*.7,-size*.15);ctx.lineTo(-size*1.2,-size*.85*a.g[0]);ctx.stroke();ctx.strokeStyle=`rgba(62,50,35,${.28+.55*a.g[3]})`;ctx.beginPath();ctx.moveTo(-size*.2,size*.45);ctx.lineTo(-size*.45,size*(.75+.6*a.g[3]));ctx.moveTo(size*.3,size*.45);ctx.lineTo(size*.55,size*(.75+.6*a.g[3]));ctx.stroke();ctx.fillStyle='#f7edd8';ctx.beginPath();ctx.arc(size*.68,-size*.18,1.05,0,Math.PI*2);ctx.fill();ctx.restore()}
+function render(){drawTerrain();for(const a of agents)drawAgent(a);const wy=waterY();ctx.fillStyle='rgba(255,255,255,.26)';ctx.font='700 10px system-ui';ctx.fillText(water>.66?'FLOOD PRESSURE':water<.34?'DROUGHT PRESSURE':'MIXED SHORELINE',W*.5-50,wy+18)}
+function loop(t){const dt=Math.min(.05,(t-last)/1000);last=t;if(!paused){acc+=dt;while(acc>.033){step(.033);acc-=.033}}render();requestAnimationFrame(loop)}
+function dist2(t1,t2){return Math.hypot(t1.clientX-t2.clientX,t1.clientY-t2.clientY)}
+function applyPinchRatio(ratio){const delta=(1-ratio)*.45;water=clamp(water+delta,.12,.88);updateHud();hint.style.opacity=0}
+canvas.addEventListener('touchstart',e=>{if(e.touches.length===2){e.preventDefault();pinch={startDist:dist2(e.touches[0],e.touches[1]),startWater:water}}},{passive:false});
+canvas.addEventListener('touchmove',e=>{if(pinch&&e.touches.length===2){e.preventDefault();const d=dist2(e.touches[0],e.touches[1]);const ratio=d/Math.max(1,pinch.startDist);water=clamp(pinch.startWater+(1-ratio)*.58,.12,.88);updateHud();hint.style.opacity=0}},{passive:false});
+canvas.addEventListener('touchend',e=>{if(e.touches.length<2)pinch=null},{passive:false});canvas.addEventListener('touchcancel',()=>pinch=null,{passive:false});
+let mouseStart=null;canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'){mouseStart={y:e.clientY,w:water}}});canvas.addEventListener('pointermove',e=>{if(mouseStart){water=clamp(mouseStart.w+(e.clientY-mouseStart.y)/H,.12,.88);updateHud()}});canvas.addEventListener('pointerup',()=>mouseStart=null);
+pauseBtn.onclick=()=>{paused=!paused;pauseBtn.textContent=paused?'▶':'Ⅱ'};resetBtn.onclick=()=>reset();
+function toastMsg(s){toast.textContent=s;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),2200)}
+resize();reset();requestAnimationFrame(loop);if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+window.__tidehandTest={state:()=>({water,pop:agents.length,maxGen:agents.reduce((m,a)=>Math.max(m,a.gen),0),mean:meanGenes(),high:historyHigh,low:historyLow,won}),pinchRatio:r=>applyPinchRatio(r),stepSeconds:s=>{for(let i=0;i<s/.033;i++)step(.033)},reset};
+</script>
+</body></html>
