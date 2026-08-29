@@ -1,1 +1,0 @@
-FOLDWORLD iPhone touch-fix release in progress. Canonical launcher: play.html
