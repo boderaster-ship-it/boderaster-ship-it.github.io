@@ -1,0 +1,10 @@
+{
+  "name":"RESONANT WILD — Evolve a Living Instrument",
+  "short_name":"RESONANT",
+  "start_url":"./",
+  "display":"standalone",
+  "background_color":"#efe6cf",
+  "theme_color":"#efe6cf",
+  "orientation":"any",
+  "icons":[{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}
