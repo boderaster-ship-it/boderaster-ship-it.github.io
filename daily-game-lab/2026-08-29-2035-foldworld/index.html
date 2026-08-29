@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+<meta name="theme-color" content="#e8dcc1" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<title>FOLDWORLD — Evolution by Geography</title>
+<style>
+:root{--paper:#e8dcc1;--ink:#2e2a23;--muted:#766d5f;--line:#9b8d73;--accent:#9c4f32;--panel:#f5eddc;--shadow:rgba(60,45,28,.22)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--paper);color:var(--ink);font-family:ui-rounded,"SF Pro Rounded",system-ui,sans-serif;touch-action:none}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.25;background-image:radial-gradient(#6d604d 0.55px,transparent .6px);background-size:7px 7px;mix-blend-mode:multiply}
+#game{position:fixed;inset:0;width:100%;height:100%;display:block}
+#top{position:fixed;left:max(14px,env(safe-area-inset-left));right:max(14px,env(safe-area-inset-right));top:max(10px,env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none;z-index:5}
+.brand{font-family:Georgia,serif;font-weight:800;letter-spacing:.08em;font-size:18px;line-height:1}.brand small{display:block;font:600 10px/1.2 system-ui;letter-spacing:.14em;color:var(--muted);margin-top:5px}
+.sys{display:flex;gap:8px;pointer-events:auto}.sys button{border:1px solid rgba(70,55,35,.28);background:rgba(245,237,220,.82);backdrop-filter:blur(10px);width:38px;height:38px;border-radius:50%;font-size:17px;color:var(--ink);box-shadow:0 4px 12px var(--shadow)}
+#mission{position:fixed;left:50%;transform:translateX(-50%);top:max(64px,calc(env(safe-area-inset-top) + 54px));width:min(88vw,460px);background:rgba(245,237,220,.9);border:1px solid rgba(70,55,35,.22);border-radius:18px;padding:10px 14px;box-shadow:0 7px 22px var(--shadow);z-index:4;pointer-events:none;text-align:center;font-size:12px;line-height:1.35}.missionTitle{font:800 12px/1.2 Georgia,serif;letter-spacing:.04em}.bar{height:5px;background:#d8cbb2;border-radius:9px;overflow:hidden;margin-top:7px}.bar>i{display:block;height:100%;width:0;background:var(--accent);transition:width .25s}
+#hint{position:fixed;left:50%;bottom:max(16px,env(safe-area-inset-bottom));transform:translateX(-50%);background:rgba(46,42,35,.86);color:#fff8e9;padding:10px 14px;border-radius:999px;font-size:12px;z-index:6;pointer-events:none;white-space:nowrap;transition:opacity .5s}
+#sheet{position:fixed;left:10px;right:10px;bottom:calc(-1 * min(64vh,520px) + 42px + env(safe-area-inset-bottom));height:min(64vh,520px);background:rgba(247,239,222,.97);border:1px solid rgba(70,55,35,.25);border-bottom:none;border-radius:24px 24px 0 0;box-shadow:0 -10px 36px rgba(60,45,28,.22);z-index:8;transition:transform .32s cubic-bezier(.2,.8,.2,1);padding:10px 16px calc(18px + env(safe-area-inset-bottom));touch-action:pan-y}
+#sheet.open{transform:translateY(calc(-1 * min(64vh,520px) + 42px + env(safe-area-inset-bottom)))}
+.handle{width:52px;height:5px;background:#b9aa8d;border-radius:8px;margin:0 auto 9px}.sheetHead{display:flex;justify-content:space-between;align-items:center}.sheetHead h2{font:800 20px Georgia,serif;margin:0}.sheetHead span{font-size:11px;color:var(--muted)}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}.metric{border:1px solid #cdbf9f;border-radius:14px;padding:9px;background:#fbf4e6}.metric b{display:block;font:800 18px Georgia,serif}.metric small{font-size:10px;color:var(--muted)}
+#geneCanvas,#history{width:100%;height:120px;border:1px solid #cdbf9f;border-radius:14px;background:#fbf4e6;display:block;margin-top:9px}.legend{font-size:10px;color:var(--muted);margin-top:5px;line-height:1.4}.selectedCard{margin-top:10px;border-left:4px solid var(--accent);padding:8px 10px;background:#fbf4e6;border-radius:0 12px 12px 0;font-size:11px;line-height:1.4}
+#toast{position:fixed;left:50%;top:45%;transform:translate(-50%,-50%) scale(.9);background:#2f2a22;color:#fff8e9;padding:15px 18px;border-radius:16px;z-index:20;opacity:0;pointer-events:none;transition:.25s;text-align:center;max-width:78vw;font:700 13px/1.35 Georgia,serif}#toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+@media (orientation:landscape){#mission{top:max(16px,env(safe-area-inset-top));width:380px}.brand{font-size:16px}}
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="Evolution simulation board"></canvas>
+<div id="top"><div class="brand">FOLDWORLD<small>EVOLUTION BY GEOGRAPHY</small></div><div class="sys"><button id="pause" aria-label="Pause">Ⅱ</button><button id="speed" aria-label="Simulation speed">1×</button><button id="reset" aria-label="Restart">↻</button></div></div>
+<div id="mission"><div class="missionTitle" id="missionTitle">THE THREE BRANCHES</div><div id="missionText">Separate the atlas until three distinct lineages emerge — then reconnect them and preserve diversity.</div><div class="bar"><i id="missionBar"></i></div></div>
+<div id="hint">Drag islands to connect or isolate them • tap an organism to inspect</div>
+<div id="sheet"><div class="handle"></div><div class="sheetHead"><h2>Field Journal</h2><span>swipe up / down</span></div><div class="metrics"><div class="metric"><b id="popM">0</b><small>living organisms</small></div><div class="metric"><b id="genM">0</b><small>max generation</small></div><div class="metric"><b id="linM">0</b><small>lineages</small></div></div><canvas id="geneCanvas"></canvas><div class="legend">Genome distribution: hue bands summarize six functional traits — body size, speed, thermal optimum, moisture optimum, mating signal and dispersal drive.</div><canvas id="history"></canvas><div class="selectedCard" id="selectedCard">Tap any organism in the atlas to pin its lineage, age, energy and genome here.</div></div>
+<div id="toast"></div>
+<script>
+'use strict';
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d',{alpha:false});
+const geneCanvas=document.getElementById('geneCanvas'),gctx=geneCanvas.getContext('2d');
+const historyCanvas=document.getElementById('history'),hctx=historyCanvas.getContext('2d');
+const pauseBtn=document.getElementById('pause'),speedBtn=document.getElementById('speed'),resetBtn=document.getElementById('reset');
+const missionBar=document.getElementById('missionBar'), missionText=document.getElementById('missionText');
+const sheet=document.getElementById('sheet'), selectedCard=document.getElementById('selectedCard');
+const popM=document.getElementById('popM'),genM=document.getElementById('genM'),linM=document.getElementById('linM'),toast=document.getElementById('toast'),hint=document.getElementById('hint');
+let W=innerWidth,H=innerHeight,DPR=Math.min(devicePixelRatio||1,2),last=performance.now(),acc=0,paused=false,speed=1,simTime=0,selected=null,drag=null,sheetStart=null,history=[],nextId=1;
+const rnd=(a=1,b=0)=>b+Math.random()*(a-b), clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function resize(){W=innerWidth;H=innerHeight;DPR=Math.min(devicePixelRatio||1,2);canvas.width=W*DPR;canvas.height=H*DPR;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(DPR,0,0,DPR,0,0);[geneCanvas,historyCanvas].forEach(c=>{const r=c.getBoundingClientRect();c.width=Math.max(2,r.width*DPR);c.height=Math.max(2,r.height*DPR);c.getContext('2d').setTransform(DPR,0,0,DPR,0,0)});}
+addEventListener('resize',resize);
+const plateDefs=[
+ {name:'EMBER',x:.25,y:.34,temp:.82,wet:.24,fert:.78,color:'#bd6f45',shape:[[-.9,-.45],[-.25,-.8],[.65,-.65],[.95,.05],[.5,.72],[-.35,.8],[-.95,.2]]},
+ {name:'MIST',x:.72,y:.33,temp:.34,wet:.86,fert:.9,color:'#6d9b91',shape:[[-.95,-.1],[-.5,-.7],[.28,-.8],[.9,-.4],[.78,.4],[.2,.8],[-.62,.65]]},
+ {name:'WIND',x:.49,y:.70,temp:.56,wet:.5,fert:.66,color:'#b49a55',shape:[[-.85,-.5],[-.1,-.82],[.8,-.5],[.96,.2],[.35,.78],[-.5,.66],[-.98,.05]]},
+ {name:'FROST',x:.82,y:.71,temp:.18,wet:.58,fert:.56,color:'#8ca7b2',shape:[[-.8,-.65],[.1,-.8],[.85,-.35],[.75,.5],[.05,.82],[-.75,.45]]}
+];
+let plates=[], organisms=[];
+function makePlate(d,i){return {id:i,name:d.name,x:d.x*W,y:d.y*H,homeX:d.x*W,homeY:d.y*H,r:Math.min(W,H)*.13,temp:d.temp,wet:d.wet,fert:d.fert,color:d.color,shape:d.shape,food:Array.from({length:22},()=>({a:rnd(Math.PI*2),r:rnd(.78,.18),v:rnd(1,.35)})),connections:new Set()}}
+function genome(seed){return seed?seed.map(v=>clamp(v+rnd(.16,-.16),0,1)):[rnd(),rnd(),rnd(),rnd(),rnd(),rnd()]}
+function organism(plate,g=null,parents=[]){let o={id:nextId++,plate,x:rnd(.55,-.55),y:rnd(.55,-.55),vx:rnd(.02,-.02),vy:rnd(.02,-.02),g:g||genome(),energy:rnd(1.1,.65),age:0,gen:parents.length?Math.max(...parents.map(p=>p.gen))+1:0,parents:parents.map(p=>p.id),children:0,cool:rnd(4,0),alive:true,lineage:0};organisms.push(o);return o}
+function reset(){simTime=0;history=[];nextId=1;selected=null;plates=plateDefs.map(makePlate);organisms=[];for(const p of plates)for(let i=0;i<15;i++){let base=[.45,.45,p.temp,p.wet,rnd(.65,.35),rnd(.55,.2)];organism(p.id,genome(base))}toastMsg('Atlas reset — drag islands together to open migration corridors.');}
+function plateAt(x,y){for(let i=plates.length-1;i>=0;i--){const p=plates[i],dx=x-p.x,dy=y-p.y;if(dx*dx+dy*dy<p.r*p.r)return p}return null}
+function orgScreen(o){const p=plates[o.plate];return {x:p.x+o.x*p.r*.78,y:p.y+o.y*p.r*.78}}
+function nearestOrg(x,y){let best=null,bd=22;for(const o of organisms){if(!o.alive)continue;const s=orgScreen(o),d=Math.hypot(s.x-x,s.y-y);if(d<bd){best=o;bd=d}}return best}
+function updateConnections(){plates.forEach(p=>p.connections.clear());for(let i=0;i<plates.length;i++)for(let j=i+1;j<plates.length;j++){const a=plates[i],b=plates[j],d=Math.hypot(a.x-b.x,a.y-b.y),touch=a.r+b.r;if(d<touch*.78){a.connections.add(b.id);b.connections.add(a.id)}}}
+function fit(o,p){const size=o.g[0],speed=o.g[1];const climate=1-(Math.abs(o.g[2]-p.temp)*.75+Math.abs(o.g[3]-p.wet)*.65);const metabolism=.008+.012*size+.016*speed*speed;return {climate:clamp(climate,.05,1),cost:metabolism}}
+function step(dt){simTime+=dt;updateConnections();
+ for(const p of plates){for(const f of p.food)f.v=clamp(f.v+dt*.018*p.fert,0,1)}
+ for(const o of organisms){if(!o.alive)continue;const p=plates[o.plate],F=fit(o,p);o.age+=dt;o.cool-=dt;
+   let tx=0,ty=0,bestF=null,bestD=9;
+   for(const f of p.food){if(f.v<.08)continue;const fx=Math.cos(f.a)*f.r,fy=Math.sin(f.a)*f.r,d=Math.hypot(fx-o.x,fy-o.y);if(d<bestD){bestD=d;bestF=f;tx=fx;ty=fy}}
+   const wander=.35+o.g[5]*.9, ang=Math.atan2(ty-o.y,tx-o.x)+rnd(.8,-.8)*wander;
+   const drive=.018+.028*o.g[1];o.vx=o.vx*.86+Math.cos(ang)*drive;o.vy=o.vy*.86+Math.sin(ang)*drive;o.x+=o.vx*dt*2.2;o.y+=o.vy*dt*2.2;
+   let rr=Math.hypot(o.x,o.y);if(rr>.72){o.x*=.72/rr;o.y*=.72/rr;o.vx*=-.55;o.vy*=-.55;rr=.72}
+   if(bestF&&bestD<.09){const bite=Math.min(bestF.v,.032*dt*(.55+o.g[0]));bestF.v-=bite;o.energy+=bite*.75*F.climate}
+   o.energy-=F.cost*dt*(1.25-F.climate*.45);o.energy=clamp(o.energy,0,2.2);
+   if(o.energy<=0||o.age>55+rnd(25)){o.alive=false;continue}
+   if(p.connections.size&&rr>.58&&Math.random()<dt*.006*(.15+o.g[5]*1.8)){const ids=[...p.connections];const np=ids[(Math.random()*ids.length)|0];o.plate=np;o.x*=-.7;o.y*=-.7;o.energy-=.08}
+   if(o.energy>1.32&&o.age>5&&o.cool<=0){let mate=null,md=.19;for(const m of organisms){if(m===o||!m.alive||m.plate!==o.plate||m.energy<1.05||m.cool>0)continue;const d=Math.hypot(m.x-o.x,m.y-o.y);const signal=Math.abs(m.g[4]-o.g[4]);if(d<md&&signal<.24){mate=m;md=d}}if(mate&&organisms.filter(x=>x.alive).length<220){let child=[];for(let k=0;k<6;k++){let v=Math.random()<.5?o.g[k]:mate.g[k];if(Math.random()<.18)v+=rnd(.11,-.11);child[k]=clamp(v,0,1)}const c=organism(o.plate,child,[o,mate]);c.x=(o.x+mate.x)/2;c.y=(o.y+mate.y)/2;o.energy-=.4;mate.energy-=.28;o.cool=mate.cool=4.5;o.children++;mate.children++}}
+ }
+ if(Math.floor(simTime*2)%14===0){const alive=organisms.filter(o=>o.alive);if(alive.length<42){for(const p of plates){const pool=alive.filter(o=>o.plate===p.id).sort((a,b)=>b.energy-a.energy);if(pool[0]){const c=organism(p.id,genome(pool[0].g),[pool[0]]);c.energy=.8}}}}
+ organisms=organisms.filter(o=>o.alive||o===selected);
+ if(history.length===0||simTime-history.at(-1).t>2){const s=stats();history.push({t:simTime,p:s.pop,l:s.lineages,g:s.maxGen});if(history.length>90)history.shift();updateJournal(s)}
+}
+function geneticDistance(a,b){let s=0;for(let i=0;i<6;i++)s+=Math.abs(a[i]-b[i]);return s/6}
+function stats(){const alive=organisms.filter(o=>o.alive),byPlate=plates.map(p=>alive.filter(o=>o.plate===p.id));const means=byPlate.map(arr=>arr.length?Array.from({length:6},(_,k)=>arr.reduce((s,o)=>s+o.g[k],0)/arr.length):null);let lineages=0;for(let i=0;i<means.length;i++)if(means[i]){let unique=true;for(let j=0;j<i;j++)if(means[j]&&geneticDistance(means[i],means[j])<.105)unique=false;if(unique)lineages++}return {pop:alive.length,maxGen:alive.reduce((m,o)=>Math.max(m,o.gen),0),lineages,means}}
+function updateJournal(s){popM.textContent=s.pop;genM.textContent=s.maxGen;linM.textContent=s.lineages;drawGene(s);drawHistory();let progress=clamp((s.lineages-1)/2,0,1);missionBar.style.width=(progress*100)+'%';if(s.lineages>=3){missionText.textContent='Three lineages detected. Now reconnect at least two islands and keep all three lineages alive.';let any=plates.some(p=>p.connections.size);if(any&&s.pop>55){missionBar.style.width='100%';if(!window.__won){window.__won=true;toastMsg('FIELD NOTE COMPLETE — isolation created distinct lineages, and gene flow has resumed.')}}}}
+function drawGene(s){const r=geneCanvas.getBoundingClientRect(),w=r.width,h=r.height;gctx.clearRect(0,0,w,h);const labels=['SIZE','SPEED','HEAT','WATER','SIGNAL','ROAM'];const colors=['#a94d35','#537b62','#c07b3e','#4f8190','#86547c','#8d7b3f'];for(let k=0;k<6;k++){const y=14+k*17;gctx.fillStyle='#d9ccb3';gctx.fillRect(62,y,w-78,7);const vals=organisms.filter(o=>o.alive).map(o=>o.g[k]);const mean=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:0;gctx.fillStyle=colors[k];gctx.fillRect(62,y,(w-78)*mean,7);gctx.fillStyle='#6f6658';gctx.font='9px system-ui';gctx.fillText(labels[k],8,y+7)}}
+function drawHistory(){const r=historyCanvas.getBoundingClientRect(),w=r.width,h=r.height;hctx.clearRect(0,0,w,h);hctx.strokeStyle='#9b8d73';hctx.lineWidth=1;hctx.beginPath();hctx.moveTo(10,h-20);hctx.lineTo(w-8,h-20);hctx.stroke();if(history.length<2)return;const maxP=Math.max(80,...history.map(x=>x.p));hctx.strokeStyle='#9c4f32';hctx.lineWidth=2;hctx.beginPath();history.forEach((d,i)=>{const x=10+i/(history.length-1)*(w-20),y=h-20-d.p/maxP*(h-30);i?hctx.lineTo(x,y):hctx.moveTo(x,y)});hctx.stroke();hctx.fillStyle='#6f6658';hctx.font='9px system-ui';hctx.fillText('POPULATION THROUGH TIME',10,12)}
+function showSelected(o){if(!o){selectedCard.textContent='Tap any organism in the atlas to pin its lineage, age, energy and genome here.';return}selectedCard.innerHTML=`<b>Specimen #${o.id}</b> · island ${plates[o.plate].name}<br>generation ${o.gen} · age ${o.age.toFixed(1)} · energy ${o.energy.toFixed(2)} · offspring ${o.children}<br>genome ${o.g.map(v=>v.toFixed(2)).join(' · ')}`}
+function drawPlate(p){ctx.save();ctx.translate(p.x,p.y);ctx.shadowColor='rgba(65,48,28,.24)';ctx.shadowBlur=20;ctx.shadowOffsetY=10;ctx.beginPath();p.shape.forEach(([x,y],i)=>i?ctx.lineTo(x*p.r,y*p.r):ctx.moveTo(x*p.r,y*p.r));ctx.closePath();ctx.fillStyle=p.color;ctx.fill();ctx.shadowColor='transparent';ctx.lineWidth=4;ctx.strokeStyle='rgba(255,247,224,.72)';ctx.stroke();ctx.lineWidth=1;ctx.strokeStyle='rgba(60,45,30,.45)';ctx.stroke();
+ for(const f of p.food){if(f.v<.06)continue;const x=Math.cos(f.a)*f.r*p.r,y=Math.sin(f.a)*f.r*p.r;ctx.fillStyle=`rgba(245,224,119,${.18+f.v*.65})`;ctx.beginPath();ctx.arc(x,y,2+f.v*2.7,0,Math.PI*2);ctx.fill()}
+ ctx.fillStyle='rgba(45,40,30,.72)';ctx.font='700 10px Georgia';ctx.fillText(p.name,-p.r*.72,-p.r*.55);ctx.font='8px system-ui';ctx.fillText(`${Math.round(p.temp*100)}° warmth · ${Math.round(p.wet*100)}% wet`, -p.r*.72,-p.r*.44);ctx.restore()}
+function drawOrg(o){if(!o.alive)return;const s=orgScreen(o),size=3.2+o.g[0]*4;const hue=20+o.g[4]*210;ctx.save();ctx.translate(s.x,s.y);ctx.rotate(Math.atan2(o.vy,o.vx));ctx.fillStyle=`hsl(${hue} 48% ${38+o.g[2]*22}%)`;ctx.strokeStyle=o===selected?'#fff8e9':'rgba(45,35,25,.55)';ctx.lineWidth=o===selected?3:1;ctx.beginPath();ctx.ellipse(0,0,size*1.25,size*.72,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='rgba(255,248,233,.9)';ctx.beginPath();ctx.arc(size*.66,-size*.15,1.1,0,Math.PI*2);ctx.fill();ctx.restore()}
+function drawConnections(){for(const a of plates)for(const id of a.connections)if(a.id<id){const b=plates[id];ctx.strokeStyle='rgba(85,68,46,.55)';ctx.lineWidth=5;ctx.setLineDash([7,7]);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.setLineDash([])}}
+function render(){ctx.fillStyle='#e8dcc1';ctx.fillRect(0,0,W,H);ctx.save();ctx.globalAlpha=.24;ctx.strokeStyle='#8e826e';ctx.lineWidth=1;for(let x=0;x<W;x+=34){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}for(let y=0;y<H;y+=34){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}ctx.restore();drawConnections();plates.forEach(drawPlate);organisms.forEach(drawOrg);if(drag?.p){ctx.strokeStyle='rgba(80,60,40,.28)';ctx.setLineDash([4,5]);ctx.beginPath();ctx.arc(drag.p.x,drag.p.y,drag.p.r*1.08,0,Math.PI*2);ctx.stroke();ctx.setLineDash([])}}
+function loop(t){const raw=Math.min(.05,(t-last)/1000);last=t;if(!paused){acc+=raw*speed;while(acc>.033){step(.033);acc-=.033}}render();requestAnimationFrame(loop)}
+function pointerPos(e){return {x:e.clientX,y:e.clientY}}
+canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);const q=pointerPos(e),o=nearestOrg(q.x,q.y);if(o){selected=o;showSelected(o);sheet.classList.add('open');hint.style.opacity=0;return}const p=plateAt(q.x,q.y);if(p){drag={p,dx:q.x-p.x,dy:q.y-p.y};plates.splice(plates.indexOf(p),1);plates.push(p);navigator.vibrate?.(10)}});
+canvas.addEventListener('pointermove',e=>{if(!drag?.p)return;const q=pointerPos(e);drag.p.x=clamp(q.x-drag.dx,drag.p.r*.7,W-drag.p.r*.7);drag.p.y=clamp(q.y-drag.dy,drag.p.r*.7,H-drag.p.r*.7);updateConnections()});
+canvas.addEventListener('pointerup',e=>{if(drag?.p){drag=null;updateConnections();navigator.vibrate?.(18);hint.style.opacity=0}});
+pauseBtn.onclick=()=>{paused=!paused;pauseBtn.textContent=paused?'▶':'Ⅱ'};
+speedBtn.onclick=()=>{speed=speed===1?3:speed===3?8:1;speedBtn.textContent=speed+'×'};
+resetBtn.onclick=()=>{window.__won=false;reset()};
+sheet.addEventListener('pointerdown',e=>{sheetStart=e.clientY});sheet.addEventListener('pointerup',e=>{if(sheetStart==null)return;const dy=e.clientY-sheetStart;if(dy<-35)sheet.classList.add('open');if(dy>35)sheet.classList.remove('open');sheetStart=null});
+function toastMsg(s){toast.textContent=s;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),2200)}
+resize();reset();updateJournal(stats());requestAnimationFrame(loop);
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+window.__foldworldTest={stats:()=>stats(),plates:()=>plates.map(p=>({id:p.id,x:p.x,y:p.y,c:[...p.connections]})),organisms:()=>organisms.filter(o=>o.alive).map(o=>({id:o.id,gen:o.gen,energy:o.energy,plate:o.plate})),reset};
+</script>
+</body>
+</html>
