@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#11160f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Crown & Root">
+<title>CROWN & ROOT — Evolution Garden</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icon.svg">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<div id="app">
+<header><div class="brand"><b>CROWN & ROOT</b><span>EVOLUTION GARDEN</span></div><div class="topstats"><span>YEAR <b id="year">1</b></span><span>PLANTS <b id="pop">0</b></span><span>LINES <b id="lines">0</b></span></div></header>
+<main id="stage"><canvas id="world" aria-label="Pflanzen-Evolutionssimulation"></canvas><div id="toast" aria-live="polite"></div><button id="analysisBtn" class="floating">⌁ ANALYSIS</button></main>
+<section id="controls"><div class="tools" role="toolbar" aria-label="Experimentwerkzeuge"><button class="tool active" data-tool="rain"><i>☂</i><b>RAIN</b><small>water patch</small></button><button class="tool" data-tool="nutrient"><i>✦</i><b>MINERAL</b><small>enrich soil</small></button><button class="tool" data-tool="rock"><i>⬢</i><b>ROCK</b><small>split roots</small></button><button class="tool" data-tool="seed"><i>●</i><b>SEED</b><small>founder drop</small></button></div><div class="simBtns"><button id="pause">Ⅱ</button><button class="speed on" data-speed="1">1×</button><button class="speed" data-speed="3">3×</button><button class="speed" data-speed="8">8×</button></div></section>
+<div id="intro" class="overlay"><div class="card"><span class="kicker">A DIFFERENT KIND OF EVOLUTION</span><h1>Plants cannot run.<br>So they redesign themselves.</h1><p>Jede Pflanze wächst als echter verzweigter Körper. Kronen konkurrieren um Licht, Wurzeln um Wasser und Mineralien. Samen erben Merkmale, mutieren und gründen neue Linien.</p><div class="rules"><div><b>LIGHT</b><span>Blätter beschatten Pflanzen darunter.</span></div><div><b>ROOTS</b><span>Wurzelspitzen entziehen dem Boden reale Ressourcen.</span></div><div><b>TRADE-OFFS</b><span>Höhe, Blattfläche, Samen und Wurzeln kosten Energie.</span></div><div><b>EVOLUTION</b><span>Nur erfolgreiche Pflanzen erzeugen Nachkommen.</span></div></div><button id="start">START 120-YEAR EXPERIMENT</button></div></div>
+<aside id="sheet"><div class="sheetHead"><div><span class="kicker">FIELD LAB</span><h2 id="sheetTitle">Population</h2></div><button id="closeSheet">×</button></div><div class="tabs"><button class="tab on" data-tab="plant">PLANT</button><button class="tab" data-tab="population">POPULATION</button><button class="tab" data-tab="soil">SOIL</button></div><div id="plantTab" class="tabBody"><p class="muted">Tippe eine Pflanze an, um Körper, Genom und Abstammung zu untersuchen.</p></div><div id="populationTab" class="tabBody hidden"><canvas id="chart"></canvas><div id="traitBars"></div></div><div id="soilTab" class="tabBody hidden"><div class="soilLegend"><span>Touch the world with MINERAL, RAIN or ROCK and watch roots reroute.</span></div><div class="metricGrid"><div><small>SOIL WATER</small><b id="waterMetric">0</b></div><div><small>MINERALS</small><b id="nutMetric">0</b></div><div><small>GENETIC DIVERSITY</small><b id="divMetric">0</b></div><div><small>OLDEST LINE</small><b id="oldMetric">0</b></div></div></div></aside>
+<div id="end" class="overlay hidden"><div class="card"><span class="kicker">EXPERIMENT COMPLETE</span><h1 id="endTitle">A forest wrote its own answer.</h1><p id="endText"></p><button id="restart">RUN NEW WORLD</button></div></div>
+</div>
+<script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));</script>
+<script src="./app.js" defer></script>
+</body>
+</html>
