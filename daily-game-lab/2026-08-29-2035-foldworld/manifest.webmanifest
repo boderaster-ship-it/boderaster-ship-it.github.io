@@ -1,7 +1,8 @@
 {
   "name":"FOLDWORLD — Evolution by Geography",
   "short_name":"FOLDWORLD",
-  "start_url":"./",
+  "start_url":"./play.html",
+  "scope":"./",
   "display":"standalone",
   "background_color":"#e8dcc1",
   "theme_color":"#e8dcc1",
