@@ -1,0 +1,10 @@
+{
+  "name":"TURNWILD — Evolution by Topology",
+  "short_name":"TURNWILD",
+  "start_url":"./",
+  "display":"standalone",
+  "background_color":"#d9cfb8",
+  "theme_color":"#d9cfb8",
+  "orientation":"any",
+  "icons":[{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}
