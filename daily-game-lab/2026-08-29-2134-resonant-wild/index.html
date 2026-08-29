@@ -1,0 +1,9 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#efe6cf"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css"><title>RESONANT WILD — evolve a living instrument</title></head><body>
+<canvas id="world" aria-label="Living acoustic ecosystem"></canvas>
+<div id="brand">RESONANT WILD<small>EVOLVE A LIVING INSTRUMENT</small></div>
+<div id="systems"><button id="pause" aria-label="Pause">Ⅱ</button><button id="speed" aria-label="Speed">1×</button><button id="reset" aria-label="Restart">↻</button></div>
+<div id="objective"><b id="objTitle">THE FIRST CHORD</b><span id="objText">Draw strings between tuning stones. Pluck different lengths until three stable pitch lineages emerge.</span><div class="prog"><i id="objBar"></i></div></div>
+<div id="guide">drag from one tuning stone to another • swipe across a string to pluck it</div>
+<div id="score"><div class="handle"></div><div class="scorehead"><h2>Resonance Score</h2><span>swipe up / down</span></div><div class="stats"><div class="stat"><b id="pop">0</b><small>creatures</small></div><div class="stat"><b id="gen">0</b><small>generation</small></div><div class="stat"><b id="voices">0</b><small>pitch lineages</small></div><div class="stat"><b id="stringsN">0</b><small>strings</small></div></div><canvas class="chart" id="spectrum"></canvas><div class="caption">Living spectrum — every mark is an individual inherited preferred pitch. Clusters are emergent lineages, not scripted species.</div><canvas class="chart" id="history"></canvas><div class="spec" id="specimen">Tap a creature to pin its inherited body, speed, pitch, hearing, rhythm and mate preference.</div></div>
+<div id="toast"></div>
+<script src="app.js"></script></body></html>
