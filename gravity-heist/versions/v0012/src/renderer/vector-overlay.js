@@ -1,9 +1,0 @@
-export class VectorOverlay {
-  constructor(canvas) { this.c = canvas; this.x = canvas.getContext('2d'); }
-  render(g, view) {
-    if (!g.vectorLocks?.length || !view) return;
-    const x = this.x; x.save(); x.translate(view.ox, view.oy); x.scale(view.s, view.s);
-    for (const l of g.vectorLocks) { x.save(); x.globalAlpha = l.open ? .28 : 1; const pulse = .72 + .28 * Math.sin(performance.now() / 240); x.strokeStyle = l.open ? '#79ffd0' : '#c9a7ff'; x.fillStyle = l.open ? 'rgba(121,255,208,.08)' : 'rgba(202,167,255,.10)'; x.shadowColor = l.open ? '#79ffd0' : '#c9a7ff'; x.shadowBlur = l.open ? 8 : 18 * pulse; x.lineWidth = 3; x.beginPath(); x.arc(l.x, l.y, l.r, 0, Math.PI * 2); x.fill(); x.stroke(); x.font = '900 12px ui-monospace'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = l.open ? '#b8ffe4' : '#eadcff'; x.fillText(l.open ? '✓' : ({ up: '↑', down: '↓', left: '←', right: '→' }[l.dir] || '•'), l.x, l.y); if (!l.open) { const d = l.door; x.fillStyle = 'rgba(184,125,255,.18)'; x.strokeStyle = 'rgba(220,185,255,.72)'; x.shadowBlur = 10; x.fillRect(d.x, d.y, d.w, d.h); x.strokeRect(d.x + .5, d.y + .5, d.w - 1, d.h - 1); } x.restore(); }
-    x.restore();
-  }
-}

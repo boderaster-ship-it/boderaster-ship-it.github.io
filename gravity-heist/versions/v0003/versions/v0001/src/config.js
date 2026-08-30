@@ -1,1 +1,0 @@
-export const CFG={version:'v0001',gravity:760,gravityBlend:11,swipeMin:42,swipeVelocity:.17,maxHeat:100,heatPerShift:7,world:{w:1000,h:560,pad:42},colors:{cyan:'#78eaff',gold:'#ffd870',red:'#ff547b'}};
