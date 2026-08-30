@@ -1,5 +1,6 @@
 export const HELIX={
 id:'helix',name:'HELIX RESEARCH ARRAY',lootName:'SINGULARITY CORE',tagline:'ALIGN THE VECTOR LOCKS. STEAL THE CORE.',baseScore:11800,
+theme:{id:'helix',floor:'#090713',floor2:'#17102a',wall:'#34245a',wall2:'#151027',bridge:'#6248a0',line:'rgba(226,158,255,.22)',zone:'rgba(169,94,255,.08)',accent:'#d99cff',accent2:'#69f5ff',security:'#ff4e91',ambient:[185,277,370],webglMix:1},
 solids:[
 {x:210,y:42,w:18,h:190,kind:'wall'},{x:210,y:328,w:18,h:190,kind:'wall'},
 {x:430,y:100,w:18,h:180,kind:'spine'},{x:430,y:370,w:18,h:148,kind:'spine'},
