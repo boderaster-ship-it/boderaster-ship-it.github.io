@@ -1,5 +1,23 @@
 # GRAVITY HEIST changelog
 
+## v0007 — Contract Progression & HELIX Vector Locks — 2026-08-30
+- Added a contract-selection screen with persistent per-heist best scores and unlock state.
+- Added save schema v2 with migration from the previous best-score/run counter format.
+- Completing Aurora Museum now unlocks a second playable contract instead of awarding generic XP.
+- Added HELIX Research Array: a distinct multi-room heist with its own geometry, props, guard routes and laser layout.
+- Added Vector Locks: approach a control node and shift gravity in its indicated direction to physically remove its security door.
+- Added a dedicated vector-lock overlay so nodes, required directions and closed doors are visually readable without adding touch buttons.
+- Generalized GameState and SecuritySystem so heists can provide their own geometry, props, score target and security profile.
+- Expanded the result flow with contract replay and return-to-contracts actions.
+- Expanded runtime self-tests from 22 to 27 assertions, including HELIX layout/profile checks and vector-lock activation/removal/rejection regressions.
+- Advanced service-worker cache to v0007 and included the new HELIX and vector-overlay modules.
+
+### Known gaps
+- Physical iPhone validation is still required.
+- HELIX uses the shared visual/audio language and needs a stronger bespoke identity.
+- Settings/accessibility remain the lowest scorecard dimension.
+- The WebGL layer remains atmospheric rather than the final full 3D geometry renderer.
+
 ## v0006 — GPU Atmosphere Pipeline — 2026-08-30
 - Added a dedicated WebGL renderer module as the first GPU presentation path, layered independently from the existing gameplay canvas.
 - Added a procedural architectural depth/atmosphere shader with perspective grid treatment, luminous structural accents, vignette and premium cyan security aesthetic.
