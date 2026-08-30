@@ -1,0 +1,1 @@
+const KEY='gravity-heist-save-v1';export const save={load(){try{return JSON.parse(localStorage.getItem(KEY))||{best:0,runs:0}}catch{return{best:0,runs:0}}},record(score){const s=this.load();s.best=Math.max(s.best,score);s.runs++;localStorage.setItem(KEY,JSON.stringify(s));return s}};
