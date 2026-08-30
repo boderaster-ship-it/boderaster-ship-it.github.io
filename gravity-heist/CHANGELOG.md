@@ -1,5 +1,22 @@
 # GRAVITY HEIST changelog
 
+## v0006 — GPU Atmosphere Pipeline — 2026-08-30
+- Added a dedicated WebGL renderer module as the first GPU presentation path, layered independently from the existing gameplay canvas.
+- Added a procedural architectural depth/atmosphere shader with perspective grid treatment, luminous structural accents, vignette and premium cyan security aesthetic.
+- WebGL lighting now reacts to live security alert level and current gravity direction without coupling rendering back into gameplay logic.
+- Added adaptive GPU render scale driven by moving frame-time measurements so presentation quality can fall back under load instead of forcing stutter.
+- Added runtime renderer diagnostics exposing WebGL availability, quality scale and average frame time.
+- Kept gameplay Pointer Events exclusively on the existing gameplay canvas; the GPU layer is pointer-events:none so touch behavior is unchanged.
+- Added reduced-motion CSS treatment for the new layer.
+- Expanded runtime self-tests from 20 to 22 assertions with adaptive-quality regression checks.
+- Advanced service-worker cache to v0006 and added the WebGL renderer module to offline core assets.
+
+### Known gaps
+- Physical iPhone validation still required.
+- This WebGL pass is the GPU rendering foundation and atmosphere/depth layer, not yet the final full 3D geometry renderer.
+- Guard vision-cone drawing is still illustrative rather than clipped to wall geometry.
+- Progression, settings/accessibility and multiple heists remain larger release gaps than further security polishing.
+
 ## v0005 — Occlusion & Impact Audio — 2026-08-30
 - Replaced distance-only guard detection with directional field-of-view perception.
 - Added wall-aware line-of-sight occlusion using segment-vs-rectangle tests against museum collision geometry, so guards no longer detect the player through solid walls.
