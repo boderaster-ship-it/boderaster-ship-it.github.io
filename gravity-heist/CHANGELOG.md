@@ -1,5 +1,21 @@
 # GRAVITY HEIST changelog
 
+## v0010 — Touch Reliability & Gesture Hysteresis — 2026-08-30
+- Rebuilt the gameplay gesture controller into explicit pending/drag/preview/idle states while retaining one dominant gravity-swipe control.
+- Added pure tap, hold, drag and swipe classification so ambiguous motion is identified instead of being silently folded into tap/swipe behavior.
+- Added directional hysteresis: a preview direction now remains locked around diagonal ambiguity and only switches axis after a deliberate stronger movement.
+- Added deliberate same-axis reversal handling so a player can still correct right→left or up→down before release.
+- Split pointer cancellation from normal pointer release. `pointercancel` and unexpected `lostpointercapture` now abort safely and cannot trigger gravity, tap, hold or drag callbacks.
+- Added input telemetry to runtime diagnostics: gesture state, swipes, taps, holds, drags, cancellations and direction switches.
+- Expanded runtime self-tests from 39 to 46 assertions with new touch-classification and hysteresis regressions.
+- Advanced service-worker cache to v0010.
+
+### Known gaps
+- Physical iPhone validation is still mandatory before touch can be considered release-ready; Safari pointer-capture semantics, one-handed feel and threshold tuning remain unproven on device.
+- HELIX still needs stronger bespoke art/audio identity.
+- WebGL remains an atmosphere/depth layer rather than final full 3D environment geometry.
+- Camera remains a static full-world framing model rather than the target damped cinematic follow/look-ahead system.
+
 ## v0009 — Mastery Grades & Playstyle Signatures — 2026-08-30
 - Added post-heist S/A/B/C mastery grading based on a weighted combination of completion score, speed, gravity-shift efficiency, alert control, optional objectives and contract-specific mechanics.
 - Added seven meaningful playstyle signatures: Collector, Phantom, Precision, Velocity, High Wire, Kinetic and Vector Savant. These reward genuinely different approaches instead of generic XP.
