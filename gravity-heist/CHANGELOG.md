@@ -1,5 +1,22 @@
 # GRAVITY HEIST changelog
 
+## v0012 — HELIX Identity: Reactor Neon & Resonant Lab Audio — 2026-08-30
+- Gave HELIX a dedicated violet/cyan reactor-laboratory material language instead of inheriting the museum palette.
+- Added HELIX-specific zone, wall, bridge, security, gravity-vector and player-accent treatment plus concentric reactor-field floor graphics and luminous reactor-spine detailing.
+- Made the GPU atmosphere level-aware: HELIX now renders a purple reactor-space treatment with animated concentric energy rings while Aurora Museum retains its cyan architectural atmosphere.
+- Added pure `sceneProfile()` mapping so level-specific GPU identity can be regression tested independently from WebGL availability.
+- Added level-aware audio profiles. HELIX gravity shifts now use a layered two-note signature, alerts/loot use a different pitch language, and HELIX receives a sparse resonant laboratory ambience while the museum retains its quieter low-frequency bed.
+- Added the active audio profile and GPU scene mix to runtime diagnostics.
+- Expanded runtime self-tests from 51 to 55 assertions for HELIX theme presence, GPU profile separation, audio-profile separation and ambience separation.
+- Advanced service-worker cache to v0012.
+
+### Known gaps
+- Physical iPhone validation remains mandatory for touch feel, camera comfort, audio balance and real-device performance.
+- HELIX identity is now substantially more distinct, but audio remains synthesized Web Audio rather than a finished authored sample/music package.
+- WebGL remains an atmosphere/depth layer rather than final full 3D environment geometry.
+- Foreground occlusion/cutaway is not meaningful yet because the environment is still primarily 2D-mapped geometry.
+- Progression still contains only two contracts and mastery thresholds need real-player telemetry.
+
 ## v0011 — Cinematic Follow Camera & Gravity Look-Ahead — 2026-08-30
 - Replaced the static full-world framing with a dedicated damped gameplay camera that follows the player without hard snapping.
 - Added velocity look-ahead so fast motion reveals more space in the direction of travel, plus gravity-vector look-ahead so the next fall direction remains readable after a shift.
