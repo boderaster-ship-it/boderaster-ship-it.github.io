@@ -124,6 +124,19 @@ body.directions-open{overflow:hidden}
 </main>
 <footer class="footer"><div class="script">Raquel &amp; Robin</div><p><span class="heart">♡</span> 23.10.2026 <span class="heart">♡</span></p><p data-de="Eine Website für unsere Gäste. Die Fotos werden direkt im iCloud-Album geteilt." data-es="Una web para nuestros invitados. Las fotos se comparten directamente en iCloud.">Eine Website für unsere Gäste. Die Fotos werden direkt im iCloud-Album geteilt.</p></footer>
 </div>
+<div id="directions-overlay" class="directions-overlay" hidden>
+  <section id="directions-dialog" class="directions-dialog" role="dialog" aria-modal="true" aria-labelledby="directions-title">
+    <button type="button" class="directions-close" id="directions-close" aria-label="Schließen">×</button>
+    <p class="section-kicker" data-de="WIR FREUEN UNS AUF DICH" data-es="TE ESPERAMOS">WIR FREUEN UNS AUF DICH</p>
+    <h2 id="directions-title" data-de="Wegbeschreibung" data-es="Cómo llegar">Wegbeschreibung</h2>
+    <p class="directions-place" id="directions-place"></p>
+    <p class="directions-address" id="directions-address"></p>
+    <div class="directions-options">
+      <a id="apple-directions" href="#" target="_blank" rel="noopener noreferrer" data-de="↗ In Apple Karten öffnen" data-es="↗ Abrir en Mapas de Apple">↗ In Apple Karten öffnen</a>
+      <a id="google-directions" href="#" target="_blank" rel="noopener noreferrer" data-de="↗ In Google Maps öffnen" data-es="↗ Abrir en Google Maps">↗ In Google Maps öffnen</a>
+    </div>
+  </section>
+</div>
 <script>
 (function(){
   var buttons={de:document.getElementById("de"),es:document.getElementById("es")};
@@ -185,18 +198,6 @@ body.directions-open{overflow:hidden}
 })();
 </script>
 
-<div id="directions-overlay" class="directions-overlay" hidden>
-  <section id="directions-dialog" class="directions-dialog" role="dialog" aria-modal="true" aria-labelledby="directions-title">
-    <button type="button" class="directions-close" id="directions-close" aria-label="Schließen">×</button>
-    <p class="section-kicker" data-de="WIR FREUEN UNS AUF DICH" data-es="TE ESPERAMOS">WIR FREUEN UNS AUF DICH</p>
-    <h2 id="directions-title" data-de="Wegbeschreibung" data-es="Cómo llegar">Wegbeschreibung</h2>
-    <p class="directions-place" id="directions-place"></p>
-    <p class="directions-address" id="directions-address"></p>
-    <div class="directions-options">
-      <a id="apple-directions" href="#" target="_blank" rel="noopener noreferrer" data-de="↗ In Apple Karten öffnen" data-es="↗ Abrir en Mapas de Apple">↗ In Apple Karten öffnen</a>
-      <a id="google-directions" href="#" target="_blank" rel="noopener noreferrer" data-de="↗ In Google Maps öffnen" data-es="↗ Abrir en Google Maps">↗ In Google Maps öffnen</a>
-    </div>
-  </section>
-</div>
+
 </body>
 </html>
