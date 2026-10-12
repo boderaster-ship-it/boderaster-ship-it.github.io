@@ -72,93 +72,34 @@ body.directions-open{overflow:hidden}
 @media(max-width:680px){.location .location-hint{font-size:10px;padding:2px 6px 12px}.directions-dialog{padding:28px 20px 25px}.directions-dialog h2{font-size:32px}}
 
 
-/* Decorative white doves: self-contained overlay; site layout and original images remain unchanged. */
-.wedding-doves{position:fixed;inset:0;z-index:12;overflow:hidden;pointer-events:none;contain:layout style;isolation:isolate}
-.wedding-dove{position:absolute;width:clamp(104px,11vw,162px);height:auto;opacity:.77;filter:drop-shadow(0 4px 5px rgba(59,70,64,.18));will-change:transform}
-.wedding-dove--one{top:12%;left:0;animation:wedding-dove-east 29s linear -8s infinite}
-.wedding-dove--two{top:62%;left:0;animation:wedding-dove-west 37s linear -22s infinite}
-.wedding-dove--two .wedding-dove-art{transform:scaleX(-1)}
-.wedding-dove .wing-far{transform-box:view-box;transform-origin:112px 83px;animation:wedding-wing-far 1.12s cubic-bezier(.45,.1,.55,.9) infinite alternate}
-.wedding-dove .wing-near{transform-box:view-box;transform-origin:113px 92px;animation:wedding-wing-near 1.12s cubic-bezier(.45,.1,.55,.9) infinite alternate}
-.wedding-dove--two .wing-far,.wedding-dove--two .wing-near{animation-delay:-.48s}
-.wedding-dove .bird-bob{animation:wedding-bird-bob 4.7s ease-in-out infinite alternate}
-@keyframes wedding-dove-east{from{transform:translate3d(-200px,5vh,0) scale(.8)}50%{transform:translate3d(48vw,-3vh,0) scale(1)}to{transform:translate3d(calc(100vw + 210px),4vh,0) scale(.87)}}
-@keyframes wedding-dove-west{from{transform:translate3d(calc(100vw + 200px),-4vh,0) scale(.72)}50%{transform:translate3d(46vw,3vh,0) scale(.98)}to{transform:translate3d(-210px,-3vh,0) scale(.78)}}
-@keyframes wedding-wing-far{0%{transform:rotate(-17deg) scaleY(1)}100%{transform:rotate(35deg) scaleY(.57)}}
-@keyframes wedding-wing-near{0%{transform:rotate(-9deg) scaleY(1)}100%{transform:rotate(48deg) scaleY(.53)}}
-@keyframes wedding-bird-bob{from{transform:translateY(-5px) rotate(-2deg)}to{transform:translateY(6px) rotate(2deg)}}
-@media(max-width:600px){.wedding-dove{width:96px;opacity:.65}.wedding-dove--two{top:75%}}
+/* Natural photographic dove flight, existing page design intentionally unchanged. */
+.wedding-doves{position:fixed;inset:0;z-index:12;overflow:hidden;pointer-events:none;contain:layout style}
+.wedding-dove{position:absolute;width:clamp(152px,18vw,242px);height:auto;will-change:transform;opacity:.88}
+.wedding-dove img{display:block;width:100%;height:auto;max-height:230px;object-fit:contain;filter:drop-shadow(0 2px 3px rgba(38,55,45,.39))}
+.wedding-dove--one{top:12%;left:0;animation:wedding-dove-east 23s linear -7s infinite}
+.wedding-dove--two{top:59%;left:0;animation:wedding-dove-west 30s linear -20s infinite}
+.wedding-dove--two img{transform:scaleX(-1)}
+@keyframes wedding-dove-east{
+  0%{transform:translate3d(-280px,4vh,0) scale(.77)}
+  30%{transform:translate3d(30vw,-3vh,0) scale(.95)}
+  70%{transform:translate3d(70vw,2vh,0) scale(.83)}
+  100%{transform:translate3d(calc(100vw + 280px),-4vh,0) scale(.77)}
+}
+@keyframes wedding-dove-west{
+  0%{transform:translate3d(calc(100vw + 280px),-3vh,0) scale(.68)}
+  40%{transform:translate3d(61vw,4vh,0) scale(.87)}
+  75%{transform:translate3d(22vw,-4vh,0) scale(.74)}
+  100%{transform:translate3d(-280px,2vh,0) scale(.68)}
+}
+@media(max-width:600px){.wedding-dove{width:148px;opacity:.76}.wedding-dove--two{top:70%}}
 @media(prefers-reduced-motion:reduce){.wedding-doves{display:none}}
-
 </style>
 </head>
 <body>
-<!-- Animated illustrated wedding doves; separate from invitation photography and all interactive elements. -->
+<!-- Actual frame-by-frame pigeon wing movement; pale white recoloring. Source credit: assets/DOVE-ANIMATION-LICENSE.txt -->
 <div class="wedding-doves" aria-hidden="true">
- <div class="wedding-dove wedding-dove--one"><svg class="wedding-dove-art" width="196" height="138" viewBox="0 0 196 138" fill="none" xmlns="http://www.w3.org/2000/svg">
- <g class="bird-bob" stroke-linejoin="round" stroke-linecap="round">
-  <!-- Rear wing and individual feathers, softly shaded -->
-  <g class="wing-far" fill="#e5e9e6" stroke="#b4bcb7" stroke-width="1.35">
-    <path d="M113 84C101 67 86 54 83 29C80 18 79 9 83 4C96 28 109 41 121 60C117 41 118 27 126 17C133 44 132 68 125 87Z"/>
-    <path d="M97 62C94 44 89 26 83 9M108 68C107 49 104 37 98 27M120 70C122 54 124 37 126 20" fill="none" stroke="#c5cdca" stroke-width="1.5"/>
-  </g>
-  <!-- Long feathered tail -->
-  <g fill="#f9f8f3" stroke="#b8c1bb" stroke-width="1.25">
-    <path d="M74 99C53 95 29 100 8 117C32 115 48 119 68 117L86 110Z"/>
-    <path d="M76 103C54 107 32 117 23 130C46 123 58 125 80 117Z"/>
-    <path d="M76 105C57 109 48 123 41 134C65 129 76 124 91 116Z"/>
-  </g>
-  <!-- Dove's soft pear-shaped body, neck and chest -->
-  <path d="M68 88C82 73 102 72 116 82C130 91 140 98 151 91C165 87 171 98 161 106C147 121 116 123 93 117C80 114 64 100 68 88Z" fill="#faf9f4" stroke="#aeb9b2" stroke-width="1.7"/>
-  <path d="M75 92C94 89 117 111 145 106" stroke="#d9ded9" stroke-width="2" opacity=".8"/>
-  <path d="M91 112C105 119 124 120 138 116" stroke="#e7e8df" stroke-width="3" opacity=".65"/>
-  <!-- Near wing with distinct primaries and feathered tips -->
-  <g class="wing-near" stroke-linejoin="round" stroke-linecap="round">
-    <path d="M117 94C102 84 79 74 63 58C45 40 32 22 27 8C43 14 60 24 74 40C65 24 60 11 63 4C83 18 102 39 115 58C112 37 115 22 125 14C132 38 137 63 134 82L125 95Z" fill="#fffef9" stroke="#aab7b1" stroke-width="1.7"/>
-    <path d="M112 81C91 64 65 39 33 14M115 73C97 48 80 30 65 8M127 73C127 52 127 35 125 18" stroke="#cad2cd" stroke-width="1.65" opacity=".8"/>
-    <path d="M87 64C70 55 60 43 51 31M98 73C81 64 70 54 61 47" stroke="#d6dcd7" stroke-width="1.3"/>
-    <path d="M111 86C117 82 124 82 129 88" stroke="#eceee9" stroke-width="3.4"/>
-  </g>
-  <!-- Neck, head, eye and small warm beak -->
-  <path d="M142 89C139 82 135 70 141 60C147 48 163 49 170 61C173 67 172 75 167 81C164 86 157 90 151 90" fill="#f9f9f4" stroke="#aeb9b2" stroke-width="1.5"/>
-  <path d="M170 67L187 73L170 78C174 75 174 70 170 67Z" fill="#c8a477" stroke="#a88a66" stroke-width="1.1"/>
-  <circle cx="162" cy="64" r="2.65" fill="#3d494b"/>
-  <circle cx="162.7" cy="63.35" r=".95" fill="#fff"/>
-  <path d="M146 83C153 88 160 87 165 82" stroke="#d6ded7" stroke-width="1.65"/>
- </g>
-</svg></div>
- <div class="wedding-dove wedding-dove--two"><svg class="wedding-dove-art" width="196" height="138" viewBox="0 0 196 138" fill="none" xmlns="http://www.w3.org/2000/svg">
- <g class="bird-bob" stroke-linejoin="round" stroke-linecap="round">
-  <!-- Rear wing and individual feathers, softly shaded -->
-  <g class="wing-far" fill="#e5e9e6" stroke="#b4bcb7" stroke-width="1.35">
-    <path d="M113 84C101 67 86 54 83 29C80 18 79 9 83 4C96 28 109 41 121 60C117 41 118 27 126 17C133 44 132 68 125 87Z"/>
-    <path d="M97 62C94 44 89 26 83 9M108 68C107 49 104 37 98 27M120 70C122 54 124 37 126 20" fill="none" stroke="#c5cdca" stroke-width="1.5"/>
-  </g>
-  <!-- Long feathered tail -->
-  <g fill="#f9f8f3" stroke="#b8c1bb" stroke-width="1.25">
-    <path d="M74 99C53 95 29 100 8 117C32 115 48 119 68 117L86 110Z"/>
-    <path d="M76 103C54 107 32 117 23 130C46 123 58 125 80 117Z"/>
-    <path d="M76 105C57 109 48 123 41 134C65 129 76 124 91 116Z"/>
-  </g>
-  <!-- Dove's soft pear-shaped body, neck and chest -->
-  <path d="M68 88C82 73 102 72 116 82C130 91 140 98 151 91C165 87 171 98 161 106C147 121 116 123 93 117C80 114 64 100 68 88Z" fill="#faf9f4" stroke="#aeb9b2" stroke-width="1.7"/>
-  <path d="M75 92C94 89 117 111 145 106" stroke="#d9ded9" stroke-width="2" opacity=".8"/>
-  <path d="M91 112C105 119 124 120 138 116" stroke="#e7e8df" stroke-width="3" opacity=".65"/>
-  <!-- Near wing with distinct primaries and feathered tips -->
-  <g class="wing-near" stroke-linejoin="round" stroke-linecap="round">
-    <path d="M117 94C102 84 79 74 63 58C45 40 32 22 27 8C43 14 60 24 74 40C65 24 60 11 63 4C83 18 102 39 115 58C112 37 115 22 125 14C132 38 137 63 134 82L125 95Z" fill="#fffef9" stroke="#aab7b1" stroke-width="1.7"/>
-    <path d="M112 81C91 64 65 39 33 14M115 73C97 48 80 30 65 8M127 73C127 52 127 35 125 18" stroke="#cad2cd" stroke-width="1.65" opacity=".8"/>
-    <path d="M87 64C70 55 60 43 51 31M98 73C81 64 70 54 61 47" stroke="#d6dcd7" stroke-width="1.3"/>
-    <path d="M111 86C117 82 124 82 129 88" stroke="#eceee9" stroke-width="3.4"/>
-  </g>
-  <!-- Neck, head, eye and small warm beak -->
-  <path d="M142 89C139 82 135 70 141 60C147 48 163 49 170 61C173 67 172 75 167 81C164 86 157 90 151 90" fill="#f9f9f4" stroke="#aeb9b2" stroke-width="1.5"/>
-  <path d="M170 67L187 73L170 78C174 75 174 70 170 67Z" fill="#c8a477" stroke="#a88a66" stroke-width="1.1"/>
-  <circle cx="162" cy="64" r="2.65" fill="#3d494b"/>
-  <circle cx="162.7" cy="63.35" r=".95" fill="#fff"/>
-  <path d="M146 83C153 88 160 87 165 82" stroke="#d6ded7" stroke-width="1.65"/>
- </g>
-</svg></div>
+  <div class="wedding-dove wedding-dove--one"><img src="assets/wedding-dove-real.webp" alt="" draggable="false"></div>
+  <div class="wedding-dove wedding-dove--two"><img src="assets/wedding-dove-real.webp" alt="" draggable="false"></div>
 </div>
 
 <div class="decorative-container">
