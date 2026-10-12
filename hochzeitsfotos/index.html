@@ -50,6 +50,27 @@ h1,h2,h3{margin:0}h1{font:400 clamp(74px,12vw,130px)/.88 Allura,cursive;letter-s
 .footer{border-top:1px solid var(--line);padding:22px 15px 30px;text-align:center;color:#8a896c;font-size:11px;line-height:1.7}.footer .script{font:400 34px Allura,cursive;color:#3c5148}.footer p{margin:0 0 5px}.footer span.heart{color:#dca635;font-size:14px}
 @media(max-width:680px){.decorative-container{width:calc(100% - 16px)}.site-nav{padding:13px 9px}.site-logo{font-size:27px}.navright .date{display:none}.langs{padding:3px;gap:2px}.langs button{min-width:84px;min-height:45px;padding:8px 9px;font-size:12px;gap:5px}.langs button .flag{font-size:20px}.hero{padding:34px 15px 25px;border-radius:15px}.hero:before{inset:5px}.branch{font-size:34px}.eyebrow{font-size:10px;letter-spacing:.36em}h1{font-size:clamp(66px,15vw,96px);margin:10px 0 0;line-height:.85}.date-line{font-size:14px;letter-spacing:.2em;margin:14px 0 0}.hero-intro{font-size:13px;padding:0 6px}.ornament{margin:11px auto 13px}.action-group{display:flex;flex-direction:column;gap:9px;margin:15px auto 8px;max-width:290px}.primary-btn,.outline-btn{width:100%;min-height:50px;padding:13px 14px;font-size:13px}.two-locations{gap:9px;margin-top:25px}.location img{height:123px}.location span{font-size:15px;padding:8px 4px 9px;line-height:1.05}.location small{font-size:8px}.section{padding:46px 8px 38px}.section h2{font-size:38px}.steps{grid-template-columns:1fr;gap:10px}.step{padding:18px 22px}.final-banner{margin:0 5px 28px;padding:27px 12px}.final-banner h2{font-size:42px}.branch.bl,.branch.br{font-size:25px;bottom:-2px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
+
+/* Clickable location cards and map chooser */
+.location-trigger{display:block;width:100%;padding:0;border:1px solid #d5be8c;font:inherit;color:inherit;cursor:pointer;text-align:left;transition:transform .18s ease,box-shadow .18s ease}
+.location-trigger:hover{transform:translateY(-3px);box-shadow:0 9px 24px #57472a28}
+.location-trigger:focus-visible{outline:3px solid #bd8637;outline-offset:3px}
+.location .location-hint{display:block;margin:0;padding:1px 10px 16px;text-align:center;font:700 clamp(11px,1.4vw,13px)/1.4 "DM Sans",sans-serif;color:#3d6554;letter-spacing:0}
+[hidden]{display:none!important}
+.directions-overlay{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(18,29,27,.64);backdrop-filter:blur(5px)}
+.directions-dialog{width:min(480px,100%);background:var(--paper);border:1.5px solid #d4a34b;border-radius:20px;box-shadow:0 24px 65px #0005;text-align:center;padding:27px 24px 29px;position:relative;color:var(--ink)}
+.directions-dialog:before{content:"";position:absolute;pointer-events:none;inset:6px;border:1px solid #e8c991;border-radius:14px}
+.directions-dialog h2{font:600 38px/1.06 "Cormorant Garamond",serif;margin:2px 24px 10px}
+.directions-dialog .directions-place{font:600 23px/1.2 "Cormorant Garamond",serif;margin:0 0 7px}
+.directions-dialog .directions-address{white-space:pre-line;font-size:13px;line-height:1.6;color:#616760;margin:0 0 20px}
+.directions-options{display:grid;gap:10px}
+.directions-options a{display:flex;justify-content:center;align-items:center;gap:9px;min-height:52px;border-radius:999px;border:1px solid #adb69c;background:#fff;color:#283d35;font-weight:700;font-size:14px}
+.directions-options a:first-child{background:#273d35;border-color:#273d35;color:#fff}
+.directions-options a:hover{filter:brightness(.95)}
+.directions-close{position:absolute;top:13px;right:14px;z-index:1;border:0;border-radius:50%;background:#eee5d6;color:#263d36;width:35px;height:35px;font-size:23px;line-height:1}
+body.directions-open{overflow:hidden}
+@media(max-width:680px){.location .location-hint{font-size:10px;padding:2px 6px 12px}.directions-dialog{padding:28px 20px 25px}.directions-dialog h2{font-size:32px}}
+
 </style>
 </head>
 <body>
@@ -72,8 +93,16 @@ h1,h2,h3{margin:0}h1{font:400 clamp(74px,12vw,130px)/.88 Allura,cursive;letter-s
   </div>
   <p class="microcopy" data-de="Beide Buttons öffnen iCloud. Kein Apple-Konto nötig – zum Hochladen fragt Apple nach deiner E-Mail-Adresse." data-es="Ambos botones abren iCloud. No necesitas cuenta de Apple; para subir fotos, Apple te pedirá tu correo electrónico.">Beide Buttons öffnen iCloud. Kein Apple-Konto nötig – zum Hochladen fragt Apple nach deiner E-Mail-Adresse.</p>
   <div class="two-locations">
-    <div class="location"><img src="https://d2ol7oe51mr4n9.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/17b5c6ab-cba1-4f45-9c44-9cfec0d280c3.jpg" alt="Originalmotiv aus der Einladung: Schloss Neuenbürg" loading="eager"><span><small>DEUTSCHLAND</small>Schloss Neuenbürg</span></div>
-    <div class="location"><img src="https://d2ol7oe51mr4n9.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/838c98fe-a923-4410-854a-2d8514717dda.jpg" alt="Originalmotiv aus der Einladung: Hochzeitslocation in Banyeres del Penedès" loading="eager"><span><small>ESPAÑA</small>Banyeres del Penedès</span></div>
+    <button type="button" class="location location-trigger" data-place="schloss" aria-haspopup="dialog" aria-controls="directions-dialog" aria-label="Schloss Neuenbürg: Wegbeschreibung auswählen">
+      <img src="https://d2ol7oe51mr4n9.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/17b5c6ab-cba1-4f45-9c44-9cfec0d280c3.jpg" alt="Originalmotiv aus der Einladung: Schloss Neuenbürg" loading="eager">
+      <span><small>DEUTSCHLAND</small>Schloss Neuenbürg</span>
+      <span class="location-hint" data-de="↗ Hier geht’s zur Wegbeschreibung" data-es="↗ Cómo llegar">↗ Hier geht’s zur Wegbeschreibung</span>
+    </button>
+    <button type="button" class="location location-trigger" data-place="villa" aria-haspopup="dialog" aria-controls="directions-dialog" aria-label="Banyeres del Penedès: Wegbeschreibung auswählen">
+      <img src="https://d2ol7oe51mr4n9.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/838c98fe-a923-4410-854a-2d8514717dda.jpg" alt="Originalmotiv aus der Einladung: Hochzeitslocation in Banyeres del Penedès" loading="eager">
+      <span><small>ESPAÑA</small>Banyeres del Penedès</span>
+      <span class="location-hint" data-de="↗ Hier geht’s zur Wegbeschreibung" data-es="↗ Cómo llegar">↗ Hier geht’s zur Wegbeschreibung</span>
+    </button>
   </div>
   <div class="curly-brace" aria-hidden="true">♡ &nbsp; ─── &nbsp; ♡</div>
 </section>
@@ -107,7 +136,67 @@ h1,h2,h3{margin:0}h1{font:400 clamp(74px,12vw,130px)/.88 Allura,cursive;letter-s
   buttons.es.addEventListener("click",function(){language("es");});
   var preferred=(navigator.language||"").toLowerCase();
   if(preferred.startsWith("es"))language("es");
+
+  var destinations={
+    schloss:{
+      name:"Schloss Neuenbürg",
+      address:"Hintere Schloßsteige 15, 75305 Neuenbürg, Deutschland",
+      display:"Hintere Schloßsteige 15\n75305 Neuenbürg\nDeutschland"
+    },
+    villa:{
+      name:"Banyeres del Penedès",
+      address:"Camí de les Masies, 5, 43711 Banyeres del Penedès, Tarragona, Spanien",
+      display:"Camí de les Masies, 5\n43711 Banyeres del Penedès\nTarragona, Spanien"
+    }
+  };
+  var overlay=document.getElementById("directions-overlay");
+  var closeButton=document.getElementById("directions-close");
+  var previousFocus=null;
+  function closeDirections(){
+    overlay.hidden=true;
+    document.body.classList.remove("directions-open");
+    if(previousFocus)previousFocus.focus();
+  }
+  document.querySelectorAll(".location-trigger").forEach(function(card){
+    card.addEventListener("click",function(){
+      var destination=destinations[card.getAttribute("data-place")];
+      if(!destination)return;
+      previousFocus=card;
+      document.getElementById("directions-place").textContent=destination.name;
+      document.getElementById("directions-address").textContent=destination.display;
+      document.getElementById("apple-directions").href="https://maps.apple.com/?daddr="+encodeURIComponent(destination.address);
+      document.getElementById("google-directions").href="https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(destination.address);
+      overlay.hidden=false;
+      document.body.classList.add("directions-open");
+      closeButton.focus();
+    });
+  });
+  closeButton.addEventListener("click",closeDirections);
+  overlay.addEventListener("click",function(event){if(event.target===overlay)closeDirections();});
+  overlay.addEventListener("keydown",function(event){
+    if(event.key==="Escape"){event.preventDefault();closeDirections();return;}
+    if(event.key==="Tab"){
+      var focusable=[closeButton,document.getElementById("apple-directions"),document.getElementById("google-directions")];
+      var i=focusable.indexOf(document.activeElement);
+      if(event.shiftKey&&i<=0){event.preventDefault();focusable[focusable.length-1].focus();}
+      else if(!event.shiftKey&&i===focusable.length-1){event.preventDefault();focusable[0].focus();}
+    }
+  });
 })();
 </script>
+
+<div id="directions-overlay" class="directions-overlay" hidden>
+  <section id="directions-dialog" class="directions-dialog" role="dialog" aria-modal="true" aria-labelledby="directions-title">
+    <button type="button" class="directions-close" id="directions-close" aria-label="Schließen">×</button>
+    <p class="section-kicker" data-de="WIR FREUEN UNS AUF DICH" data-es="TE ESPERAMOS">WIR FREUEN UNS AUF DICH</p>
+    <h2 id="directions-title" data-de="Wegbeschreibung" data-es="Cómo llegar">Wegbeschreibung</h2>
+    <p class="directions-place" id="directions-place"></p>
+    <p class="directions-address" id="directions-address"></p>
+    <div class="directions-options">
+      <a id="apple-directions" href="#" target="_blank" rel="noopener noreferrer" data-de="↗ In Apple Karten öffnen" data-es="↗ Abrir en Mapas de Apple">↗ In Apple Karten öffnen</a>
+      <a id="google-directions" href="#" target="_blank" rel="noopener noreferrer" data-de="↗ In Google Maps öffnen" data-es="↗ Abrir en Google Maps">↗ In Google Maps öffnen</a>
+    </div>
+  </section>
+</div>
 </body>
 </html>
