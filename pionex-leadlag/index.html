@@ -67,15 +67,18 @@
  qs.set('_v',String(Math.floor(Date.now()/60000)));
  const target=API+'/'+path+'?'+qs.toString();
  const proxies=[
-  'https://proxy.cors.dev/'+target,
-  'https://api.allorigins.win/raw?url='+encodeURIComponent(target)+'&n='+Date.now()
+  {url:'https://api.allorigins.win/raw?url='+encodeURIComponent(target)+'&n='+Date.now(),format:'json'},
+  {url:'https://r.jina.ai/'+target,format:'jina'},
+  {url:'https://proxy.cors.dev/'+target,format:'json'}
  ];
  let lastError='';
- for(const url of proxies){
+ for(const proxy of proxies){
   try{
-   const response=await fetch(url,{cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(22000)});
+   const response=await fetch(proxy.url,{cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(18000)});
    if(!response.ok)throw Error('HTTP '+response.status);
-   const body=await response.json();
+   const raw=await response.text();
+   const json=proxy.format==='jina'?raw.slice(raw.indexOf('Markdown Content:')+'Markdown Content:'.length).trim():raw;
+   const body=JSON.parse(json);
    if(!body||body.result===false||!body.data)throw Error(body?.message||body?.error||'Keine Pionex-Daten');
    return body.data;
   }catch(e){lastError=e?.message||String(e);}
@@ -84,7 +87,7 @@
 }
  function cleanBars(list){if(!Array.isArray(list))return [];const map=new Map();for(const b of list){const t=Math.floor(num(b.time)/MINUTE)*MINUTE,open=num(b.open),close=num(b.close);if(Number.isFinite(t)&&open>0&&close>0)map.set(t,{t,o:open,c:close});}return Array.from(map.values()).sort((a,b)=>a.t-b.t);}
  async function getCandles(symbol,hours,runToken){
-  const now=Date.now(),boundary=Math.floor(now/MINUTE)*MINUTE,from=boundary-hours*60*MINUTE-22*MINUTE;
+  const now=Date.now(),boundary=Math.floor(now/MINUTE)*MINUTE,from=boundary-hours*60*MINUTE-10*MINUTE;
   let old=(await readCache(symbol)).filter(b=>b.t>=from-3*MINUTE&&b.t<boundary);let merged=new Map(old.map(b=>[b.t,b]));
   let cursor=null,attempts=0,latestFilled=false;
   while(attempts++<Math.ceil(hours*60/490)+4){
