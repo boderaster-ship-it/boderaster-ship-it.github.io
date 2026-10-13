@@ -105,7 +105,7 @@ function makeCard(info,index){
  card.append(line);
  const line2=el("div","prob-line");line2.append(el("div","prob",f.probability_pct+" %"),el("div","prob-caption","geschätzte historische\nTrefferwahrscheinlichkeit"));card.append(line2);
  const track=el("div","prob-track");const bar=el("span");bar.style.width=Math.min(100,Math.max(0,f.probability_pct))+"%";track.append(bar);card.append(track);
- const foot=el("div","coin-foot");foot.append(el("span","","BTC-Nachlauf: "+f.lag_hours+" Std."),el("span","",""+f.sample_size+" historische Vergleichsfälle"),el("span","","Normal: "+f.baseline_pct+" %"),el("span","","95%-Intervall: "+f.ci_low_pct+"–"+f.ci_high_pct+" %"));
+ const foot=el("div","coin-foot");foot.append(el("span","","BTC-Signal: "+percentage(f.btc_signal_pct)+" in 3 Std."+(f.stimulus_ended_hours_ago?" (endete vor "+f.stimulus_ended_hours_ago+" Std.)":" (aktuell)")),el("span","","Historischer BTC→Coin-Nachlauf: "+f.lag_hours+" Std."),el("span","",""+f.sample_size+" unabhängige historische Vergleichsfälle"),el("span","","Ohne BTC-Bedingung: "+f.baseline_pct+" %"),el("span","","95%-Intervall: "+f.ci_low_pct+"–"+f.ci_high_pct+" %"));
  card.append(foot);
  return card;
 }
