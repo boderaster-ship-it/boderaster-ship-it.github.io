@@ -38,6 +38,7 @@ main{padding-top:27px;padding-bottom:45px}.eyebrow{letter-spacing:1.7px;text-tra
 .coin .riskline{font-size:11px;color:#bfc6c8;line-height:1.55;border-top:1px solid #2b4152;margin-top:12px;padding-top:11px}
 .subtle{color:#b9a78e!important}.alltable-wrap .up{color:#72e4ba!important}
 @media(max-width:700px){.alltable{font-size:11px}.coin .compare{font-size:11px}}
+.targetbox{margin-top:12px;padding:12px;border-radius:10px;background:#0b2433;border:1px solid #34505e;display:flex;flex-direction:column;gap:7px;font-size:12px;color:#aacecf}.targetbox b{color:#d4f4e8;font-size:13px}
 </style>
 </head>
 <body>
@@ -56,13 +57,13 @@ main{padding-top:27px;padding-bottom:45px}.eyebrow{letter-spacing:1.7px;text-tra
 </div>
 <div class="headline"><h2>Historische BTC-Nachzügler <span id="resultcount" style="color:#7ce4c8"></span></h2><small>Nach aktueller Datenlage sortiert<br>Prognosen und schwache Hinweise klar getrennt</small></div>
 <div class="cards" id="cards"><div class="empty" style="grid-column:1/-1"><div class="sign">…</div><h3>Analyse wird geladen</h3><p>Bitte einen Moment warten.</p></div></div>
-<details class="method" id="alldetails" style="margin-top:16px"><summary>Alle untersuchten Coins und ihre Wahrscheinlichkeit vergleichen <span id="tablecount"></span></summary><div class="alltable-wrap"><table class="alltable"><thead><tr><th>Coin</th><th>Richtung</th><th>In</th><th>Ziel</th><th>Quote</th><th>Normal</th><th>BTC-Nachlauf</th><th>Bewertung</th></tr></thead><tbody id="allrows"></tbody></table><div class="table-note">Wahrscheinlichkeiten sind historische relative Trefferhäufigkeiten, keine versprochenen Kurse. Die „Quote“ wird durch die Anzahl Vergleichsfälle beeinflusst.</div></div></details>
+<details class="method" id="alldetails" style="margin-top:16px"><summary>Alle untersuchten Coins und ihre Wahrscheinlichkeit vergleichen <span id="tablecount"></span></summary><div class="alltable-wrap"><table class="alltable"><thead><tr><th>Coin</th><th>Richtung</th><th>In</th><th>Ziel</th><th>Richtungsquote</th><th>Ohne BTC</th><th>Zielquote</th><th>BTC-Nachlauf</th><th>Bewertung</th></tr></thead><tbody id="allrows"></tbody></table><div class="table-note">Wahrscheinlichkeiten sind historische relative Trefferhäufigkeiten, keine versprochenen Kurse. Die „Quote“ wird durch die Anzahl Vergleichsfälle beeinflusst.</div></div></details>
 <div class="sectiontitle">Wie fundiert ist die Auswertung?</div>
 <div class="trust"><div><strong id="coins">–</strong><span>handelbare USDT-Paare untersucht</span></div><div><strong id="hourhistory">90 Tage</strong><span>Stundenhistorie zur Prüfung des Nachlaufs</span></div><div><strong id="minutehistory">–</strong><span id="minutelabel">Minutenarchiv im Aufbau · maximal 10.000 Pionex-Kerzen rückwirkend</span></div></div>
 <details class="method"><summary>Wie wird die Wahrscheinlichkeit ermittelt? · Methodik und Grenzen</summary><div class="explain">
 <p><b>1. Nur Pionex:</b> Die Auswahl stammt aus öffentlich verfügbaren, tatsächlich aktivierten USDT-Spot-Paaren. Extrem große Handelsspannen und geringe Umsätze werden automatisch ausgeschlossen.</p>
 <p><b>2. Verzögerung:</b> In den älteren 70 % der 90-Tage-Stundenhistorie werden Kombinationen aus 2 bis 24 Stunden Nachlauf und Prognosefenstern von 3, 6 oder 12 Stunden verglichen. Gewählt wird nur anhand der Trainingsdaten. Kleine Zufallseffekte können trotzdem vorkommen.</p>
-<p><b>3. Wahrscheinlichkeit:</b> In den neueren 30 % der Daten werden vergleichbare Bitcoin-Bewegungen gesucht. Die Quote zeigt, wie oft ein Coin anschließend mindestens die genannte Bewegung in 3, 6 oder 12 Stunden erreicht hat. Daneben steht die normale Trefferquote ohne Bitcoin-Bedingung. Testfenster werden nicht überlappt. Das Ergebnis ist eine <b>historische Häufigkeit</b>, keine kalibrierte Zukunftswahrscheinlichkeit.</p>
+<p><b>3. Wahrscheinlichkeit:</b> Wir zeigen zwei Ereignisse getrennt: (a) Steigt oder fällt der Coin überhaupt in der erwarteten Richtung? (b) Erreicht er darüber hinaus mindestens 0,5 % oder ein anderes aus Trainingsdaten bestimmtes Ziel? Beide Quoten werden auf jüngeren, zurückgehaltenen 30 % der 90-Tage-Daten gemessen. Daneben steht die normale Häufigkeit ohne BTC-Bedingung. Das Ergebnis ist eine <b>historische Häufigkeit</b>, keine kalibrierte Zukunftswahrscheinlichkeit.</p>
 <p><b>4. Bewertung:</b> Die Website zeigt nun auch schwache oder unbestätigte Zusammenhänge, damit du etwas vergleichen kannst. Das ist ausdrücklich <b>keine Kaufempfehlung</b>. Eine separate Kennzeichnung „statistisch bestätigt“ erfordert positive Beziehungen in Trainings- und Testdaten, mindestens 25 Vergleichsfälle und einen Vorsprung gegenüber der normalen Trefferquote.</p>
 <p><b>5. Einschränkungen:</b> Bei 60 Coins können auffällige Ergebnisse zufällig entstehen. Auch eine hohe Quote kann nur die allgemeine Aufwärts-/Abwärtsneigung eines Coins widerspiegeln; deshalb zeigen wir die Normalquote. Statistisch „bestätigt“ ist keine Gewinngarantie. Die Daten werden stündlich aktualisiert; starke Marktbewegungen können schneller wirken. Echte Handelsentscheidungen brauchen weitere Tests. Negative Prognosen sind keine Aufforderung zum Shorten.</p>
 </div></details>
@@ -119,19 +120,27 @@ function makeCard(info,index){
  const intro=el("div","btc-context","Bitcoin "+(f.btc_signal_pct>=0?"stieg":"fiel")+" "+btcTerm+" über 3 Stunden um "+Math.abs(f.btc_signal_pct).toLocaleString("de-DE",{maximumFractionDigits:2})+" %.");
  card.append(intro);
  const line=el("div","sentence");
- line.append(document.createTextNode("Historisch "+(f.direction==="up"?"stieg":"fiel")+" "+info.symbol.replace("_USDT","")+" in den folgenden "),el("strong","",f.hours+" Stunden"),document.createTextNode(" in "+f.successes+" von "+f.sample_size+" vergleichbaren Fällen um mindestens "+format(f.target_pct,1)+" %."));
+ line.append(document.createTextNode("Historische Wahrscheinlichkeit, dass "+info.symbol.replace("_USDT","")+" in den nächsten "),el("strong","",f.hours+" Stunden"),document.createTextNode(f.direction==="up"?" steigt:":" fällt:"));
  card.append(line);
+ const directionProb=Number.isFinite(f.direction_probability_pct)?f.direction_probability_pct:null;
+ const directionBase=Number.isFinite(f.direction_baseline_pct)?f.direction_baseline_pct:null;
+ const directionEdge=Number.isFinite(f.direction_edge_pp)?f.direction_edge_pp:null;
  const probLine=el("div","prob-line");
- probLine.append(el("div","prob",f.probability_pct+" %"),el("div","prob-caption","historische Trefferquote\nunter BTC-Bedingung"));
+ probLine.append(el("div","prob",directionProb===null?"–":directionProb+" %"),el("div","prob-caption","historische Wahrscheinlichkeit\nfür diese Richtung"));
  card.append(probLine);
- const track=el("div","prob-track"),bar=el("span");bar.style.width=Math.max(0,Math.min(100,f.probability_pct))+"%";track.append(bar);card.append(track);
+ const track=el("div","prob-track"),bar=el("span");bar.style.width=Math.max(0,Math.min(100,directionProb??0))+"%";track.append(bar);card.append(track);
  const comparison=el("div","compare");
- comparison.append(el("div","","Ohne BTC-Bedingung: "+f.baseline_pct+" %"),el("div",f.edge_pp>=0?"up":"down","Unterschied "+(f.edge_pp>=0?"+":"")+f.edge_pp+" Prozentpunkte"));
+ comparison.append(el("div","","Ohne BTC-Bewegung als Bedingung: "+(directionBase??"–")+" %"),
+  el("div",(directionEdge??0)>=0?"up":"down","BTC-Unterschied "+(directionEdge===null?"–":(directionEdge>=0?"+":"")+directionEdge)+" Prozentpunkte"));
  card.append(comparison);
+ const targetBox=el("div","targetbox");
+ targetBox.append(el("b","","Größere Bewegung: "+(f.direction==="up"?"+":"−")+format(f.target_pct,1)+" % in "+f.hours+" Std."),
+ el("span","","Historische Trefferquote: "+f.probability_pct+" % (ohne BTC-Bedingung "+f.baseline_pct+" %)"));
+ card.append(targetBox);
  const bottom=el("div","coin-foot");
- bottom.append(el("span","","Gemessener Versatz: "+f.lag_hours+" Std."),
+ bottom.append(el("span","","Historischer Nachlauf: "+f.lag_hours+" Std."),
                el("span","","Vergleichsfälle: "+f.sample_size),
-               el("span","","95%-Bereich: "+f.ci_low_pct+"–"+f.ci_high_pct+" %"));
+               el("span","","Richtungsquote, 95%-Intervall: "+(f.direction_ci_low_pct??"–")+"–"+(f.direction_ci_high_pct??"–")+" %"));
  card.append(bottom);
  const note=el("div","riskline",good
   ?"Auch ein historisch bestätigter Zusammenhang garantiert keine spätere Bewegung."
@@ -148,13 +157,14 @@ function makeRows(predictions){
    f.direction==="up"?"Steigen":"Fallen",
    f.hours+" Std.",
    "≥ "+format(f.target_pct,1)+" %",
+   (f.direction_probability_pct??"–")+" %",
+   (f.direction_baseline_pct??"–")+" %",
    f.probability_pct+" %",
-   f.baseline_pct+" %",
    f.lag_hours+" Std.",
    info.status==="validated"?"Bestätigt":info.status==="exploratory"?"Hinweis":"Nicht bestätigt"
   ];
   for(let i=0;i<parts.length;i++){
-   let cell=el("td",i===7?(info.status==="validated"?"up":"subtle"):"",parts[i]);
+   let cell=el("td",i===8?(info.status==="validated"?"up":"subtle"):"",parts[i]);
    tr.append(cell);
   }rows.append(tr);
  }
