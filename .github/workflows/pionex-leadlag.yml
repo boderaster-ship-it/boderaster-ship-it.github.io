@@ -5,6 +5,7 @@ on:
     - cron: "17 * * * *"
   push:
     paths:
+      - "pionex-leadlag/trading_v4.py"
       - "pionex-leadlag/analysis.py"
       - ".github/workflows/pionex-leadlag.yml"
 permissions:
@@ -25,4 +26,4 @@ jobs:
         with:
           python-version: "3.12"
       - name: Download and analyze Pionex public market data
-        run: python pionex-leadlag/analysis.py hourly
+        run: python pionex-leadlag/trading_v4.py
