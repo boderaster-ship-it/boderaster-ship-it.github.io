@@ -357,6 +357,97 @@ def changes(bars):
             if ret(d.get(t-h*HOUR),d[t]) is not None else None for h in (3,6,24)}
 
 
+
+def track_forward_shadow(results, price_data, btc_bars):
+    """Forward-only shadow observations, never fill prices at signal creation.
+    Uses future hourly CLOSE proxies when those bars become historical.
+    This is not a record of actually executable market orders.
+    """
+    file=DATA/"paper_v5.json"
+    try:
+        prior=json.loads(file.read_text(encoding="utf-8")) if file.exists() else {}
+        signals=prior.get("signals",[])
+        if not isinstance(signals,list):
+            signals=[]
+    except (ValueError,OSError,TypeError):
+        signals=[]
+    latest=btc_bars[-1][0]
+    prices={coin:dict(bars) for coin,bars in price_data.items()}
+    for item in signals:
+        if item.get("state")=="settled":
+            continue
+        coin=item.get("symbol")
+        series=prices.get(coin,{})
+        start=item.get("entry_bar")
+        end=item.get("exit_bar")
+        if not isinstance(start,int) or not isinstance(end,int):
+            item["state"]="invalid"
+            continue
+        entry=series.get(start)
+        exitp=series.get(end)
+        if entry and exitp and end<=latest:
+            gross=ret(entry,exitp)
+            item["state"]="settled"
+            item["entry_close"]=round(entry,9)
+            item["exit_close"]=round(exitp,9)
+            item["gross_pct"]=round(gross,3)
+            item["net_proxy_pct"]=round(gross-item["cost_pct"],3)
+            item["profitable"]=item["net_proxy_pct"]>0
+            item["resolved_at_utc"]=dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes")
+        elif end < latest-2*DAY:
+            item["state"]="invalid"
+            item["note"]="Future candle missing; not counted"
+    tracked_ids={s.get("id") for s in signals}
+    new=0
+    for row in results:
+        if new>=5:
+            break
+        test=row["test"]
+        # Independently journal promising but UNCONFIRMED contemporaneous BTC
+        # signals. They are never described as a proven opportunity.
+        if not row["signal_current"] or not row["market_valid"]:
+            continue
+        if test["n"]<12 or test["avg_net_pct"] is None or test["avg_net_pct"]<=0:
+            continue
+        if test["edge_over_best_baseline_pct"] is None or test["edge_over_best_baseline_pct"]<=0:
+            continue
+        sid=row["symbol"]+":"+str(latest)+":"+str(row["horizon_hours"])+":"+str(row["lag_hours"])
+        if sid in tracked_ids:
+            continue
+        if any(s["symbol"]==row["symbol"] and s.get("state")=="pending" for s in signals):
+            continue
+        record={
+            "id":sid,"symbol":row["symbol"],"state":"pending",
+            "decision_bar":latest,
+            "entry_bar":latest+HOUR,
+            "exit_bar":latest+(1+row["horizon_hours"])*HOUR,
+            "horizon_hours":row["horizon_hours"],
+            "lag_hours":row["lag_hours"],
+            "cost_pct":row["assumed_round_trip_cost_pct"],
+            "status_when_created":row["status"],
+            "test_mean_pct_at_creation":test["avg_net_pct"],
+            "created_at_utc":dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes"),
+        }
+        signals.append(record)
+        tracked_ids.add(sid)
+        new+=1
+    signals=signals[-1500:]
+    settled=[s for s in signals if s.get("state")=="settled"]
+    wins=sum(s["profitable"] for s in settled)
+    out={
+        "version":1,
+        "as_of_utc":dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes"),
+        "tracked":len(signals),
+        "pending":sum(s.get("state")=="pending" for s in signals),
+        "settled":len(settled),
+        "profitable":wins,
+        "average_proxy_net_pct":round(avg([s["net_proxy_pct"] for s in settled]),3) if settled else None,
+        "observations":signals[-60:],
+        "method":"Observed signals only after creation. Shadow entry at next hourly close, exit after H hours; no actual market fills."
+    }
+    file.write_text(json.dumps(out,ensure_ascii=False,separators=(",",":"))+"\n",encoding="utf-8")
+    return {k:out[k] for k in ("tracked","pending","settled","profitable","average_proxy_net_pct")}
+
 def run():
     now=(int(time.time()*1000)//HOUR)*HOUR
     symbols=tickers_and_symbols()[:MAX_COINS]
@@ -384,6 +475,8 @@ def run():
     results.sort(key=lambda r:(status_order[r["status"]],
                                -(r["test"]["edge_over_best_baseline_pct"] or -999),
                                -(r["test"]["n"] or 0)))
+    DATA.mkdir(exist_ok=True)
+    forward_stats=track_forward_shadow(results,prices,btc)
     summary={
         "version":5,
         "generated_at":dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
@@ -395,6 +488,7 @@ def run():
         "trade_opportunities":sum(x["status"]=="opportunity" for x in results),
         "watch_count":sum(x["status"]=="watch" for x in results),
         "validated_inactive_count":sum(x["status"]=="validated_inactive" for x in results),
+        "shadow_forward":forward_stats,
         "positive_average_count":sum(x["test"]["avg_net_pct"] is not None
                                      and x["test"]["avg_net_pct"]>0 for x in results),
         "results":results,
@@ -411,7 +505,6 @@ def run():
                       "warning":"Not a calibrated future probability; no measured execution fills, no live paper-trade track record"},
         "errors":len(errors)
     }
-    DATA.mkdir(exist_ok=True)
     (DATA/"v5.json").write_text(json.dumps(summary,ensure_ascii=False,
                                          separators=(",",":"))+"\n",encoding="utf-8")
     try_commit("Update Pionex V5 true-out-of-sample trading research")
