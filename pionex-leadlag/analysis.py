@@ -419,13 +419,22 @@ def parallel_collect(coins, interval, step, days, folder, now, workers):
     return output,errors
 
 def main():
+    import sys
+    mode=sys.argv[1] if len(sys.argv)>1 else "hourly"
+    if mode not in ("hourly", "minute"):
+        raise ValueError("Mode must be hourly or minute")
     now=(int(time.time()*1000)//HOUR)*HOUR
-    say("START Pionex forecast pipeline", "data timestamp",now)
+    say("START Pionex forecast pipeline", mode, "timestamp",now)
     coins=tickers_and_symbols()
     assert len(coins)>10, "Not enough valid tradable USDT pairs"
     say("Eligible",len(coins),"USDT spot pairs")
     btc_info={"symbol":"BTC_USDT","volume_24h_usdt":0,"spread_pct":0}
     requested=[btc_info]+coins
+    if mode=="minute":
+        archive, errors=parallel_collect(requested,"1M",MIN,DAYS_MINUTE,MIN_DIR,now,THREADS_MINUTE)
+        try_commit("Refresh Pionex minute history archive")
+        say("MINUTE IMPORT DONE",len(archive),"of",len(requested),"failures",len(errors))
+        return
     hourly,err=parallel_collect(requested,"60M",HOUR,DAYS_HOURLY,HOUR_DIR,now,THREADS_HOURLY)
     btc=hourly.get("BTC_USDT",[])
     if len(btc)<1100:raise ValueError("BTC hourly history incomplete; previous summary preserved")
@@ -440,6 +449,16 @@ def main():
     btc_map=dict(btc);last=max(btc_map)
     def btc_change(hours):
         return ret(btc_map.get(last-hours*HOUR),btc_map.get(last))
+    minute_paths=[MIN_DIR/(c["symbol"]+".json.gz") for c in requested]
+    archive_lengths=[]
+    for path in minute_paths:
+        if not path.exists():
+            continue
+        cached=load_bars(path)
+        if len(cached)>1:
+            archive_lengths.append((cached[-1][0]-cached[0][0])/86400000)
+    minute_count=len(archive_lengths)
+    minute_coverage=round(min(archive_lengths),1) if archive_lengths else 0
     summary={
       "version":3,"generated_at":dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
       "data_through":dt.datetime.fromtimestamp((last+HOUR)/1000,dt.timezone.utc).isoformat(timespec="minutes"),
@@ -452,30 +471,15 @@ def main():
       "strong_signals":sum(1 for p in predictions if p["status"] == "validated"),
       "exploratory_signals":sum(1 for p in predictions if p["status"] == "exploratory"),
       "diagnosed_coins":len(predictions), "predictions":predictions,
-      "minute_cache_coins":sum(1 for sym in hourly if (MIN_DIR/(sym+".json.gz")).exists()),
-      "minute_cache_status":"updating",
-      "minute_cache_coverage_days":0,
+      "minute_cache_coins":minute_count,
+      "minute_cache_status":"ready" if minute_count>=len(requested)-3 and minute_coverage>=13.5 else "building",
+      "minute_cache_coverage_days":minute_coverage,
       "errors":len(err),
       "method":"On 90 days hourly data, select BTC lag 2–24h and forecasting horizon 3/6/12h using only the first 70% in two subperiods; evaluate one frozen configuration on the later 30% in non-overlapping horizon samples. Report conditional target-hit frequency, unconditional baseline, Wilson interval and out-of-sample correlation for all analyzable coins. Strict evidence label only when positive validation requirements hold; multiple-comparison and calibration risks remain.",
       "warning":"Wahrscheinlichkeiten = historische Häufigkeiten unter ähnlichen Bedingungen, keine garantierten Vorhersagen. 90-Tage-Überprüfung und Papertrading erforderlich."
     }
     persist_summary(summary)
     try_commit("Update Pionex hourly research and forecast results")
-    # Backfill minute-level data once. Subsequent runs need only recent candles.
-    minute, minute_errors=parallel_collect(requested,"1M",MIN,DAYS_MINUTE,MIN_DIR,now,THREADS_MINUTE)
-    summary["minute_cache_coins"]=len(minute)
-    # The initial Pionex backfill cannot exceed ~6.9 days. Further hourly
-    # updates grow the archive organically until it spans 14 full days.
-    spans = [(max(v[0][0], now - DAYS_MINUTE*86400000), v[-1][0])
-             for v in minute.values() if len(v)>1]
-    coverage = min(((hi-lo)/86400000 for lo,hi in spans), default=0)
-    summary["minute_cache_coverage_days"]=round(coverage,1)
-    summary["minute_cache_status"]="ready" if len(minute)>=len(requested)-3 and coverage>=13.5 else "building"
-    summary["generated_at"]=dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
-    summary["minute_errors"]=len(minute_errors)
-    persist_summary(summary)
-    try_commit("Refresh 14-day Pionex minute candle archive")
-    say("DONE",len(predictions),"research signals",len(minute),"minute histories")
-
+    say("HOURLY DONE",len(predictions),"of",len(pairs),"diagnosed, minute data separate:",minute_count)
 if __name__=="__main__":
     main()
