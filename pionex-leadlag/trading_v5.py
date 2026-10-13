@@ -170,9 +170,11 @@ def metrics(trades, horizon, pars, beta):
     loss=sum(v<=-1 for v in vals)
     good=sum(v for v in vals if v>0)
     bad=-sum(v for v in vals if v<0)
-    equity=0.0;peak=0.0;maxdd=0.0
+    equity=1.0;peak=1.0;maxdd=0.0
     for v in vals:
-        equity+=v;peak=max(peak,equity);maxdd=max(maxdd,peak-equity)
+        equity*=max(.001,1+v/100)
+        peak=max(peak,equity)
+        maxdd=max(maxdd,100*(peak-equity)/peak)
     low,high=wilson(netwins,n)
     return {"n":n,"wins":netwins,"hit_prob_pct":round(100*(hits+2)/(n+4),1),
             "hit_ci_pct":[round(100*x,1) for x in wilson(hits,n)],
@@ -199,6 +201,20 @@ def bootstrap_mean_low(data, seed=17, reps=500, block=3):
             sample.extend(data[(j+k)%n] for k in range(block))
         results.append(avg(sample[:n]))
     return quantile(results,.05)
+
+
+def bootstrap_uplift_low(strategy, baseline, seed=61, reps=500, block=3):
+    if len(strategy)<3 or len(baseline)<3:
+        return None
+    rng=random.Random(seed)
+    def draw(series):
+        n=len(series)
+        buf=[]
+        while len(buf)<n:
+            k=rng.randrange(n)
+            buf.extend(series[(k+j)%n] for j in range(block))
+        return avg(buf[:n])
+    return quantile([draw(strategy)-draw(baseline) for _ in range(reps)],.05)
 
 
 def train_validate(btc, alt, cut_train, cut_validate, pars):
@@ -270,7 +286,13 @@ def evaluate_coin(info, btc_bars, alt_bars, generated):
     control_means=[m["avg_net_pct"] for m in (btc_ref,passive)
                    if m["avg_net_pct"] is not None]
     strongest_baseline=max(control_means) if control_means else None
+    strongest_group=max((btc_reference,passive_reference),
+                        key=lambda records:avg([x["net"] for x in records])
+                        if records else -999)
+    baseline_samples=[x["net"] for x in strongest_group]
     excess=round(perf["avg_net_pct"]-strongest_baseline,3) if strongest_baseline is not None and perf["avg_net_pct"] is not None else None
+    excess_low=bootstrap_uplift_low(rets,baseline_samples,
+                                   seed=83+len(info["symbol"]))
     # Current signal must use only the LAST COMPLETED bar. Entry would be
     # estimated at NEXT hourly close, never represented as a guaranteed fill.
     now_index=n-1
@@ -283,17 +305,19 @@ def evaluate_coin(info, btc_bars, alt_bars, generated):
                 perf["avg_net_pct"] is not None and
                 perf["avg_net_pct"]>0 and
                 excess is not None and excess>.12 and
+                excess_low is not None and excess_low>.05 and
                 low is not None and low>0 and
                 alpha_low is not None and alpha_low>0 and
                 perf["net_profit_prob_pct"]>=55 and
                 valnet>0 and
                 halfa>-.15 and halfb>-.15)
-    # Approximate one-sided normal p for net returns above strongest benchmark;
-    # BH across all post-selection coin tests; final gate ALSO uses bootstrap.
-    if perf["n"]>=4 and strongest_baseline is not None:
-        vals=rets
-        sem=stdev(vals)/math.sqrt(len(vals))
-        z=((avg(vals)-strongest_baseline)/sem) if sem>1e-8 else -999
+    # Independent-group one-sided Welch test of net uplift, supplemented
+    # by moving-block bootstrap. Conservative selection takes the stronger
+    # of the TWO baselines, both evaluated on untouched holdout data.
+    if len(rets)>=4 and len(baseline_samples)>=4:
+        se=math.sqrt(stdev(rets)**2/len(rets)
+                     +stdev(baseline_samples)**2/len(baseline_samples))
+        z=(avg(rets)-avg(baseline_samples))/se if se>1e-8 else -999
         pvalue=.5*math.erfc(z/math.sqrt(2))
     else:
         pvalue=1.
@@ -322,7 +346,8 @@ def evaluate_coin(info, btc_bars, alt_bars, generated):
                 "btc_excess_net_lower90_pct":round(alpha_low,3) if alpha_low is not None else None,
                 "btc_only_avg_net_pct":btc_ref["avg_net_pct"],
                 "buy_anytime_avg_net_pct":passive["avg_net_pct"],
-                "edge_over_best_baseline_pct":excess},
+                "edge_over_best_baseline_pct":excess,
+                "edge_lower90_pct":round(excess_low,3) if excess_low is not None else None},
         "status":"calculating"
     }
 
