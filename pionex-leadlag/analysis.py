@@ -106,7 +106,9 @@ def fetch_history(symbol, interval, step, days, folder, now):
         earliest = min(t for t, c in rows)
         for t, c in rows: cache[t] = c
         if earliest <= cutoff: break
-        if oldest is not None and earliest <= oldest + step:
+        if (oldest is not None and newest is not None
+                and oldest <= cutoff + 3*step
+                and earliest <= newest + step):
             break
         if cursor is not None and earliest >= cursor: break
         cursor = earliest - 1
@@ -300,7 +302,11 @@ def try_commit(message):
     subprocess.run(["git","config","user.name","github-actions[bot]"],check=True)
     subprocess.run(["git","config","user.email","41898282+github-actions[bot]@users.noreply.github.com"],check=True)
     subprocess.run(["git","commit","-m",message],check=True)
-    subprocess.run(["git","push"],check=True)
+    # The site can be edited while the scheduled job runs.
+    # Integrate those unrelated commits without overwriting any files.
+    subprocess.run(["git","fetch","origin","main"],check=True)
+    subprocess.run(["git","rebase","origin/main"],check=True)
+    subprocess.run(["git","push","origin","HEAD:main"],check=True)
 
 def parallel_collect(coins, interval, step, days, folder, now, workers):
     output={};errors={}
