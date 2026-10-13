@@ -88,7 +88,9 @@ def entries(b,a,start,end,delay,horizon,direction,trigger,beta,cost):
         outcome=change(a[t],a[t+horizon])
         if outcome is None:continue
         net=direction*outcome-cost  # for downsides: hypothetical short only
-        records.append((t,f,outcome,net))
+        btc_forward=change(b[t],b[t+horizon])
+        alpha_net=direction*(outcome-beta*btc_forward)-cost if btc_forward is not None else None
+        records.append((t,f,outcome,net,alpha_net))
     return records
 
 def mean(items):
@@ -102,6 +104,7 @@ def rates(records,trigger_target,direction):
     all_outcomes=[r[2] for r in records]
     active=[r for r in records if r[1] is not None and r[1]["active"]]
     n=len(active);sample_net=[r[3] for r in active]
+    sample_alpha=[r[4] for r in active if r[4] is not None]
     targets=sum(1 for r in active if direction*r[2]>=trigger_target)
     directions=sum(1 for r in active if direction*r[2]>0)
     prior_target=sum(1 for x in all_outcomes if direction*x>=trigger_target)/len(all_outcomes) if all_outcomes else 0
@@ -117,6 +120,9 @@ def rates(records,trigger_target,direction):
     sem=(std(sample_net)/math.sqrt(n)) if n>1 else None
     # Conservative normal approximation; small-N cases cannot be strong signals.
     low=av-1.96*sem if av is not None and sem is not None else None
+    alpha_mean=mean(sample_alpha)
+    alpha_low=(alpha_mean-1.96*std(sample_alpha)/math.sqrt(len(sample_alpha))
+               if len(sample_alpha)>1 else None)
     # One-sided, independent-group two-proportion comparison, with a
     # conservative baseline that is at least as high as the unconditional rate.
     n0=len(control);wins0=sum(1 for r in control if direction*r[2]>=trigger_target)
@@ -132,6 +138,8 @@ def rates(records,trigger_target,direction):
             "delta_pp":round(100*(p-baseline),1),
             "net_average_pct":round(av,3) if av is not None else None,
             "net_lower95_pct":round(low,3) if low is not None else None,
+            "btc_adjusted_net_mean_pct":round(alpha_mean,3) if alpha_mean is not None else None,
+            "btc_adjusted_net_lower95_pct":round(alpha_low,3) if alpha_low is not None else None,
             "p_value":pval,
             "n_baseline":len(records),"mean_net":av or 0.}
 
@@ -214,6 +222,8 @@ def bh_adjust(rows):
                  and e["p_target"]>=60 and e["delta_pp"]>=10
                  and e["net_lower95_pct"] is not None
                  and e["net_lower95_pct"]>0.0
+                 and e["btc_adjusted_net_lower95_pct"] is not None
+                 and e["btc_adjusted_net_lower95_pct"]>0.0
                  and row["train_halves_edge_pp"][0]>0
                  and row["train_halves_edge_pp"][1]>0)
         row["status"]="tested_positive" if confirm else (
