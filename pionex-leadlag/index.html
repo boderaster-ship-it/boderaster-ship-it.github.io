@@ -33,7 +33,7 @@ main{padding-top:27px;padding-bottom:45px}.eyebrow{letter-spacing:1.7px;text-tra
 <div class="eyebrow">Bitcoin als Frühindikator · Stunden statt Minuten</div>
 <h1>Welche Coins folgen <em>Bitcoin später?</em></h1>
 <p class="lead">Deine Antwort für die nächste Trading-Session: Was hat Bitcoin zuletzt gemacht – und bei welchen Pionex-Coins zeigt die Vergangenheit eine verlässliche Reaktion in den nächsten Stunden?</p>
-<div class="actionline"><button id="refresh" class="refresh">↻ Jetzt aktualisieren</button><div class="stamp" id="stamp">Lade die letzten verfügbaren Analyseergebnisse …</div></div>
+<div class="actionline"><button id="refresh" class="refresh">↻ Neueste Ergebnisse laden</button><div class="stamp" id="stamp">Lade die letzten verfügbaren Analyseergebnisse …</div></div>
 <div class="state" id="state" role="status" aria-live="polite">Lade Forschungsdaten. Beim erstmaligen Aufbau werden die Kursdaten automatisch im Hintergrund gesammelt.</div>
 <div class="sectiontitle">So hat sich Bitcoin bewegt</div>
 <div class="btc">
@@ -43,7 +43,7 @@ main{padding-top:27px;padding-bottom:45px}.eyebrow{letter-spacing:1.7px;text-tra
 <div class="headline"><h2>Wahrscheinliche Nachzügler <span id="resultcount" style="color:#7ce4c8"></span></h2><small>Nur Coins mit bestätigter historischer Evidenz<br>Keine künstlich erzeugten „Top Picks“</small></div>
 <div class="cards" id="cards"><div class="empty" style="grid-column:1/-1"><div class="sign">…</div><h3>Analyse wird geladen</h3><p>Bitte einen Moment warten.</p></div></div>
 <div class="sectiontitle">Wie fundiert ist die Auswertung?</div>
-<div class="trust"><div><strong id="coins">–</strong><span>handelbare USDT-Paare untersucht</span></div><div><strong id="hourhistory">90 Tage</strong><span>Stundenhistorie zur Prüfung des Nachlaufs</span></div><div><strong id="minutehistory">0 / –</strong><span>Coins mit zusätzlichem 14-Tage-Minutenarchiv</span></div></div>
+<div class="trust"><div><strong id="coins">–</strong><span>handelbare USDT-Paare untersucht</span></div><div><strong id="hourhistory">90 Tage</strong><span>Stundenhistorie zur Prüfung des Nachlaufs</span></div><div><strong id="minutehistory">–</strong><span id="minutelabel">Minutenarchiv im Aufbau · maximal 10.000 Pionex-Kerzen rückwirkend</span></div></div>
 <details class="method"><summary>Wie wird die Wahrscheinlichkeit ermittelt? · Methodik und Grenzen</summary><div class="explain">
 <p><b>1. Nur Pionex:</b> Die Auswahl stammt aus öffentlich verfügbaren, tatsächlich aktivierten USDT-Spot-Paaren. Extrem große Handelsspannen und geringe Umsätze werden automatisch ausgeschlossen.</p>
 <p><b>2. Verzögerung:</b> Aus 90 Tagen Stundenkursen wird geprüft, ob ein Coin Bitcoin mit 2 bis 24 Stunden Versatz folgt. Die optimale Verzögerung wird nur anhand der älteren 70 % der Historie gewählt.</p>
@@ -51,7 +51,7 @@ main{padding-top:27px;padding-bottom:45px}.eyebrow{letter-spacing:1.7px;text-tra
 <p><b>4. Filter:</b> Nur Kandidaten mit ausreichenden Testereignissen, positiver Beziehung auch in neueren Daten und einem Vorteil gegenüber der normalen Grundwahrscheinlichkeit werden hervorgehoben. Wenn keine Münze diese Kriterien erfüllt, gibt es kein Signal.</p>
 <p><b>5. Einschränkungen:</b> Viele untersuchte Coins und Zeithorizonte erhöhen die Gefahr zufälliger Treffer. Historische Muster können plötzlich verschwinden. Ein Stunden-Nachlauf ist keine garantierte Wartezeit für eine Order. Für belastbares Echtgeld-Trading braucht es zusätzlich längere unabhängige Tests und Papertrading. Kursanstieg und Kursrückgang werden getrennt behandelt; ein Rückgang ist <b>keine Aufforderung zum Shorten</b>.</p>
 </div></details>
-<div class="info"><b>Wichtig:</b> „Jetzt aktualisieren“ lädt die zuletzt automatisch berechneten Prognosen. Die Kursdaten werden im Hintergrund ungefähr stündlich gesammelt, nicht erst beim Öffnen der Seite. Die angezeigten Schätzwerte berücksichtigen keine individuellen Ordergebühren. Bei veralteten Daten zeigt der Scanner bewusst keine aktuellen Handelsmöglichkeiten.</div>
+<div class="info"><b>So funktioniert die Aktualisierung:</b> Die Rechenarbeit läuft automatisch im Hintergrund, ungefähr einmal pro Stunde (GitHub Actions). Der Button ruft die jüngsten fertigen Ergebnisse ab. Er startet <b>keine</b> neue Kursanalyse. Deshalb kann der Abruf weniger als eine Sekunde dauern, ohne dass neue Kurse vorliegen. Der zusätzliche Minutendatenbestand wächst aufgrund der offiziellen Pionex-Grenze von 10.000 Kerzen zunächst aus etwa 6,7 auf 14 Tage. Für die Stundenprognosen ist dieser Minutendatenbestand nicht erforderlich. Bei veralteten Daten zeigt der Scanner keine aktuellen Signale. Die Schätzwerte berücksichtigen keine individuellen Ordergebühren.</div>
 <footer><span>BTC Vorlauf · unabhängiges Statistikwerkzeug · keine Finanzberatung</span><a href="https://www.pionex.com/docs/api-docs/trade-api/market" target="_blank" rel="noopener">Pionex: öffentliche Marktdaten ↗</a></footer>
 </main>
 </div>
@@ -120,6 +120,10 @@ function draw(data){
  safely("#coins",String(data.analyzed_coins??"–"));
  safely("#hourhistory",(data.hourly_days??90)+" Tage");
  safely("#minutehistory",(data.minute_cache_coins??0)+" / "+((data.analyzed_coins??0)+1));
+ const coverage=Number(data.minute_cache_coverage_days||0);
+ safely("#minutelabel",data.minute_cache_coins
+  ?"Minutenarchiv: derzeit ca. "+format(coverage,1)+" von 14 Tagen; Aufbau läuft automatisch"
+  :"Minutenarchiv noch nicht verfügbar · unabhängig von der Stundenanalyse");
  const predictions=Array.isArray(data.predictions)?data.predictions:[];
  const usable=stale?[]:predictions.slice(0,8);
  const notice=$("#state");
@@ -137,15 +141,24 @@ function draw(data){
  }
  safely("#resultcount",usable.length?"("+usable.length+")":"");
 }
+let priorStamp="";
 async function refresh(){
- const btn=$("#refresh");btn.disabled=true;btn.textContent="⟳ Prüfe die neuesten Daten …";
+ const btn=$("#refresh");btn.disabled=true;btn.textContent="⟳ Prüfe gespeicherte Auswertung …";
  $("#state").textContent="Verbinde mit dem automatisch aktualisierten Pionex-Datenarchiv …";
- try{const data=await loadData();draw(data);}catch(e){
+ try{
+  const data=await loadData();
+  const isSame=priorStamp && priorStamp===data.generated_at;
+  draw(data);
+  if(isSame){
+    safely("#stamp","Keine neuere Berechnung verfügbar. Letzter Stand: "+pformat(data.generated_at)+" Uhr");
+  }
+  priorStamp=data.generated_at;
+ }catch(e){
   $("#state").textContent="Der neue Datenbestand wird gerade aufgebaut. Die erste vollständige Historie braucht einmalig länger; danach wird sie stündlich ergänzt.";
   $("#state").classList.add("warn");
   safely("#stamp","Noch kein fertiger Ergebnis-Datensatz vorhanden");
   empty("Erster Datenaufbau läuft","Es werden 14 Tage Minutendaten und zusätzlich rund 90 Tage Stundenhistorie analysiert. Diese Arbeit geschieht automatisch im Hintergrund. Versuche es später mit „Jetzt aktualisieren“ erneut.");
- }finally{btn.disabled=false;btn.textContent="↻ Jetzt aktualisieren";}
+ }finally{btn.disabled=false;btn.textContent="↻ Neueste Ergebnisse laden";}
 }
 $("#refresh").addEventListener("click",refresh);
 refresh();
