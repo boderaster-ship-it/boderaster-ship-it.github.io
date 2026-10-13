@@ -55,6 +55,8 @@ footer{border-top:1px solid #264450;margin-top:26px;padding-top:18px;font-size:1
 <div id="watchlist" class="cards"><div class="empty">Analyse wird geladen …</div></div>
 <div class="section-head"><h2>Warum scheitern Strategien?</h2><small>Alle negativen Ergebnisse bleiben überprüfbar</small></div>
 <div id="exclusions" class="empty">Lade unabhängigen Backtest …</div>
+<div class="section-head"><h2>Fortlaufender Schattenhandel</h2><small>Nur Signale, die nach Erstellung beobachtet wurden – keine rückwirkenden Trades</small></div>
+<div class="empty" id="forward"><b>Wird aufgebaut …</b><p>Künftige Muster werden protokolliert und erst nach Ablauf der Haltedauer ausgewertet.</p></div>
 <details class="accordion"><summary>Alle geprüften Coins und echten Backtest-Zahlen anzeigen</summary><div class="tblwrap"><table class="tbl"><thead><tr><th>Coin</th><th>Nachlauf</th><th>Halten</th><th>Profit-Wahrsch.</th><th>Ø netto</th><th>Vergleichsvorteil</th><th>Risiko: -1 %</th><th>Trades</th><th>Status</th></tr></thead><tbody id="rows"></tbody></table></div></details>
 <details class="accordion"><summary>Statistische Methodik und Grenzen – wie viel kann ich den Zahlen vertrauen?</summary><div class="inner">
 <p><b>Kein nachträgliches Optimieren der Testdaten:</b> 55 % der 180-Tage-Stundenhistorie dienen der Festlegung des Bitcoin-Impulses, 20 % zur Auswahl des Zeitversatzes und der Haltedauer, die letzten 25 % bleiben bis zur abschließenden Prüfung unberührt. Zwischen den Zeiträumen werden Überlappungen gesperrt.</p>
@@ -127,7 +129,8 @@ function detailCard(x,validated){
   ["Historische Testtrades",String(t.n)],
   ["Risiko: Max. Drawdown",pct(t.drawdown_pct,1)],
   ["Profit Factor",fmt(t.profit_factor,2)],
-  ["Niedrigster bootstrap-basierter Durchschnitt",pct(t.net_lower90_pct,2)],
+  ["Untere Nettorendite-Schätzgrenze",pct(t.net_lower90_pct,2)],
+  ["Untere Mehrertrags-Schätzgrenze",pct(t.edge_lower90_pct,2)],
   ["Wahrscheinlichkeit Kursziel netto +"+fmt(x.target_net_pct,2)+" %",pct(t.hit_prob_pct,1)],
   ["Rundum-Kostenannahme",pct(x.assumed_round_trip_cost_pct,2)]
  ]){
@@ -176,6 +179,16 @@ function render(data){
  $("exclusions").replaceChildren(make("b","", "Warum nicht einfach den stärksten Coin kaufen?"),
  make("p","",negatives+" von "+rows.length+" Coin-Modellen waren im unabhängigen Test nach den angesetzten Kosten durchschnittlich nicht profitabel. "+
  low+" Modelle hatten keine positive untere Bootstrap-Schätzgrenze. Auch ein positiver historischer Mittelwert genügt nicht, wenn der Vorteil gegenüber einfachen Vergleichsstrategien oder die unabhängige statistische Prüfung fehlt."));
+ const track=data.shadow_forward||{};
+ const forward=$("forward");
+ forward.replaceChildren();
+ forward.append(make("b","", (track.settled||0)+" später überprüfte Schatten-Trades"));
+ forward.append(make("p","", (track.pending||0)+" Beobachtungen sind noch offen. "+
+  (track.settled?
+    "Historische Erfolgsquote dieser erst später ausgewerteten Signale: "+fmt(100*(track.profitable||0)/track.settled,1)+" %. "+
+    "Ø Netto-Kursproxy: "+pct(track.average_proxy_net_pct,2)+". ":
+    "Noch kein ausreichender Vorwärtsnachweis vorhanden. ")+
+  "Es sind ausschließlich Kursproxies für die Folgestunden, keine echten Pionex-Orderausführungen."));
  const tbody=$("rows");tbody.replaceChildren();
  for(const r of rows){
   const t=r.test,tr=make("tr","");
