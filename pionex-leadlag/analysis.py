@@ -309,15 +309,22 @@ def score_coin(info, btc, coin, now):
     if n < 12:
         return None
 
-    # Conservative Beta prior. If N is small we retain the result but flag it.
+    # Separate event 1: any move in the BTC-implied direction.
+    direction_successes = sum(1 for _, y in matches if y * direction > 0)
+    direction_base = sum(1 for _, y in observations if y * direction > 0) / len(observations)
+    direction_probability = (direction_successes + 2) / (n + 4)
+    direction_lower, direction_upper = wilson(direction_successes / n, n)
+
+    # Event 2: the larger absolute target from the TRAINING distribution.
     probability = (successes + 2) / (n + 4)
     lower, upper = wilson(successes / n, n)
     edge = probability - baseline
+    direction_edge = direction_probability - direction_base
     train_consistent = c1 > 0 and c2 > 0 and score >= .045
     signal_current = abs(current_x) >= max(.12, median_stimulus * .50)
     confirmed = (train_consistent and test_corr is not None
-                 and test_corr >= .08 and probability >= .58
-                 and edge >= .10 and lower >= baseline - .02
+                 and test_corr >= .08 and direction_probability >= .58
+                 and direction_edge >= .10 and direction_lower >= direction_base - .02
                  and n >= 25 and signal_current)
     # Difference in percentages between comparable and unconditional outcomes.
     # Current BTC magnitude and direction are provided as an observed fact.
@@ -325,6 +332,13 @@ def score_coin(info, btc, coin, now):
         "hours": horizon,
         "direction": "up" if direction > 0 else "down",
         "probability_pct": round(100 * probability),
+        "direction_probability_pct": round(100 * direction_probability),
+        "direction_baseline_pct": round(100 * direction_base),
+        "direction_edge_pp": round(100 * direction_edge),
+        "direction_successes": direction_successes,
+        "direction_ci_low_pct": round(100 * direction_lower),
+        "direction_ci_high_pct": round(100 * direction_upper),
+        "median_return_pct": round(statistics.median([y for _, y in matches]), 2),
         "target_pct": target,
         "baseline_pct": round(100 * baseline),
         "edge_pp": round(100 * edge),
@@ -343,13 +357,13 @@ def score_coin(info, btc, coin, now):
         "test_samples": test_points,
     }
     # These are descriptive, not trading recommendation scores.
-    relevance = (edge * 100 * .65
+    relevance = (edge * 100 * .3 + direction_edge * 100 * .7
                  + (test_corr if test_corr is not None else -.2) * 25
                  + min(n, 55) * .075
                  - (0 if train_consistent else 8)
                  - (0 if signal_current else 5))
     status = ("validated" if confirmed else
-              "exploratory" if edge >= .03 and test_corr is not None
+              "exploratory" if (edge >= .03 or direction_edge >= .05) and test_corr is not None
                                and test_corr > 0 and train_consistent else
               "not_validated")
     return {
