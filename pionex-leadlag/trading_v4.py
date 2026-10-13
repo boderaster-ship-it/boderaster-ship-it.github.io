@@ -76,14 +76,14 @@ def feature(b,a,t,delay,direction,trigger,beta):
             "active":shock and unpriced,
             "event_t":event}
 
-def entries(b,a,start,end,delay,horizon,direction,trigger,beta,cost):
+def entries(b,a,start,end,delay,horizon,direction,trigger,beta,cost,origin_hour):
     """Disjoint decision and holding periods; entry cost assumed at observed close."""
     records=[]
     start=max(28+delay,start)
     # Fix sampling phase at epoch zero so training/test timing is comparable.
-    start+=(-start)%horizon
+    start+=(-(start+origin_hour))%horizon
     for t in range(start,min(end,len(b)-horizon)):
-        if t%horizon:continue
+        if (t+origin_hour)%horizon:continue
         f=feature(b,a,t,delay,direction,trigger,beta)
         outcome=change(a[t],a[t+horizon])
         if outcome is None:continue
@@ -143,7 +143,7 @@ def rates(records,trigger_target,direction):
             "p_value":pval,
             "n_baseline":len(records),"mean_net":av or 0.}
 
-def fit_model(b,a,cut,trigger,beta,spread):
+def fit_model(b,a,cut,trigger,beta,spread,origin_hour):
     """Select a fixed hypothesis using TRAINING ONLY."""
     cost=2*FEE_EACH_SIDE_PCT+2*SLIP_EACH_SIDE_PCT+spread
     target=max(.50,math.ceil((cost+.15)*4)/4)
@@ -155,8 +155,8 @@ def fit_model(b,a,cut,trigger,beta,spread):
             for delay in DELAYS:
                 # delay >= h? This would make the event older than the horizon.
                 # It's allowed if the current asset price is still underreacting.
-                first=entries(b,a,30,midpoint-horizon,delay,horizon,direction,trigger,beta,cost)
-                second=entries(b,a,midpoint,cut-horizon,delay,horizon,direction,trigger,beta,cost)
+                first=entries(b,a,30,midpoint-horizon,delay,horizon,direction,trigger,beta,cost,origin_hour)
+                second=entries(b,a,midpoint,cut-horizon,delay,horizon,direction,trigger,beta,cost,origin_hour)
                 q1=rates(first,target,direction);q2=rates(second,target,direction)
                 if min(q1["n"],q2["n"])<MIN_N_TRAIN_HALF:continue
                 # Penalize unstable regimes and weak samples; no look at held-out.
@@ -177,13 +177,14 @@ def compute_one(info,btc,alt,now):
     cut=int(len(b)*.65)
     trigger,beta=calibration(b,a,cut)
     spread=info["spread_pct"]
-    selected=fit_model(b,a,cut,trigger,beta,spread)
+    origin_hour=b_times[0]//HOUR
+    selected=fit_model(b,a,cut,trigger,beta,spread,origin_hour)
     if not selected:return None
     score,delay,horizon,direction,target,d1,d2,av=selected
     cost=2*FEE_EACH_SIDE_PCT+2*SLIP_EACH_SIDE_PCT+spread
     # Embargo around the training/test boundary avoids overlapping event windows.
     records=entries(b,a,cut+max(horizon,delay)+12,len(b)-horizon,
-                    delay,horizon,direction,trigger,beta,cost)
+                    delay,horizon,direction,trigger,beta,cost,origin_hour)
     stats=rates(records,target,direction)
     current=feature(b,a,len(b)-1,delay,direction,trigger,beta)
     if not current:return None
