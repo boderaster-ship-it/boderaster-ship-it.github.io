@@ -39,7 +39,7 @@ footer{margin-top:24px;padding-top:18px;border-top:1px solid #2d4857;display:fle
 <div id="diagnostics" class="clean">Lade …</div>
 <div class="stats-overview">
 <div><strong id="coinCount">–</strong><span>geprüfte Pionex-Spotcoins</span></div>
-<div><strong id="history">90 Tage</strong><span>historische Stundenkurse</span></div>
+<div><strong id="history">180 Tage</strong><span>historische Stundenkurse</span></div>
 <div><strong>35 %</strong><span>neuerer, vorher unberührter Testabschnitt</span></div>
 </div>
 <details><summary>Alle Coins und ihre Handelskennzahlen vergleichen</summary><div class="table-wrap"><table class="table"><thead><tr><th>Coin</th><th>Richtung</th><th>Zeitraum</th><th>BTC-Nachlauf</th><th>Zielquote</th><th>Normalquote</th><th>Ø netto / Trade</th><th>Testfälle</th><th>Status</th></tr></thead><tbody id="alltable"></tbody></table></div></details>
@@ -111,7 +111,7 @@ function card(record,strong){
     ". Seitdem hat sich "+record.symbol.replace("_USDT","")+" um "+pct(f.already_pct)+
     " verändert. Reaktion "+(f.unpriced?"noch nicht voll eingepreist (Modellfilter)":"bereits deutlich eingepreist (Modellfilter)")+".";
  c.append(evt);
- c.append(add("div","caption","Historische Nettoertrags-Untergrenze (95 %): "+
+ c.append(add("div","caption","Historische Nettorendite: untere 95%-Schätzgrenze: "+
    pct(e.net_lower95_pct,2)+" · BTC-bereinigter Ø-Nettoertrag: "+
    pct(e.btc_adjusted_net_mean_pct,2)+" · Fehlerquote nach Mehrfachtest: "+
    nf(e.fdr_q*100,1)+" %. Dies sind historische Messwerte, keine sichere Prognose."));
