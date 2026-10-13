@@ -155,7 +155,7 @@ def fit_model(b,a,cut,trigger,beta,spread):
                 delta=min(q1["delta_pp"],q2["delta_pp"])
                 av=min(q1["mean_net"],q2["mean_net"])
                 score=.6*delta+8*av+.7*min(q1["n"],q2["n"])**.5
-                        if direction==-1:score-=3 # spot-focused selection
+                if direction==-1:score-=3 # spot-focused selection
                 candidates.append((score,delay,horizon,direction,target,
                                    q1["delta_pp"],q2["delta_pp"],av))
     return max(candidates) if candidates else None
