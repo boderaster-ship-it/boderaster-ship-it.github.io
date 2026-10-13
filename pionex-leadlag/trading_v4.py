@@ -17,7 +17,7 @@ from analysis import (HOUR, HOUR_DIR, DATA, fetch_history, parallel_collect,
 DAYS = 90
 MAX_COINS = 60
 HORIZONS = (3, 6, 12)
-DELAYS = (1, 3, 6, 9, 12, 18, 24)
+DELAYS = (2, 3, 6, 9, 12, 18, 24)
 FEE_EACH_SIDE_PCT = 0.10  # conservative assumption, NOT official account fee
 SLIP_EACH_SIDE_PCT = 0.07  # execution assumption, may be higher
 MIN_N_HOLDOUT = 20
@@ -107,7 +107,9 @@ def rates(records,trigger_target,direction):
     prior_target=sum(1 for x in all_outcomes if direction*x>=trigger_target)/len(all_outcomes) if all_outcomes else 0
     # Compare against an ALT-return-state-matched no-BTC-shock group, too.
     comparable=[r for r in records if r[1] is not None and r[1]["unpriced"] and not r[1]["shock"]]
-    comp_base=(sum(1 for r in comparable if direction*r[2]>=trigger_target)/len(comparable)) if len(comparable)>=15 else prior_target
+    other=[r for r in records if r[1] is None or not r[1]["active"]]
+    control=comparable if len(comparable)>=25 else other
+    comp_base=(sum(1 for r in control if direction*r[2]>=trigger_target)/len(control)) if control else prior_target
     baseline=max(comp_base,prior_target)
     p=(targets+2)/(n+4) if n else 0
     q=(directions+2)/(n+4) if n else 0
@@ -115,9 +117,13 @@ def rates(records,trigger_target,direction):
     sem=(std(sample_net)/math.sqrt(n)) if n>1 else None
     # Conservative normal approximation; small-N cases cannot be strong signals.
     low=av-1.96*sem if av is not None and sem is not None else None
-    # One-sided test of BTC-conditioned target-hit rate above matched baseline.
-    if n>=2 and .0001<baseline<.9999:
-        z=(targets/n-baseline)/math.sqrt(baseline*(1-baseline)/n)
+    # One-sided, independent-group two-proportion comparison, with a
+    # conservative baseline that is at least as high as the unconditional rate.
+    n0=len(control);wins0=sum(1 for r in control if direction*r[2]>=trigger_target)
+    if n>=2 and n0>=20 and .0001<baseline<.9999:
+        pooled=(targets+wins0)/(n+n0)
+        se=math.sqrt(max(1e-8,pooled*(1-pooled)*(1/n+1/n0)))
+        z=(targets/n-baseline)/se
         pval=.5*math.erfc(z/math.sqrt(2))
     else:pval=1.
     return {"n":n,"success":targets,"success_direction":directions,
@@ -148,8 +154,8 @@ def fit_model(b,a,cut,trigger,beta,spread):
                 # Penalize unstable regimes and weak samples; no look at held-out.
                 delta=min(q1["delta_pp"],q2["delta_pp"])
                 av=min(q1["mean_net"],q2["mean_net"])
-                score=.6*delta+8*av+2*min(q1["n"],q2["n"])**.5
-                if direction==-1:score-=3 # spot-focused selection
+                score=.6*delta+8*av+.7*min(q1["n"],q2["n"])**.5
+                        if direction==-1:score-=3 # spot-focused selection
                 candidates.append((score,delay,horizon,direction,target,
                                    q1["delta_pp"],q2["delta_pp"],av))
     return max(candidates) if candidates else None
@@ -176,7 +182,7 @@ def compute_one(info,btc,alt,now):
     now_t=b_times[-1]
     # Do not claim the event is tradeable if it was observed before latest candles.
     effective=bool(current["active"])
-    if stats["n"]>=MIN_N_HOLDOUT and stats["p_target"]>=50 and stats["delta_pp"]>=5:
+    if stats["n"]>=MIN_N_HOLDOUT and stats["p_target"]>=50 and stats["delta_pp"]>=5 and stats["mean_net"]>0:
         group="watch" if effective else "historical"
     else:group="weak"
     return {"symbol":info["symbol"],"direction":"up" if direction>0 else "down",
@@ -212,7 +218,8 @@ def bh_adjust(rows):
                  and row["train_halves_edge_pp"][1]>0)
         row["status"]="tested_positive" if confirm else (
             "watch" if row["active"] and e["n"]>=MIN_N_HOLDOUT
-                         and e["delta_pp"]>=5 and row["direction"]=="up" else
+                         and e["delta_pp"]>=5 and e["mean_net"]>0
+                         and row["direction"]=="up" else
             "risk" if row["active"] and row["direction"]=="down" else
             "research")
         row["trade_eligible"]=confirm
