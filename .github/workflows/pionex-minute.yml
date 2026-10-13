@@ -1,0 +1,27 @@
+name: Pionex Minute History Archive
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "11 3 * * *"
+  push:
+    paths:
+      - ".github/workflows/pionex-minute.yml"
+permissions:
+  contents: write
+concurrency:
+  group: pionex-minute-archive
+  cancel-in-progress: false
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Maintain incremental 14-day Pionex minute history
+        run: python pionex-leadlag/analysis.py minute
