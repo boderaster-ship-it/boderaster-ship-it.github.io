@@ -11,7 +11,7 @@ permissions:
   contents: write
 concurrency:
   group: pionex-hourly-data
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   forecast:
     runs-on: ubuntu-latest
