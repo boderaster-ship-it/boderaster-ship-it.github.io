@@ -177,7 +177,7 @@ def ret(p1, p2):
 
 def corr(pairs):
     n = len(pairs)
-    if n < 90: return None
+    if n < 35: return None
     sx = sum(x for x,y in pairs); sy = sum(y for x,y in pairs)
     xx = sum(x*x for x,y in pairs); yy = sum(y*y for x,y in pairs)
     xy = sum(x*y for x,y in pairs)
@@ -437,7 +437,7 @@ def main():
       "hourly_days":DAYS_HOURLY,"minute_days":DAYS_MINUTE,
       "strong_signals":sum(1 for p in predictions if p["status"] == "validated"),
       "exploratory_signals":sum(1 for p in predictions if p["status"] == "exploratory"),
-      "diagnosed_coins":len(predictions), "predictions":predictions[:18],
+      "diagnosed_coins":len(predictions), "predictions":predictions,
       "minute_cache_coins":sum(1 for sym in hourly if (MIN_DIR/(sym+".json.gz")).exists()),
       "minute_cache_status":"updating",
       "minute_cache_coverage_days":0,
