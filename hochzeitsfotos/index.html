@@ -72,36 +72,9 @@ body.directions-open{overflow:hidden}
 @media(max-width:680px){.location .location-hint{font-size:10px;padding:2px 6px 12px}.directions-dialog{padding:28px 20px 25px}.directions-dialog h2{font-size:32px}}
 
 
-/* Natural photographic dove flight, existing page design intentionally unchanged. */
-.wedding-doves{position:fixed;inset:0;z-index:12;overflow:hidden;pointer-events:none;contain:layout style;-webkit-mask-image:linear-gradient(90deg,#000 0%,#000 12%,transparent 34%,transparent 66%,#000 88%,#000 100%);mask-image:linear-gradient(90deg,#000 0%,#000 12%,transparent 34%,transparent 66%,#000 88%,#000 100%)}
-.wedding-dove{position:absolute;width:clamp(152px,18vw,242px);height:auto;will-change:transform;opacity:.88}
-.wedding-dove img{display:block;width:100%;height:auto;max-height:230px;object-fit:contain;filter:drop-shadow(0 2px 3px rgba(38,55,45,.39))}
-.wedding-dove--one{top:12%;left:0;animation:wedding-dove-east 23s linear -7s infinite}
-.wedding-dove--two{top:59%;left:0;animation:wedding-dove-west 30s linear -20s infinite}
-.wedding-dove--two img{transform:scaleX(-1)}
-@keyframes wedding-dove-east{
-  0%{transform:translate3d(-280px,4vh,0) scale(.77)}
-  30%{transform:translate3d(30vw,-3vh,0) scale(.95)}
-  70%{transform:translate3d(70vw,2vh,0) scale(.83)}
-  100%{transform:translate3d(calc(100vw + 280px),-4vh,0) scale(.77)}
-}
-@keyframes wedding-dove-west{
-  0%{transform:translate3d(calc(100vw + 280px),-3vh,0) scale(.68)}
-  40%{transform:translate3d(61vw,4vh,0) scale(.87)}
-  75%{transform:translate3d(22vw,-4vh,0) scale(.74)}
-  100%{transform:translate3d(-280px,2vh,0) scale(.68)}
-}
-@media(max-width:600px){.wedding-dove{width:148px;opacity:.76}.wedding-dove--two{top:70%}}
-@media(prefers-reduced-motion:reduce){.wedding-doves{display:none}}
 </style>
 </head>
 <body>
-<!-- Actual frame-by-frame pigeon wing movement; pale white recoloring. Source credit: assets/DOVE-ANIMATION-LICENSE.txt -->
-<div class="wedding-doves" aria-hidden="true">
-  <div class="wedding-dove wedding-dove--one"><img src="assets/wedding-dove-real.webp" alt="" draggable="false"></div>
-  <div class="wedding-dove wedding-dove--two"><img src="assets/wedding-dove-real.webp" alt="" draggable="false"></div>
-</div>
-
 <div class="decorative-container">
 <nav class="site-nav">
   <a class="site-logo" href="#top" aria-label="Raquel und Robin">Raquel <span>&amp;</span> Robin</a>
