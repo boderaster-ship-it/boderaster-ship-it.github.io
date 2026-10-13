@@ -14,7 +14,7 @@ import time
 from analysis import (HOUR, HOUR_DIR, DATA, fetch_history, parallel_collect,
                       tickers_and_symbols, try_commit, say)
 
-DAYS = 90
+DAYS = 180
 MAX_COINS = 60
 HORIZONS = (3, 6, 12)
 DELAYS = (2, 3, 6, 9, 12, 18, 24)
@@ -288,7 +288,7 @@ def run():
     (DATA/"trading.json").write_text(
         __import__("json").dumps(summary,ensure_ascii=False,separators=(",",":"))+"\n",
         encoding="utf-8")
-    # Only publish the result; the already-stored 90d hourly cache is refreshed.
+    # Only publish the result; the already-stored 180d hourly cache is built incrementally.
     try_commit("Update validated Pionex spot BTC lead-lag trade research V4")
     say("FINAL",len(allrows),"models",summary["trade_candidates"],"validated spot entries",
         summary["watchlist_count"],"watch-only")
