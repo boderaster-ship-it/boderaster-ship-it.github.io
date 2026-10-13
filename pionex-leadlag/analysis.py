@@ -384,19 +384,50 @@ def persist_summary(payload):
     p.write_text(json.dumps(payload,ensure_ascii=False,separators=(",",":"))+"\n",encoding="utf-8")
 
 def try_commit(message):
-    # Avoid modifying anything outside the scanner data directory.
+    """Commit ONLY generated scanner data, safely rebased on latest remote.
+    A stale runner must never rebase binary gzip files or modify other sites.
+    """
+    import shutil
+    import tempfile
     subprocess.run(["git","add","pionex-leadlag/data"],check=True)
-    changes=subprocess.run(["git","diff","--cached","--quiet"],check=False)
-    if changes.returncode==0:
-        say("No data changes");return
-    subprocess.run(["git","config","user.name","github-actions[bot]"],check=True)
-    subprocess.run(["git","config","user.email","41898282+github-actions[bot]@users.noreply.github.com"],check=True)
-    subprocess.run(["git","commit","-m",message],check=True)
-    # The site can be edited while the scheduled job runs.
-    # Integrate those unrelated commits without overwriting any files.
-    subprocess.run(["git","fetch","origin","main"],check=True)
-    subprocess.run(["git","rebase","origin/main"],check=True)
-    subprocess.run(["git","push","origin","HEAD:main"],check=True)
+    changed = subprocess.check_output(
+        ["git","diff","--cached","--name-only","--","pionex-leadlag/data"],
+        text=True).splitlines()
+    if not changed:
+        say("No data changes")
+        return
+    with tempfile.TemporaryDirectory(prefix="pionex-data-") as temporary:
+        temp = pathlib.Path(temporary)
+        for item in changed:
+            path = pathlib.Path(item)
+            if not item.startswith("pionex-leadlag/data/") or not path.is_file():
+                raise ValueError("Refusing unexpected data path: " + item)
+            dest = temp/path
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, dest)
+        for attempt in range(5):
+            subprocess.run(["git","fetch","origin","main"],check=True)
+            subprocess.run(["git","reset","--hard","origin/main"],check=True)
+            for item in changed:
+                dest = pathlib.Path(item)
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(temp/item, dest)
+            subprocess.run(["git","add","--"]+changed,check=True)
+            modified = subprocess.run(["git","diff","--cached","--quiet"],check=False)
+            if modified.returncode == 0:
+                say("Generated data already in remote")
+                return
+            subprocess.run(["git","config","user.name","github-actions[bot]"],check=True)
+            subprocess.run(["git","config","user.email",
+                            "41898282+github-actions[bot]@users.noreply.github.com"],check=True)
+            subprocess.run(["git","commit","-m",message],check=True)
+            pushed = subprocess.run(["git","push","origin","HEAD:main"],check=False)
+            if pushed.returncode==0:
+                say("Pushed",len(changed),"scanner data files")
+                return
+            say("Push race; retry",attempt+1)
+            time.sleep(1+attempt)
+    raise RuntimeError("Could not update research dataset after 5 safe retries")
 
 def parallel_collect(coins, interval, step, days, folder, now, workers):
     output={};errors={}
