@@ -218,97 +218,151 @@ def select_lag(b,a,cut):
     if peak<0.09:return None,None
     return lag,peak
 
-def score_coin(info,btc,coin,now):
-    grid,b,a=hour_aligned(btc,coin)
-    if len(grid)<1100:return None
-    cut=int(len(grid)*.70)
-    lag,training_corr=select_lag(b,a,cut)
-    if lag is None:return None
-    pairs=[]
-    for t in range(cut+1,len(grid)-lag):
-        x=ret(b[t-1],b[t]);y=ret(a[t+lag-1],a[t+lag])
-        if x is not None and y is not None:pairs.append((x,y))
-    out_corr=corr(pairs)
-    if out_corr is None:return None
-    forecasts=[]
-    for horizon in HORIZONS:
-        # BTC stimulus window is delayed by lag-horizon relative to forecast start.
-        offset=max(0,lag-horizon)
-        def stimulus(t):
-            e=t-offset
-            if e<3:return None
-            return ret(b[e-3],b[e])
-        # Determine impulse strength and outcome threshold from training only.
-        historical=[abs(x) for t in range(lag+8,cut-horizon,3)
-                    if (x:=stimulus(t)) is not None]
-        trigger=percentile(historical,.58)
-        if trigger is None or trigger<.10:continue
-        now_idx=len(grid)-1
-        xnow=stimulus(now_idx)
-        if xnow is None or abs(xnow)<trigger:continue
-        direction=1 if xnow>0 else -1
-        if direction<0:
-            # The dashboard models declining coins too, but does not recommend shorting.
-            direction_label="fallen"
-        else:direction_label="steigen"
-        # Sampling phase fixed BEFORE examining outcomes; disjoint forward windows.
-        end_train=cut-horizon-1; start_test=cut+lag+8
-        train_magnitudes=[]
-        for t in range(lag+8,end_train,horizon):
-            move=ret(a[t],a[t+horizon])
-            if move is not None:train_magnitudes.append(abs(move))
-        if len(train_magnitudes)<80:continue
-        y=percentile(train_magnitudes,.38) or 0.4
-        y=round(min(6.0,max(.5,y)) *2)/2
-        # To prevent look-ahead, test samples start AFTER the training period.
-        samples=[]
-        for t in range(start_test,len(grid)-horizon,horizon):
-            x=stimulus(t)
-            target=ret(a[t],a[t+horizon])
-            if x is None or target is None:continue
-            samples.append((x,target))
-        if len(samples)<38:continue
-        relevant=[target for x,target in samples
-                  if x*direction>=trigger]
-        successes=sum(1 for target in relevant if target*direction>=y)
-        n=len(relevant)
-        if n<20:continue
-        prob=(successes+2)/(n+4)
-        lower,upper=wilson(successes/n,n)
-        # Unconditional comparison uses same evaluation period but without BTC condition.
-        base=sum(1 for x,target in samples if target*direction>=y)/len(samples)
-        advantage=prob-base
-        # Only show genuine positive out-of-sample evidence, not chosen-after-the-fact lag.
-        confirmed=(out_corr>0.07 and training_corr>0.09
-                   and prob>=0.60 and advantage>=0.09
-                   and lower>base-0.03 and n>=25
-                   and info["spread_pct"]<=.45)
-        if not confirmed:continue
-        # Last BTC signal must not have been fully realized in altcoin already.
-        price_now=a[-1]
-        if price_now is None:continue
-        # 'y' is positive threshold; expected movement is a directional event, not a guaranteed yield.
-        forecasts.append({
-            "hours":horizon,"direction":"up" if direction>0 else "down",
-            "probability_pct":round(100*prob),
-            "target_pct":round(y,1),"baseline_pct":round(100*base),
-            "edge_pp":round(100*advantage),
-            "sample_size":n,"successes":successes,
-            "ci_low_pct":round(100*lower),"ci_high_pct":round(100*upper),
-            "lag_hours":lag,"train_correlation":round(training_corr,3),
-            "test_correlation":round(out_corr,3),
-            "btc_signal_pct":round(xnow,2),
-            "stimulus_ended_hours_ago":offset,
-        })
-    if not forecasts:return None
-    forecasts.sort(key=lambda z:(z["edge_pp"],z["sample_size"],-z["hours"]),reverse=True)
-    return {
-        "symbol":info["symbol"],"volume_24h_usdt":round(info["volume_24h_usdt"]),
-        "spread_pct":info["spread_pct"],"lag_hours":lag,
-        "best":forecasts[0],"alternatives":forecasts[1:],
-        "status":"historically_confirmed",
-        "notes":"Bedingte historische Trefferquote auf zurückgehaltenen Stunden-Daten; keine sichere Zukunftsprognose."
+def score_coin(info, btc, coin, now):
+    """Select the only model configuration on training data, then assess one
+    future outcome in held-out data. Return the observed result even when
+    not statistically convincing, so the dashboard never hides all data.
+    """
+    grid, b, a = hour_aligned(btc, coin)
+    if len(grid) < 1200:
+        return None
+    cut = int(len(grid) * .70)
+
+    def input_signal(t, offset):
+        e = t - offset
+        if e < 3 or e >= len(b):
+            return None
+        return ret(b[e - 3], b[e])
+
+    def output_move(t, horizon):
+        if t < 1 or t + horizon >= len(a):
+            return None
+        return ret(a[t], a[t + horizon])
+
+    def model_corr(lag, horizon, start, stop, jump=3):
+        offset = max(0, lag - horizon)
+        pairs = []
+        for t in range(max(lag + 8, start), min(stop, len(grid) - horizon), jump):
+            x = input_signal(t, offset)
+            y = output_move(t, horizon)
+            if x is not None and y is not None:
+                pairs.append((x, y))
+        return corr(pairs), len(pairs)
+
+    # No test-period information is used when selecting lag OR horizon.
+    fit_cut = max(100, int(cut * .50))
+    options = []
+    for lag in LAGS:
+        for horizon in HORIZONS:
+            c1, n1 = model_corr(lag, horizon, 24, fit_cut, horizon)
+            c2, n2 = model_corr(lag, horizon, fit_cut, cut - horizon, horizon)
+            if c1 is None or c2 is None or n1 < 35 or n2 < 35:
+                continue
+            # Prefer configurations stable in BOTH halves of the training period.
+            effective = .5 * (c1 + c2) + .5 * min(c1, c2)
+            options.append((effective, lag, horizon, c1, c2))
+    if not options:
+        return None
+    score, lag, horizon, c1, c2 = max(options)
+    offset = max(0, lag - horizon)
+
+    # Use only the newest 30% for all reported sample rates and diagnostics.
+    test_corr, test_points = model_corr(lag, horizon, cut + 24,
+                                        len(grid) - horizon, horizon)
+    current_x = input_signal(len(grid)-1, offset)
+    if current_x is None:
+        return None
+
+    # BTC trigger magnitude is based on its history, not on altcoin success.
+    train_signals = [abs(x) for t in range(lag + 8, cut - horizon, horizon)
+                     if (x := input_signal(t, offset)) is not None]
+    if len(train_signals) < 60:
+        return None
+    median_stimulus = percentile(train_signals, .45) or .15
+    # Dynamic window: current magnitude determines historically comparable
+    # events; this cannot favor a coin after observing its test outcomes.
+    min_signal = max(.08, min(median_stimulus, abs(current_x) * .65))
+    direction = 1 if current_x >= 0 else -1
+
+    magnitudes = [abs(y) for t in range(lag + 8, cut - horizon, horizon)
+                  if (y := output_move(t, horizon)) is not None]
+    if len(magnitudes) < 70:
+        return None
+    # A target fixed using training only (not optimized on the test set).
+    target = round(min(3.0, max(.5, percentile(magnitudes, .32) or .5)) * 2) / 2
+
+    observations = []
+    for t in range(cut + 24, len(grid) - horizon, horizon):
+        x = input_signal(t, offset)
+        y = output_move(t, horizon)
+        if x is not None and y is not None:
+            observations.append((x, y))
+    if len(observations) < 35:
+        return None
+
+    base_successes = sum(1 for _, y in observations if y * direction >= target)
+    baseline = base_successes / len(observations)
+    matches = [(x, y) for x, y in observations
+               if x * direction >= min_signal]
+    n = len(matches)
+    successes = sum(1 for x, y in matches if y * direction >= target)
+    if n < 12:
+        return None
+
+    # Conservative Beta prior. If N is small we retain the result but flag it.
+    probability = (successes + 2) / (n + 4)
+    lower, upper = wilson(successes / n, n)
+    edge = probability - baseline
+    train_consistent = c1 > 0 and c2 > 0 and score >= .045
+    signal_current = abs(current_x) >= max(.12, median_stimulus * .50)
+    confirmed = (train_consistent and test_corr is not None
+                 and test_corr >= .08 and probability >= .58
+                 and edge >= .10 and lower >= baseline - .02
+                 and n >= 25 and signal_current)
+    # Difference in percentages between comparable and unconditional outcomes.
+    # Current BTC magnitude and direction are provided as an observed fact.
+    outcome = {
+        "hours": horizon,
+        "direction": "up" if direction > 0 else "down",
+        "probability_pct": round(100 * probability),
+        "target_pct": target,
+        "baseline_pct": round(100 * baseline),
+        "edge_pp": round(100 * edge),
+        "sample_size": n,
+        "successes": successes,
+        "all_test_cases": len(observations),
+        "ci_low_pct": round(100 * lower),
+        "ci_high_pct": round(100 * upper),
+        "lag_hours": lag,
+        "train_correlation": round(score, 3),
+        "test_correlation": round(test_corr, 3) if test_corr is not None else None,
+        "btc_signal_pct": round(current_x, 2),
+        "stimulus_ended_hours_ago": offset,
+        "signal_strong_enough": signal_current,
+        "confirmed": confirmed,
+        "test_samples": test_points,
     }
+    # These are descriptive, not trading recommendation scores.
+    relevance = (edge * 100 * .65
+                 + (test_corr if test_corr is not None else -.2) * 25
+                 + min(n, 55) * .075
+                 - (0 if train_consistent else 8)
+                 - (0 if signal_current else 5))
+    status = ("validated" if confirmed else
+              "exploratory" if edge >= .03 and test_corr is not None
+                               and test_corr > 0 and train_consistent else
+              "not_validated")
+    return {
+        "symbol": info["symbol"],
+        "volume_24h_usdt": round(info["volume_24h_usdt"]),
+        "spread_pct": info["spread_pct"],
+        "lag_hours": lag,
+        "best": outcome,
+        "status": status,
+        "relevance_score": round(relevance, 2),
+        "notes": "Historische bedingte Trefferhäufigkeit; kein kalibriertes Zukunftsrisiko."
+    }
+
 
 def persist_summary(payload):
     DATA.mkdir(parents=True,exist_ok=True)
@@ -368,12 +422,12 @@ def main():
             p=score_coin(info,btc,hourly[info["symbol"]],now)
             if p:predictions.append(p)
         except Exception as exc:say("EVAL ERROR",info["symbol"],str(exc)[:180])
-    predictions.sort(key=lambda p:(p["best"]["edge_pp"],p["best"]["probability_pct"]),reverse=True)
+    predictions.sort(key=lambda p:(p["status"] == "validated", p["relevance_score"]), reverse=True)
     btc_map=dict(btc);last=max(btc_map)
     def btc_change(hours):
         return ret(btc_map.get(last-hours*HOUR),btc_map.get(last))
     summary={
-      "version":2,"generated_at":dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+      "version":3,"generated_at":dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
       "data_through":dt.datetime.fromtimestamp((last+HOUR)/1000,dt.timezone.utc).isoformat(timespec="minutes"),
       "market":"Pionex Spot USDT",
       "btc_change_pct":{"3h":round(btc_change(3),2) if btc_change(3) is not None else None,
@@ -381,12 +435,14 @@ def main():
                         "24h":round(btc_change(24),2) if btc_change(24) is not None else None},
       "scanned_coins":len(coins),"analyzed_coins":len(pairs),
       "hourly_days":DAYS_HOURLY,"minute_days":DAYS_MINUTE,
-      "strong_signals":len(predictions),"predictions":predictions[:12],
+      "strong_signals":sum(1 for p in predictions if p["status"] == "validated"),
+      "exploratory_signals":sum(1 for p in predictions if p["status"] == "exploratory"),
+      "diagnosed_coins":len(predictions), "predictions":predictions[:18],
       "minute_cache_coins":sum(1 for sym in hourly if (MIN_DIR/(sym+".json.gz")).exists()),
       "minute_cache_status":"updating",
       "minute_cache_coverage_days":0,
       "errors":len(err),
-      "method":"Train 70% of 90-day hourly series to select a positive BTC lead of 2–24h; evaluate 3/6/12h event probabilities in later 30%, sampled in non-overlapping horizon blocks. Beta(2,2) smoothing, Wilson intervals; thresholds and lag chosen from train only. Exploratory multiple-comparison risks remain.",
+      "method":"On 90 days hourly data, select BTC lag 2–24h and forecasting horizon 3/6/12h using only the first 70% in two subperiods; evaluate one frozen configuration on the later 30% in non-overlapping horizon samples. Report conditional target-hit frequency, unconditional baseline, Wilson interval and out-of-sample correlation for all analyzable coins. Strict evidence label only when positive validation requirements hold; multiple-comparison and calibration risks remain.",
       "warning":"Wahrscheinlichkeiten = historische Häufigkeiten unter ähnlichen Bedingungen, keine garantierten Vorhersagen. 90-Tage-Überprüfung und Papertrading erforderlich."
     }
     persist_summary(summary)
