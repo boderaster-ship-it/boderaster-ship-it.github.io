@@ -40,6 +40,17 @@ STABLE = {"BTC", "WBTC", "USDC", "USDD", "DAI", "FDUSD", "BUSD", "TUSD",
           "USDE", "EUR", "USD1", "PYUSD", "USTC", "EURC", "USDS"}
 HTTP_LOCK = threading.Lock()
 print_lock = threading.Lock()
+next_http_slot = 0.0
+
+def pace_api():
+    """Global request pacing: prevents Pionex IP-wide burst/rate limits."""
+    global next_http_slot
+    with HTTP_LOCK:
+        start = time.monotonic()
+        remaining = max(0., next_http_slot - start)
+        next_http_slot = max(start, next_http_slot) + 0.9
+    if remaining:
+        time.sleep(remaining)
 
 def say(*a):
     with print_lock:
@@ -50,6 +61,7 @@ def fetch(path, params):
     url = API + path + "?" + qs
     error = None
     for k in range(5):
+        pace_api()
         try:
             req = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": "Pionex-BTC-LeadLag-Research/2"})
             with urllib.request.urlopen(req, timeout=25) as response:
@@ -323,6 +335,7 @@ def parallel_collect(coins, interval, step, days, folder, now, workers):
                 output[name]=bars
             except Exception as exc:
                 errors[sym]=str(exc)[:180]
+                if len(errors)<=15: say("FETCH ERROR",interval,sym,str(exc)[:150])
             if n%10==0 or n==len(futures):
                 say(interval, "downloaded",n,"of",len(futures),"valid",len(output),"errors",len(errors))
     return output,errors
