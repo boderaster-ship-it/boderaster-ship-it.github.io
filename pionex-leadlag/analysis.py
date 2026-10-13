@@ -94,6 +94,10 @@ def write_bars(path, bars):
 def fetch_history(symbol, interval, step, days, folder, now):
     target = folder / (symbol + ".json.gz")
     cutoff = now - days * 86400000
+    # Pionex limits 1M klines to the latest 10,000 bars (~6.9 days).
+    # Preserve older cached bars up to 14 days, but never paginate beyond
+    # 9,700 bars of market API history in a single run.
+    remote_cutoff = max(cutoff, now - 9700 * MIN) if step == MIN else cutoff
     present = load_bars(target)
     cache = {t: c for t, c in present if t >= cutoff}
     oldest = min(cache) if cache else None
@@ -106,18 +110,24 @@ def fetch_history(symbol, interval, step, days, folder, now):
     for page in range(maxpages):
         params = {"symbol": symbol, "interval": interval, "limit": 500}
         if cursor is not None: params["endTime"] = cursor
-        data = fetch("/market/klines", params)
+        try:
+            data = fetch("/market/klines", params)
+        except RuntimeError as exc:
+            if step == MIN and "MARKET_INVALID_TIME" in str(exc) and cache:
+                say("Pionex minute API history limit reached; preserving", symbol, len(cache))
+                break
+            raise
         klines = data.get("klines") or []
         rows = []
         for k in klines:
             t = int(k["time"])
             c = float(k["close"])
-            if t + step <= now and c > 0 and t >= cutoff - step:
+            if t + step <= now and c > 0 and t >= remote_cutoff - step:
                 rows.append((t, c))
         if not rows: break
         earliest = min(t for t, c in rows)
         for t, c in rows: cache[t] = c
-        if earliest <= cutoff: break
+        if earliest <= remote_cutoff: break
         if (oldest is not None and newest is not None
                 and oldest <= cutoff + 3*step
                 and earliest <= newest + step):
@@ -374,6 +384,7 @@ def main():
       "strong_signals":len(predictions),"predictions":predictions[:12],
       "minute_cache_coins":sum(1 for sym in hourly if (MIN_DIR/(sym+".json.gz")).exists()),
       "minute_cache_status":"updating",
+      "minute_cache_coverage_days":0,
       "errors":len(err),
       "method":"Train 70% of 90-day hourly series to select a positive BTC lead of 2–24h; evaluate 3/6/12h event probabilities in later 30%, sampled in non-overlapping horizon blocks. Beta(2,2) smoothing, Wilson intervals; thresholds and lag chosen from train only. Exploratory multiple-comparison risks remain.",
       "warning":"Wahrscheinlichkeiten = historische Häufigkeiten unter ähnlichen Bedingungen, keine garantierten Vorhersagen. 90-Tage-Überprüfung und Papertrading erforderlich."
@@ -383,7 +394,13 @@ def main():
     # Backfill minute-level data once. Subsequent runs need only recent candles.
     minute, minute_errors=parallel_collect(requested,"1M",MIN,DAYS_MINUTE,MIN_DIR,now,THREADS_MINUTE)
     summary["minute_cache_coins"]=len(minute)
-    summary["minute_cache_status"]="ready" if len(minute)>=len(requested)-3 else "partial"
+    # The initial Pionex backfill cannot exceed ~6.9 days. Further hourly
+    # updates grow the archive organically until it spans 14 full days.
+    spans = [(max(v[0][0], now - DAYS_MINUTE*86400000), v[-1][0])
+             for v in minute.values() if len(v)>1]
+    coverage = min(((hi-lo)/86400000 for lo,hi in spans), default=0)
+    summary["minute_cache_coverage_days"]=round(coverage,1)
+    summary["minute_cache_status"]="ready" if len(minute)>=len(requested)-3 and coverage>=13.5 else "building"
     summary["generated_at"]=dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
     summary["minute_errors"]=len(minute_errors)
     persist_summary(summary)
