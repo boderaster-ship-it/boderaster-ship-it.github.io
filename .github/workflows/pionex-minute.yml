@@ -10,7 +10,7 @@ permissions:
   contents: write
 concurrency:
   group: pionex-minute-archive
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   archive:
     runs-on: ubuntu-latest
