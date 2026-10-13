@@ -24,6 +24,20 @@ main{padding-top:27px;padding-bottom:45px}.eyebrow{letter-spacing:1.7px;text-tra
 .info{color:#8ca5b5;font-size:11px;line-height:1.7;margin-top:18px}.info b{color:#cfe1e9}footer{border-top:1px solid #213a48;margin-top:28px;padding-top:18px;display:flex;gap:15px;flex-wrap:wrap;align-items:center;justify-content:space-between;color:#8ca7b6;font-size:11px}
 .skeleton{animation:pulse 1.5s ease-in-out infinite}@keyframes pulse{0%,100%{opacity:.45}50%{opacity:1}}
 @media(max-width:700px){header>.inner,main{padding-left:15px;padding-right:15px}header>.inner{height:65px}.brand strong{font-size:14px}.symbol{height:36px;width:36px;font-size:22px}.source{font-size:8px}.lead{font-size:14px}h1{font-size:34px}.actionline{align-items:stretch}.refresh{width:100%}.stamp{width:100%}.btc{padding:16px}.btc-grid{gap:8px}.btc-box{padding:12px 9px}.btc-box>strong{font-size:24px}.btc-box>span{font-size:10px}.cards{grid-template-columns:1fr}.coin{padding:18px}.trust{grid-template-columns:1fr 1fr}.trust>div:last-child{grid-column:1 / -1}.headline h2{font-size:21px}}
+
+.alltable-wrap{max-height:520px;overflow:auto;border-top:1px solid #294354;padding-bottom:10px}
+.alltable{width:100%;border-collapse:collapse;white-space:nowrap;text-align:left;font-size:12px}
+.alltable th,.alltable td{padding:12px 10px;border-bottom:1px solid #233948;font-variant-numeric:tabular-nums}
+.alltable th{position:sticky;top:0;background:#152d3c;color:#9bbac7;font-size:10px}
+.alltable td{color:#d1e6eb}.alltable tr:nth-child(even){background:#102733}
+.alltable-wrap .table-note{font-size:11px;line-height:1.7;color:#a1bac8;padding:10px}
+.coin.unconfirmed{border-color:#30475b;background:#132535}
+.coin .score-tag.lighttag{background:#243646;border-color:#405c68;color:#b5d0da}
+.coin .btc-context{margin-top:18px;background:#132d3c;border-left:3px solid #55bda8;padding:10px 12px;font-size:12px;color:#bdd7dd;line-height:1.45}
+.coin .sentence{margin:13px 0}.coin .compare{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:12px;color:#b9d1d9;margin-top:12px}
+.coin .riskline{font-size:11px;color:#bfc6c8;line-height:1.55;border-top:1px solid #2b4152;margin-top:12px;padding-top:11px}
+.subtle{color:#b9a78e!important}.alltable-wrap .up{color:#72e4ba!important}
+@media(max-width:700px){.alltable{font-size:11px}.coin .compare{font-size:11px}}
 </style>
 </head>
 <body>
@@ -40,16 +54,17 @@ main{padding-top:27px;padding-bottom:45px}.eyebrow{letter-spacing:1.7px;text-tra
 <div class="btc-head"><b>Bitcoin <span style="color:#9db6c4;font-weight:500">(BTC/USDT)</span></b><small id="btc-until">Letzte abgeschlossene Stunde</small></div>
 <div class="btc-grid"><div class="btc-box"><span>Letzte 3 Stunden</span><strong id="btc3">–</strong><p>Vergangene Bewegung</p></div><div class="btc-box"><span>Letzte 6 Stunden</span><strong id="btc6">–</strong><p>Vergangene Bewegung</p></div><div class="btc-box"><span>Letzte 24 Stunden</span><strong id="btc24">–</strong><p>Vergangene Bewegung</p></div></div>
 </div>
-<div class="headline"><h2>Wahrscheinliche Nachzügler <span id="resultcount" style="color:#7ce4c8"></span></h2><small>Nur Coins mit bestätigter historischer Evidenz<br>Keine künstlich erzeugten „Top Picks“</small></div>
+<div class="headline"><h2>Historische BTC-Nachzügler <span id="resultcount" style="color:#7ce4c8"></span></h2><small>Nach aktueller Datenlage sortiert<br>Prognosen und schwache Hinweise klar getrennt</small></div>
 <div class="cards" id="cards"><div class="empty" style="grid-column:1/-1"><div class="sign">…</div><h3>Analyse wird geladen</h3><p>Bitte einen Moment warten.</p></div></div>
+<details class="method" id="alldetails" style="margin-top:16px"><summary>Alle untersuchten Coins und ihre Wahrscheinlichkeit vergleichen <span id="tablecount"></span></summary><div class="alltable-wrap"><table class="alltable"><thead><tr><th>Coin</th><th>Richtung</th><th>In</th><th>Ziel</th><th>Quote</th><th>Normal</th><th>BTC-Nachlauf</th><th>Bewertung</th></tr></thead><tbody id="allrows"></tbody></table><div class="table-note">Wahrscheinlichkeiten sind historische relative Trefferhäufigkeiten, keine versprochenen Kurse. Die „Quote“ wird durch die Anzahl Vergleichsfälle beeinflusst.</div></div></details>
 <div class="sectiontitle">Wie fundiert ist die Auswertung?</div>
 <div class="trust"><div><strong id="coins">–</strong><span>handelbare USDT-Paare untersucht</span></div><div><strong id="hourhistory">90 Tage</strong><span>Stundenhistorie zur Prüfung des Nachlaufs</span></div><div><strong id="minutehistory">–</strong><span id="minutelabel">Minutenarchiv im Aufbau · maximal 10.000 Pionex-Kerzen rückwirkend</span></div></div>
 <details class="method"><summary>Wie wird die Wahrscheinlichkeit ermittelt? · Methodik und Grenzen</summary><div class="explain">
 <p><b>1. Nur Pionex:</b> Die Auswahl stammt aus öffentlich verfügbaren, tatsächlich aktivierten USDT-Spot-Paaren. Extrem große Handelsspannen und geringe Umsätze werden automatisch ausgeschlossen.</p>
-<p><b>2. Verzögerung:</b> Aus 90 Tagen Stundenkursen wird geprüft, ob ein Coin Bitcoin mit 2 bis 24 Stunden Versatz folgt. Die optimale Verzögerung wird nur anhand der älteren 70 % der Historie gewählt.</p>
-<p><b>3. Wahrscheinlichkeit:</b> Anhand der neueren 30 % der Historie wird ermittelt, wie häufig ein Coin nach vergleichbaren Bitcoin-Bewegungen in den folgenden 3, 6 oder 12 Stunden einen festgelegten Kursanstieg oder -rückgang erreicht hat. Überlappende Testzeiträume werden vermieden. Die Prozentangabe ist eine <b>geglättete historische Häufigkeit</b>, keine Gewissheit.</p>
-<p><b>4. Filter:</b> Nur Kandidaten mit ausreichenden Testereignissen, positiver Beziehung auch in neueren Daten und einem Vorteil gegenüber der normalen Grundwahrscheinlichkeit werden hervorgehoben. Wenn keine Münze diese Kriterien erfüllt, gibt es kein Signal.</p>
-<p><b>5. Einschränkungen:</b> Viele untersuchte Coins und Zeithorizonte erhöhen die Gefahr zufälliger Treffer. Historische Muster können plötzlich verschwinden. Ein Stunden-Nachlauf ist keine garantierte Wartezeit für eine Order. Für belastbares Echtgeld-Trading braucht es zusätzlich längere unabhängige Tests und Papertrading. Kursanstieg und Kursrückgang werden getrennt behandelt; ein Rückgang ist <b>keine Aufforderung zum Shorten</b>.</p>
+<p><b>2. Verzögerung:</b> In den älteren 70 % der 90-Tage-Stundenhistorie werden Kombinationen aus 2 bis 24 Stunden Nachlauf und Prognosefenstern von 3, 6 oder 12 Stunden verglichen. Gewählt wird nur anhand der Trainingsdaten. Kleine Zufallseffekte können trotzdem vorkommen.</p>
+<p><b>3. Wahrscheinlichkeit:</b> In den neueren 30 % der Daten werden vergleichbare Bitcoin-Bewegungen gesucht. Die Quote zeigt, wie oft ein Coin anschließend mindestens die genannte Bewegung in 3, 6 oder 12 Stunden erreicht hat. Daneben steht die normale Trefferquote ohne Bitcoin-Bedingung. Testfenster werden nicht überlappt. Das Ergebnis ist eine <b>historische Häufigkeit</b>, keine kalibrierte Zukunftswahrscheinlichkeit.</p>
+<p><b>4. Bewertung:</b> Die Website zeigt nun auch schwache oder unbestätigte Zusammenhänge, damit du etwas vergleichen kannst. Das ist ausdrücklich <b>keine Kaufempfehlung</b>. Eine separate Kennzeichnung „statistisch bestätigt“ erfordert positive Beziehungen in Trainings- und Testdaten, mindestens 25 Vergleichsfälle und einen Vorsprung gegenüber der normalen Trefferquote.</p>
+<p><b>5. Einschränkungen:</b> Bei 60 Coins können auffällige Ergebnisse zufällig entstehen. Auch eine hohe Quote kann nur die allgemeine Aufwärts-/Abwärtsneigung eines Coins widerspiegeln; deshalb zeigen wir die Normalquote. Statistisch „bestätigt“ ist keine Gewinngarantie. Die Daten werden stündlich aktualisiert; starke Marktbewegungen können schneller wirken. Echte Handelsentscheidungen brauchen weitere Tests. Negative Prognosen sind keine Aufforderung zum Shorten.</p>
 </div></details>
 <div class="info"><b>So funktioniert die Aktualisierung:</b> Die Rechenarbeit läuft automatisch im Hintergrund, ungefähr einmal pro Stunde (GitHub Actions). Der Button ruft die jüngsten fertigen Ergebnisse ab. Er startet <b>keine</b> neue Kursanalyse. Deshalb kann der Abruf weniger als eine Sekunde dauern, ohne dass neue Kurse vorliegen. Der zusätzliche Minutendatenbestand wächst aufgrund der offiziellen Pionex-Grenze von 10.000 Kerzen zunächst aus etwa 6,7 auf 14 Tage. Für die Stundenprognosen ist dieser Minutendatenbestand nicht erforderlich. Bei veralteten Daten zeigt der Scanner keine aktuellen Signale. Die Schätzwerte berücksichtigen keine individuellen Ordergebühren.</div>
 <footer><span>BTC Vorlauf · unabhängiges Statistikwerkzeug · keine Finanzberatung</span><a href="https://www.pionex.com/docs/api-docs/trade-api/market" target="_blank" rel="noopener">Pionex: öffentliche Marktdaten ↗</a></footer>
@@ -72,7 +87,7 @@ async function loadData(){
  let last;
  try{
   const ctl=new AbortController();const timeout=setTimeout(()=>ctl.abort(),12000);
-  try{const r=await fetch(url,{cache:"no-store",signal:ctl.signal});if(r.ok){const j=await r.json();if(j.version===2)return j;}last=Error("Kursdaten derzeit noch nicht vorhanden");}finally{clearTimeout(timeout);}
+  try{const r=await fetch(url,{cache:"no-store",signal:ctl.signal});if(r.ok){const j=await r.json();if(j.version>=2)return j;}last=Error("Kursdaten derzeit noch nicht vorhanden");}finally{clearTimeout(timeout);}
  }catch(e){last=e;}
  try{
   const ctl=new AbortController();const timeout=setTimeout(()=>ctl.abort(),12000);
@@ -82,7 +97,7 @@ async function loadData(){
    const j=await r.json();
    const bytes=Uint8Array.from(atob((j.content||"").replace(/\s/g,"")),x=>x.charCodeAt(0));
    const data=JSON.parse(new TextDecoder().decode(bytes));
-   if(data.version!==2)throw Error("Datensatz-Format unbekannt");
+   if(data.version<2)throw Error("Datensatz-Format unbekannt");
    return data;
   }finally{clearTimeout(timeout);}
  }catch(e){throw Error("Das automatische Archiv wird noch aufgebaut oder ist gerade nicht erreichbar.");}
@@ -94,26 +109,63 @@ function empty(title,description){
 }
 function makeCard(info,index){
  const f=info.best,card=el("article","coin");
+ const good=info.status==="validated",exploratory=info.status==="exploratory";
+ if(!good)card.classList.add("unconfirmed");
  const hd=el("div","coin-head"),left=el("div","");
- left.append(el("div","coin-name",info.symbol.split("_")[0]),el("div","coin-pair","Pionex · "+info.symbol.replace("_"," / ")));
- hd.append(left,el("div","score-tag",index===0?"BESTER BELEG":"HISTORISCHER BELEG"));card.append(hd);
- const dir=f.direction==="up"?"steigt":"fällt";
- const directionWord=f.direction==="up"?"mindestens":"um mindestens";
+ left.append(el("div","coin-name",info.symbol.replace("_USDT","")),el("div","coin-pair","Pionex · "+info.symbol.replace("_"," / ")));
+ hd.append(left,el("div","score-tag "+(good?"":"lighttag"),good?"STATISTISCH BESTÄTIGT":exploratory?"AUFFÄLLIG · UNBESTÄTIGT":"NICHT BESTÄTIGT"));
+ card.append(hd);
+ const btcTerm=f.stimulus_ended_hours_ago>0?"vor "+f.stimulus_ended_hours_ago+" Stunden":"zuletzt";
+ const intro=el("div","btc-context","Bitcoin "+(f.btc_signal_pct>=0?"stieg":"fiel")+" "+btcTerm+" über 3 Stunden um "+Math.abs(f.btc_signal_pct).toLocaleString("de-DE",{maximumFractionDigits:2})+" %.");
+ card.append(intro);
  const line=el("div","sentence");
- line.textContent="Nach vergleichbaren BTC-Bewegungen "+dir+" dieser Coin innerhalb der nächsten ";
- const h=el("strong","",f.hours+" Stunden");line.append(h,document.createTextNode(" um "+directionWord+" "+format(f.target_pct,1)+" %."));
+ line.append(document.createTextNode("Historisch "+(f.direction==="up"?"stieg":"fiel")+" "+info.symbol.replace("_USDT","")+" in den folgenden "),el("strong","",f.hours+" Stunden"),document.createTextNode(" in "+f.successes+" von "+f.sample_size+" vergleichbaren Fällen um mindestens "+format(f.target_pct,1)+" %."));
  card.append(line);
- const line2=el("div","prob-line");line2.append(el("div","prob",f.probability_pct+" %"),el("div","prob-caption","geschätzte historische\nTrefferwahrscheinlichkeit"));card.append(line2);
- const track=el("div","prob-track");const bar=el("span");bar.style.width=Math.min(100,Math.max(0,f.probability_pct))+"%";track.append(bar);card.append(track);
- const foot=el("div","coin-foot");foot.append(el("span","","BTC-Signal: "+percentage(f.btc_signal_pct)+" in 3 Std."+(f.stimulus_ended_hours_ago?" (endete vor "+f.stimulus_ended_hours_ago+" Std.)":" (aktuell)")),el("span","","Historischer BTC→Coin-Nachlauf: "+f.lag_hours+" Std."),el("span","",""+f.sample_size+" unabhängige historische Vergleichsfälle"),el("span","","Ohne BTC-Bedingung: "+f.baseline_pct+" %"),el("span","","95%-Intervall: "+f.ci_low_pct+"–"+f.ci_high_pct+" %"));
- card.append(foot);
+ const probLine=el("div","prob-line");
+ probLine.append(el("div","prob",f.probability_pct+" %"),el("div","prob-caption","historische Trefferquote\nunter BTC-Bedingung"));
+ card.append(probLine);
+ const track=el("div","prob-track"),bar=el("span");bar.style.width=Math.max(0,Math.min(100,f.probability_pct))+"%";track.append(bar);card.append(track);
+ const comparison=el("div","compare");
+ comparison.append(el("div","","Ohne BTC-Bedingung: "+f.baseline_pct+" %"),el("div",f.edge_pp>=0?"up":"down","Unterschied "+(f.edge_pp>=0?"+":"")+f.edge_pp+" Prozentpunkte"));
+ card.append(comparison);
+ const bottom=el("div","coin-foot");
+ bottom.append(el("span","","Gemessener Versatz: "+f.lag_hours+" Std."),
+               el("span","","Vergleichsfälle: "+f.sample_size),
+               el("span","","95%-Bereich: "+f.ci_low_pct+"–"+f.ci_high_pct+" %"));
+ card.append(bottom);
+ const note=el("div","riskline",good
+  ?"Auch ein historisch bestätigter Zusammenhang garantiert keine spätere Bewegung."
+  :"Dieser Zusammenhang ist bislang nicht ausreichend bestätigt. Die Prozentzahl ist KEIN verlässliches Kaufsignal.");
+ card.append(note);
  return card;
 }
+function makeRows(predictions){
+ const rows=$("#allrows");rows.replaceChildren();
+ for(const info of predictions){
+  const f=info.best;const tr=el("tr","");
+  const parts=[
+   info.symbol.replace("_USDT",""),
+   f.direction==="up"?"Steigen":"Fallen",
+   f.hours+" Std.",
+   "≥ "+format(f.target_pct,1)+" %",
+   f.probability_pct+" %",
+   f.baseline_pct+" %",
+   f.lag_hours+" Std.",
+   info.status==="validated"?"Bestätigt":info.status==="exploratory"?"Hinweis":"Nicht bestätigt"
+  ];
+  for(let i=0;i<parts.length;i++){
+   let cell=el("td",i===7?(info.status==="validated"?"up":"subtle"):"",parts[i]);
+   tr.append(cell);
+  }rows.append(tr);
+ }
+ safely("#tablecount","("+predictions.length+")");
+}
 function draw(data){
- const then=new Date(data.generated_at).getTime();
- const age=Date.now()-then;
- const stale=!Number.isFinite(then)||age< -3600000||age>4*3600000;
- safely("#stamp","Datenstand: "+pformat(data.generated_at)+" Uhr · Berechnung automatisch ungefähr stündlich");
+ const now=Date.now(),ts=new Date(data.generated_at).getTime();
+ const age=now-ts;
+ const stale=!Number.isFinite(ts)||age< -3600000||age>4*3600000;
+ const currentVersion=data.version>=3;
+ safely("#stamp","Letzte Berechnung: "+pformat(data.generated_at)+" Uhr"+(currentVersion?"":" · Modell wird überarbeitet"));
  safely("#btc-until","Daten bis "+pformat(data.data_through)+" Uhr");
  const btc=data.btc_change_pct||{};
  setMove("#btc3",btc["3h"]);setMove("#btc6",btc["6h"]);setMove("#btc24",btc["24h"]);
@@ -121,25 +173,44 @@ function draw(data){
  safely("#hourhistory",(data.hourly_days??90)+" Tage");
  safely("#minutehistory",(data.minute_cache_coins??0)+" / "+((data.analyzed_coins??0)+1));
  const coverage=Number(data.minute_cache_coverage_days||0);
- safely("#minutelabel",data.minute_cache_coins
-  ?"Minutenarchiv: derzeit ca. "+format(coverage,1)+" von 14 Tagen; Aufbau läuft automatisch"
-  :"Minutenarchiv noch nicht verfügbar · unabhängig von der Stundenanalyse");
- const predictions=Array.isArray(data.predictions)?data.predictions:[];
- const usable=stale?[]:predictions.slice(0,8);
- const notice=$("#state");
- notice.classList.toggle("warn",stale||!predictions.length);
- notice.classList.toggle("good",!stale&&predictions.length>0);
- if(stale){
-  notice.textContent="Der Datenstand ist älter als vier Stunden. Zur Sicherheit werden keine aktuellen Prognosen ausgegeben. Die Hintergrundaktualisierung kann verzögert sein.";
-  empty("Noch keine aktuellen Prognosen","Sobald die automatisierte Berechnung wieder aktuelle Marktdaten bereitstellt, erscheinen hier nur statistisch geprüfte Kandidaten.");
- }else if(!predictions.length){
-  notice.textContent="Aktuelle Analyse abgeschlossen: Kein Coin zeigt momentan einen ausreichend zuverlässigen, nachweisbaren Bitcoin-Nachlauf über mehrere Stunden.";
-  empty("Aktuell kein ausreichend verlässliches Signal","Wir haben die handelbaren Pionex-Coins untersucht. Keine Kombination aus Zeitversatz, Kursziel und historischem Trefferverhalten erfüllt zurzeit unsere strengen Mindestanforderungen. Daher wird bewusst keine Kaufempfehlung erzeugt.");
- }else{
-  notice.textContent="Analyse abgeschlossen. "+predictions.length+" historisch geprüfte Kandidaten gefunden. Die Prozentwerte sind Schätzungen aus zurückgehaltenen Kursdaten und keine sicheren Vorhersagen.";
-  const cards=$("#cards");cards.replaceChildren();usable.forEach((x,i)=>cards.append(makeCard(x,i)));
+ safely("#minutelabel",data.minute_cache_coins?
+   "Minutenarchiv: "+format(coverage,1)+" / 14 Tage · unabhängig von Stundenprognosen":
+   "Zusätzliches Minutenarchiv im Aufbau · Stundenanalyse separat verfügbar");
+ const predictions=currentVersion&&Array.isArray(data.predictions)?data.predictions:[];
+ const confirmed=predictions.filter(i=>i.status==="validated");
+ const exploratory=predictions.filter(i=>i.status==="exploratory");
+ const best=predictions.filter(i=>i.status==="validated"||i.status==="exploratory");
+ const ordered=[...best,...predictions.filter(i=>i.status==="not_validated")].slice(0,8);
+ const notice=$("#state");notice.classList.remove("good","warn");
+ makeRows(predictions);
+ if(!currentVersion){
+  notice.classList.add("warn");
+  notice.textContent="Die 90-Tage-Historie liegt vor. Das verbesserte Wahrscheinlichkeitsmodell wird derzeit neu berechnet. Die alte Version bot keine aussagekräftige Rangliste.";
+  empty("Verbesserte Analyse wird erstellt","Der nächste Hintergrundlauf liefert die bedingte historische Trefferquote und die normale Vergleichsquote für jeden analysierbaren Coin.");
+  safely("#resultcount","");
+  return;
  }
- safely("#resultcount",usable.length?"("+usable.length+")":"");
+ if(stale){
+  notice.classList.add("warn");
+  notice.textContent="Der Datenstand ist älter als vier Stunden. Die historische Rangliste kann eingesehen werden, aktuelle Prognosen werden bewusst gesperrt.";
+  empty("Daten für Trading nicht mehr aktuell","Die letzte Berechnung ist zu alt. Unten kannst du die historischen Zusammenhänge vergleichen, aber aktuell liegt kein frisches Signal vor.");
+  safely("#resultcount","");
+  return;
+ }
+ const cards=$("#cards");cards.replaceChildren();
+ if(confirmed.length){
+  notice.classList.add("good");
+  notice.textContent=confirmed.length+" statistisch geprüfte BTC-Folgebeziehungen gefunden. "+exploratory.length+" weitere historische Auffälligkeiten; Wahrscheinlichkeiten sind nicht garantiert.";
+ }else{
+  notice.classList.add("warn");
+  notice.textContent="Keine statistisch bestätigte Trading-Chance. Dennoch wurden "+predictions.length+" Coins auf zeitliche BTC-Folgebeziehungen geprüft. Die stärksten historischen Hinweise folgen unten – ausdrücklich ohne Kaufsignal.";
+ }
+ if(ordered.length){
+  for(let i=0;i<ordered.length;i++)cards.append(makeCard(ordered[i],i));
+ }else{
+  empty("Keine auswertbaren Nachlaufmuster","Für diese Börsenpaare liegen derzeit nicht ausreichend robuste Vergleichsbeobachtungen vor. Die Tabelle mit geprüften Coins wird bei der nächsten Datenberechnung ergänzt.");
+ }
+ safely("#resultcount",predictions.length?"("+confirmed.length+" bestätigt · "+predictions.length+" geprüft)":"");
 }
 let priorStamp="";
 async function refresh(){
