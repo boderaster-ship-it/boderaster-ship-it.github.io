@@ -428,13 +428,12 @@ def track_forward_shadow(results, price_data, btc_bars):
         if new>=5:
             break
         test=row["test"]
-        # Independently journal promising but UNCONFIRMED contemporaneous BTC
-        # signals. They are never described as a proven opportunity.
+        # Journal a capped, forward-only sample INCLUDING rejected research
+        # hypotheses. Otherwise the journal would have survivorship bias and
+        # could never falsify the model. NO order is placed.
         if not row["signal_current"] or not row["market_valid"]:
             continue
-        if test["n"]<12 or test["avg_net_pct"] is None or test["avg_net_pct"]<=0:
-            continue
-        if test["edge_over_best_baseline_pct"] is None or test["edge_over_best_baseline_pct"]<=0:
+        if test["n"]<12 or test["avg_net_pct"] is None:
             continue
         sid=row["symbol"]+":"+str(latest)+":"+str(row["horizon_hours"])+":"+str(row["lag_hours"])
         if sid in tracked_ids:
