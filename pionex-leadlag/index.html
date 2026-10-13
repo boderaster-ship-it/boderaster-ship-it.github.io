@@ -1,188 +1,199 @@
-<!doctype html>
-<html lang="de">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#071622">
-<meta name="description" content="Pionex BTC-Vorlauf Scanner: Spot-Trading-Signale nur mit unabhängigen Tests, Nettorendite und aktueller Unterreaktion.">
-<title>BTC Vorlauf · Trading-Evidenz</title>
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07141c"><meta name="description" content="Pionex Bitcoin Lead-Lag: unabhängige Trading-Backtests, Nettorendite, Vergleich mit einfachen Handelsstrategien und klare Entscheidung.">
+<title>Pionex BTC Edge · Trading-Labor V5</title>
 <style>
-:root{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#eaf4fa;background:#071622;color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#071622}button{font:inherit;cursor:pointer}button:disabled{opacity:.65;cursor:wait}
-header{background:#0b1c29;border-bottom:1px solid #2a4955}.frame{max-width:1120px;padding:0 22px;margin:auto}header .frame{min-height:70px;display:flex;align-items:center;justify-content:space-between;gap:14px}.brand{display:flex;align-items:center;gap:11px}.logo{width:38px;height:38px;display:grid;place-items:center;border-radius:10px;background:#73e4cd;color:#123337;font-size:25px;font-weight:900}.brand b{font-size:17px;letter-spacing:-.5px}.brand b span{color:#77e4d2}.brand small{display:block;letter-spacing:1.1px;color:#94b2bd;font-size:10px;margin-top:3px}.pill{border:1px solid #31525a;border-radius:30px;padding:8px 11px;font-size:10px;color:#a7c7d0;white-space:nowrap}
-main{padding-top:34px!important;padding-bottom:42px!important}.eyebrow{color:#86c8c3;font-weight:850;font-size:10px;text-transform:uppercase;letter-spacing:1.7px}h1{font-weight:900;font-size:clamp(30px,4.8vw,50px);letter-spacing:-1.8px;line-height:1.13;margin:11px 0 11px;max-width:870px}h1 span{color:#77e5d2}.intro{font-size:14px;color:#a9c5d1;line-height:1.65;max-width:770px;margin:0}.bar-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:22px 0 15px}.btn{background:#75e5ca;color:#092824;border:none;border-radius:10px;padding:14px 22px;font-weight:850;font-size:14px}.stamp{color:#91aebd;font-size:11px;line-height:1.6}
-.notice{padding:13px 15px;border:1px solid #3c5c67;border-radius:11px;background:#132b37;font-size:12px;line-height:1.55;color:#c0d6df;margin-bottom:15px}.notice strong{color:#f4faff}
-.btc-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:20px}.btc-strip>div{background:#13283a;border:1px solid #284657;padding:14px;border-radius:11px}.btc-strip span{display:block;font-size:10px;color:#a2becc}.btc-strip strong{font-size:25px;display:block;margin:8px 0 1px;font-variant-numeric:tabular-nums;letter-spacing:-.6px}.up{color:#71e7bb!important}.down{color:#ff9c9e!important}.muted{color:#9cb5c2!important}
-.verdict{padding:22px;border:1px solid #68593e;border-radius:16px;background:linear-gradient(125deg,#3c2f21,#192b33);margin-bottom:22px}.verdict.good{background:linear-gradient(130deg,#104437,#152e35);border-color:#3e9878}.verdict.critical{background:linear-gradient(140deg,#44301f,#1a2e38);border-color:#9e7d42}.verdict .vlabel{color:#f0c984;letter-spacing:1.3px;font-size:10px;font-weight:900}.verdict.good .vlabel{color:#a0f5d6}.verdict h2{font-size:26px;letter-spacing:-.8px;line-height:1.2;margin:9px 0}.verdict p{font-size:13px;color:#d2dfe1;max-width:760px;line-height:1.7;margin:0}.verdict .tiny{margin-top:11px;font-size:11px;color:#aebec4}
-.section-head{display:flex;justify-content:space-between;align-items:end;gap:12px;margin:29px 0 13px}.section-head h2{margin:0;font-size:21px;letter-spacing:-.6px}.section-head small{font-size:11px;color:#91b0bf;line-height:1.5;text-align:right}.clean{background:#112838;border:1px solid #2e4b5c;border-radius:13px;padding:21px;color:#a9c4d1;font-size:13px;line-height:1.65}.clean b{display:block;color:#f1fbfa;font-size:16px;margin-bottom:7px}.clean p{margin:0}
-.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.item{background:#13293a;border:1px solid #2d4d61;border-radius:13px;padding:18px}.item.strong{border-color:#5dbfa4}.item .header{display:flex;align-items:center;justify-content:space-between;gap:8px}.item .coin{font-size:21px;font-weight:900}.tag{border:1px solid #496072;background:#20394b;color:#b8d1d8;border-radius:50px;padding:6px 9px;font-size:9px;white-space:nowrap}.tag.green{color:#b3f5db;border-color:#438975;background:#185646}.item h3{font-size:14px;line-height:1.5;margin:13px 0 14px;color:#e2f3ef;font-weight:750}.item h3 em{color:#73e7d3;font-style:normal}.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.stat{background:#0c2130;border:1px solid #2c4656;border-radius:9px;padding:12px}.stat span{display:block;font-size:10px;color:#99b6c4;margin-bottom:7px}.stat b{font-size:21px;font-variant-numeric:tabular-nums;letter-spacing:-.5px}.event{border-left:3px solid #5ba6b0;background:#0c2432;padding:10px 12px;margin-top:13px;font-size:12px;color:#a8c7d0;line-height:1.6}.caption{margin-top:13px;font-size:11px;line-height:1.7;color:#a3bdc8}
-.stats-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px}.stats-overview>div{padding:15px;background:#12283a;border:1px solid #284757;border-radius:10px}.stats-overview strong{display:block;font-size:24px}.stats-overview span{font-size:11px;color:#a8bdcd;display:block;margin-top:5px}
-details{border:1px solid #2b4859;border-radius:12px;background:#102637;margin-top:15px;overflow:hidden}details summary{cursor:pointer;padding:17px;font-size:13px;font-weight:800;color:#d2ece7;list-style:revert}.detailbody{border-top:1px solid #304a58;padding:8px 17px 18px;line-height:1.7;font-size:12px;color:#a6c3cb}.detailbody p{margin:11px 0}.detailbody b{color:#e2f5f3}.table-wrap{overflow-x:auto;max-height:460px}.table{border-collapse:collapse;width:100%;text-align:left;white-space:nowrap;font-size:11px}.table th,.table td{padding:12px;border-bottom:1px solid #2b4555}.table th{font-size:10px;color:#b1d0d6;background:#183544;position:sticky;top:0}.table td{color:#b6d0d7}.table tr:nth-child(even){background:#122c39}.table .neg{color:#f3a3a5}.table .pos{color:#84e0bb}
-footer{margin-top:24px;padding-top:18px;border-top:1px solid #2d4857;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:11px;color:#9bb7c0}a{color:#75ddc9}
-@media(max-width:680px){.frame{padding:0 14px}header .frame{min-height:65px}.brand b{font-size:15px}.pill{font-size:8px;padding:7px}.bar-actions .btn{width:100%}h1{font-size:34px}.btc-strip{gap:7px}.btc-strip>div{padding:11px 9px}.btc-strip strong{font-size:23px}.grid{grid-template-columns:1fr}.section-head{align-items:start;flex-direction:column}.section-head small{text-align:left}.verdict{padding:18px}.verdict h2{font-size:24px}.stats-overview>div{padding:11px}.stats-overview strong{font-size:21px}}
-</style>
-</head>
+:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:#07141c;color:#e9f4f7;font-synthesis:none}
+*{box-sizing:border-box}body{margin:0;background:#07141c}button{font:inherit;cursor:pointer}button:disabled{opacity:.52;cursor:wait}a{color:#73e5ce}
+.shell{width:min(1100px,100%);padding:0 21px;margin:auto}
+header{border-bottom:1px solid #27444c;background:#0d2029}header .shell{min-height:68px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.brand{display:flex;align-items:center;gap:10px}.logo{background:#73e6d0;border-radius:10px;width:38px;height:38px;display:grid;place-items:center;color:#092c28;font-size:26px;font-weight:900}
+.brand strong{display:block;font-size:17px;font-weight:850;letter-spacing:-.45px}.brand strong em{font-style:normal;color:#76e7cf}.brand small{display:block;color:#94b0b9;font-size:10px;letter-spacing:1px;margin-top:4px;font-weight:700}
+.side-label{font-size:10px;color:#9bbac1;border:1px solid #325961;border-radius:60px;padding:8px 11px;white-space:nowrap}
+main{padding-top:28px!important;padding-bottom:37px!important}.eyebrow{font-size:10px;color:#77e1cc;font-weight:850;letter-spacing:1.5px;text-transform:uppercase}h1{font-size:clamp(31px,4.7vw,48px);line-height:1.1;letter-spacing:-1.5px;margin:11px 0 10px;max-width:790px}h1 span{color:#7ce7d4}
+.subtitle{color:#a3bec5;font-size:14px;line-height:1.65;margin:0;max-width:760px}
+.actionbar{margin:22px 0 12px;display:flex;align-items:center;justify-content:space-between;gap:13px;flex-wrap:wrap}.primary{background:#72e5c8;color:#082522;font-size:14px;font-weight:850;border:0;padding:14px 22px;border-radius:10px;box-shadow:0 5px 20px #1ad69c17}.updated{color:#9cb6c0;font-size:11px;line-height:1.6}
+.notice{padding:13px 15px;border-radius:11px;border:1px solid #355762;background:#122c35;color:#bad2d8;font-size:12px;line-height:1.6}
+.btcstrip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:16px 0}.btcstrip>div{border:1px solid #2c4c58;background:#112835;border-radius:11px;padding:15px}.btcstrip span{display:block;color:#a2bec4;font-size:10px}.btcstrip strong{display:block;font-size:25px;letter-spacing:-.7px;margin-top:8px;font-variant-numeric:tabular-nums}.up{color:#7ee9bb!important}.down{color:#ff9a9f!important}
+.decision{margin:17px 0 19px;border:1px solid #866547;background:linear-gradient(130deg,#392b22,#162b36);padding:21px;border-radius:15px}.decision.positive{border-color:#469e81;background:linear-gradient(130deg,#123c34,#132b32)}.decision.stale{border-color:#884b4b;background:#32242a}.decision .overline{letter-spacing:1.35px;color:#e6bb7d;font-size:10px;font-weight:850}.decision.positive .overline{color:#8af5d0}.decision h2{margin:8px 0;font-size:25px;letter-spacing:-.65px}.decision p{margin:0;color:#d0dfe1;font-size:13px;line-height:1.7;max-width:730px}.decision .statusmeta{margin-top:12px;font-size:11px;color:#b1c4c8}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:16px 0 26px}.metrics>div{border:1px solid #2b4550;background:#122635;padding:14px;border-radius:10px}.metrics strong{display:block;font-size:26px;font-weight:850;letter-spacing:-.6px}.metrics span{font-size:10px;color:#a7c0ca;line-height:1.55;display:block;margin-top:5px}
+.section-head{display:flex;justify-content:space-between;gap:14px;align-items:end;margin:25px 0 13px}.section-head h2{margin:0;font-size:21px;letter-spacing:-.55px}.section-head small{font-size:11px;color:#9cb7c0;line-height:1.6;text-align:right}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.card{padding:19px;border:1px solid #365664;border-radius:13px;background:#122938}.card.highlight{border-color:#5da994}.card-top{display:flex;align-items:start;justify-content:space-between;gap:8px}.coin{font-size:22px;font-weight:900;letter-spacing:-.5px}.pair{color:#93afb9;font-size:11px;margin-top:3px}.tag{font-size:9px;font-weight:850;border-radius:40px;padding:7px 10px;background:#274250;color:#b2cfd3;white-space:nowrap}.tag.positive{background:#23554a;color:#bcf5df}
+.card .narrative{font-size:13px;color:#d0e6e7;line-height:1.6;margin:17px 0}.card .narrative b{color:#84e5d1}
+.mainmetric{display:grid;grid-template-columns:1fr 1fr;gap:9px}.metric{padding:12px;border:1px solid #315360;background:#0b2430;border-radius:9px}.metric span{display:block;color:#a1bdc6;font-size:10px;margin-bottom:6px}.metric strong{font-size:22px;font-variant-numeric:tabular-nums;letter-spacing:-.5px}.metric small{font-size:10px;display:block;color:#a8c1c6;margin-top:5px}
+.card .facts{border-top:1px solid #36515b;margin-top:15px;padding-top:13px;display:grid;grid-template-columns:repeat(2,1fr);gap:12px;font-size:11px;color:#abc4cb;line-height:1.5}.card .facts b{display:block;color:#e4f6f3;font-size:13px;margin-top:4px}.card .caution{margin-top:14px;border-left:3px solid #5f9cab;background:#0d2a37;padding:10px 12px;color:#b9d1d8;line-height:1.55;font-size:11px}
+.empty{border:1px solid #2f4f5c;border-radius:13px;padding:22px;background:#102733;line-height:1.7;color:#a9c4cb;font-size:13px;grid-column:1/-1}.empty b{display:block;color:#e8f5f6;font-size:17px;margin-bottom:5px}.empty p{margin:0}
+.secondary-line{color:#90afbc;font-size:11px;line-height:1.65;margin-top:13px}
+.accordion{border:1px solid #304f5b;background:#102737;border-radius:12px;overflow:hidden;margin-top:15px}.accordion summary{cursor:pointer;padding:17px;color:#d7eceb;font-size:13px;font-weight:800;line-height:1.45}.accordion .inner{padding:12px 17px 18px;border-top:1px solid #31505c;font-size:12px;color:#a7c2cc;line-height:1.75}.accordion .inner b{color:#dfefed}.accordion .inner p{margin:8px 0 14px}
+.tblwrap{overflow:auto;max-height:580px}.tbl{border-collapse:collapse;width:100%;text-align:left;white-space:nowrap;font-size:11px}.tbl th{position:sticky;top:0;background:#193644;font-weight:850;color:#a6c7ca;font-size:10px}.tbl th,.tbl td{padding:12px;border-bottom:1px solid #2b4652}.tbl tr:nth-child(2n){background:#102c38}.tbl td.good{color:#80e4c0}.tbl td.bad{color:#ffa0a5}
+footer{border-top:1px solid #264450;margin-top:26px;padding-top:18px;font-size:11px;color:#97b2ba;display:flex;flex-wrap:wrap;justify-content:space-between;gap:9px}
+@media(max-width:720px){.shell{padding-left:14px;padding-right:14px}header .shell{min-height:64px}.brand strong{font-size:15px}.brand small{font-size:9px}.side-label{font-size:8px;padding:7px}.actionbar{align-items:stretch}.actionbar .primary{width:100%}h1{font-size:34px}.metrics{grid-template-columns:repeat(2,1fr);gap:8px}.metrics>div{padding:12px}.metrics strong{font-size:24px}.btcstrip{gap:7px}.btcstrip>div{padding:11px}.btcstrip strong{font-size:22px}.cards{grid-template-columns:1fr}.section-head{flex-direction:column;align-items:start}.section-head small{text-align:left}.decision h2{font-size:23px}}
+</style></head>
 <body>
-<header><div class="frame"><div class="brand"><div class="logo">↗</div><div><b>BTC <span>Vorlauf</span></b><small>PIONEX · SPOT-TRADE-PRÜFUNG</small></div></div><div class="pill">● ECHTE MARKTDATEN</div></div></header>
-<main class="frame">
-<div class="eyebrow">Entscheidungen statt Scheinwahrscheinlichkeiten</div>
-<h1>Gibt es jetzt eine <span>handelbare BTC-Folgebewegung?</span></h1>
-<p class="intro">Alle relevanten Pionex-Spotmärkte werden auf zeitversetzte BTC-Reaktionen geprüft. Ein Einstieg erscheint nur, wenn er außerhalb der Trainingsdaten statistisch und nach angenommenen Handelskosten bestanden hat.</p>
-<div class="bar-actions"><button id="reload" class="btn">↻ Neue Auswertung laden</button><span id="timestamp" class="stamp">Lade letzte abgeschlossene Analyse …</span></div>
-<div id="state" class="notice">Verbindung zum Prognosearchiv wird geprüft …</div>
-<div class="btc-strip"><div><span>BTC · letzte 3 Std.</span><strong id="btc3">–</strong></div><div><span>BTC · letzte 6 Std.</span><strong id="btc6">–</strong></div><div><span>BTC · letzte 24 Std.</span><strong id="btc24">–</strong></div></div>
-<section id="verdict" class="verdict"><div class="vlabel">AKTUELLE SPOT-ENTSCHEIDUNG</div><h2 id="verdict-title">Wird berechnet …</h2><p id="verdict-text">Die Daten werden geladen.</p><div id="verdict-small" class="tiny"></div></section>
-<div class="section-head"><h2>Statistisch geprüfte Kaufchancen <span id="buy-count" class="up"></span></h2><small>Nur Spot Long · nur mit positivem Test nach Kosten</small></div>
-<div id="buys" class="grid"><div class="clean">Lade …</div></div>
-<div class="section-head"><h2>Beobachtungsliste <span id="watch-count"></span></h2><small>Aktuelle Hinweise – noch ausdrücklich kein Kaufnachweis</small></div>
-<div id="watches" class="grid"><div class="clean">Lade …</div></div>
-<div class="section-head"><h2>Weitere Untersuchungsergebnisse</h2><small>Wichtig zur Überprüfung deiner Ausgangsthese</small></div>
-<div id="diagnostics" class="clean">Lade …</div>
-<div class="stats-overview">
-<div><strong id="coinCount">–</strong><span>geprüfte Pionex-Spotcoins</span></div>
-<div><strong id="history">180 Tage</strong><span>historische Stundenkurse</span></div>
-<div><strong>35 %</strong><span>neuerer, vorher unberührter Testabschnitt</span></div>
+<header><div class="shell"><div class="brand"><div class="logo">↗</div><div><strong>BTC <em>EDGE</em></strong><small>PIONEX · TRADING-LABOR V5</small></div></div><span class="side-label">● SPOT / USDT</span></div></header>
+<main class="shell">
+<div class="eyebrow">Statistische Aussagekraft · praktisch handelbare Signale</div>
+<h1>Gibt es jetzt einen <span>messbaren Handelsvorteil?</span></h1>
+<p class="subtitle">Bitcoin bewegt sich. Welche Altcoins reagieren später – und lässt sich diese Verzögerung nach Kosten tatsächlich profitabel ausnutzen? Wir vergleichen jede gefundene Strategie mit einfachen Alternativen und testen sie auf bisher ungesehenen Daten.</p>
+<div class="actionbar"><button id="reload" class="primary">↻ Neueste Prognose laden</button><span class="updated" id="timestamp">Der letzte Datensatz wird geladen …</span></div>
+<div class="notice" id="notice" role="status">Berechnungsdaten werden geprüft.</div>
+<div class="btcstrip">
+<div><span>BTC · letzte 3 Stunden</span><strong id="btc3">–</strong></div>
+<div><span>BTC · letzte 6 Stunden</span><strong id="btc6">–</strong></div>
+<div><span>BTC · letzte 24 Stunden</span><strong id="btc24">–</strong></div>
 </div>
-<details><summary>Alle Coins und ihre Handelskennzahlen vergleichen</summary><div class="table-wrap"><table class="table"><thead><tr><th>Coin</th><th>Richtung</th><th>Zeitraum</th><th>BTC-Nachlauf</th><th>Zielquote</th><th>Normalquote</th><th>Ø netto / Trade</th><th>Testfälle</th><th>Status</th></tr></thead><tbody id="alltable"></tbody></table></div></details>
-<details><summary>Wie zuverlässig ist das Modell wirklich?</summary><div class="detailbody">
-<p><b>Trainingsdaten vs. unabhängiger Test:</b> Für jeden Coin werden historische Verzögerungen von 2 bis 24 Stunden und Haltezeiten von 3, 6 oder 12 Stunden nur auf den älteren 65 % der Daten ausgewählt. Die jüngeren 35 % sind für den abschließenden Test reserviert. Daten unmittelbar am Übergang sind gesperrt.</p>
-<p><b>Was bedeutet die Prozentzahl?</b> Sie ist die geglättete Trefferhäufigkeit des aus Trainingsdaten festgelegten Kursziels in der zurückgehaltenen Testperiode, keine garantierte oder vollständig kalibrierte Zukunftsprognose. Wir zeigen die normale Trefferhäufigkeit zum Vergleich.</p>
-<p><b>Ist die Reaktion schon erfolgt?</b> Für ein aktuelles Signal messen wir, wie viel sich der Altcoin seit der auslösenden BTC-Bewegung bereits verändert hat. Hat er mehr als das vom Trainingsmodell zugelassene Reaktionsmaß erreicht, entfällt der Einstieg.</p>
-<p><b>Kosten und Markteffekt:</b> Das Backtesting zieht vorsichtig angenommene Gebühren von 0,10 % je Orderseite, je 0,07 % Slippage sowie den zuletzt gemessenen Spread ab. Zusätzlich wird geprüft, ob die historische Mehrentwicklung nach Abzug der gleichzeitigen BTC-Marktbewegung positiv bleibt.</p>
-<p><b>Statistik:</b> Nicht überlappende historische Testfenster, Mindestfallzahlen und Korrektur für Mehrfachtests über alle Coins (Benjamini-Hochberg). Eine Kaufchance benötigt positive durchschnittliche Nettorendite mit positivem unteren 95%-Schätzwert und einen ausreichend großen Vorteil über die Grundquote.</p>
-<p><b>Aktuelle Grenzen:</b> Tatsächliche Ausführungslatenz, dein Pionex-Gebührenkonto, verfügbare Orderbuchtiefe und echte Paper-Trades wurden noch nicht geprüft. Selbst ein positives Testsiegel ist keine Kaufgarantie.</p>
+<section class="decision" id="decision"><span class="overline">AKTUELLE HANDELSENTSCHEIDUNG</span><h2 id="verdict">Warte auf Analyse …</h2><p id="explanation">Lade die letzte unabhängige Prüfung.</p><div id="verdict-meta" class="statusmeta"></div></section>
+<div class="metrics">
+<div><strong id="markets">–</strong><span>Pionex-Coins untersucht</span></div>
+<div><strong id="validated">–</strong><span>historisch bestätigte aktive Kandidaten</span></div>
+<div><strong id="watchcount">–</strong><span>zu beobachtende, unbestätigte Ansätze</span></div>
+<div><strong id="period">180 Tage</strong><span>Trainings-, Auswahl- und Testhistorie</span></div>
+</div>
+<div class="section-head"><h2>Historisch geprüfte Spot-Chancen</h2><small>Maximal 5 · nur mit positivem unabhängigen Netto-Nachweis</small></div>
+<div id="opportunities" class="cards"><div class="empty">Analyse wird geladen …</div></div>
+<div class="section-head"><h2>Beobachtungen (kein Kaufsignal)</h2><small>Bei Auffälligkeiten: Rendite, Risiko und bereits erfolgte Kursreaktion</small></div>
+<div id="watchlist" class="cards"><div class="empty">Analyse wird geladen …</div></div>
+<div class="section-head"><h2>Warum scheitern Strategien?</h2><small>Alle negativen Ergebnisse bleiben überprüfbar</small></div>
+<div id="exclusions" class="empty">Lade unabhängigen Backtest …</div>
+<details class="accordion"><summary>Alle geprüften Coins und echten Backtest-Zahlen anzeigen</summary><div class="tblwrap"><table class="tbl"><thead><tr><th>Coin</th><th>Nachlauf</th><th>Halten</th><th>Profit-Wahrsch.</th><th>Ø netto</th><th>Vergleichsvorteil</th><th>Risiko: -1 %</th><th>Trades</th><th>Status</th></tr></thead><tbody id="rows"></tbody></table></div></details>
+<details class="accordion"><summary>Statistische Methodik und Grenzen – wie viel kann ich den Zahlen vertrauen?</summary><div class="inner">
+<p><b>Kein nachträgliches Optimieren der Testdaten:</b> 55 % der 180-Tage-Stundenhistorie dienen der Festlegung des Bitcoin-Impulses, 20 % zur Auswahl des Zeitversatzes und der Haltedauer, die letzten 25 % bleiben bis zur abschließenden Prüfung unberührt. Zwischen den Zeiträumen werden Überlappungen gesperrt.</p>
+<p><b>Ein konkreter Handel:</b> Signal am Schluss einer vollständig abgeschlossenen Stundenkerze. Einstiegsannahme ist ausdrücklich erst der Schlusskurs der folgenden Stunde, Ausstieg nach weiteren 3, 6 oder 12 Stunden. Gleichzeitig offene Trades werden im historischen Test ausgeschlossen. Dies ist eine vorsichtige <b>Ausführungs-Annäherung</b>, keine echte Pionex-Fill-Simulation. Die Signalansicht ist keine ausführbare Limit-Order.</p>
+<p><b>Ist der Coin schon mitgelaufen?</b> Gemessen wird der BTC-Anstieg vor 1 bis 24 Stunden und die seitherige Bewegung des Altcoins. Wenn die historische Reaktionsschwelle überschritten wurde, wird kein aktives Nachlauf-Signal ausgegeben.</p>
+<p><b>Vergleichsstrategien:</b> Für denselben Coin und dieselbe Haltedauer prüfen wir zusätzlich (1) nur auf einen unmittelbar beobachteten BTC-Anstieg zu reagieren und (2) ohne Bitcoin-Bedingung regelmäßig Spotpositionen zu halten. Eine profitable Strategie muss mindestens 0,12 Prozentpunkte durchschnittlichen Mehrertrag erzielen.</p>
+<p><b>Risiko und Handelskosten:</b> Wir zeigen positive Trades, Nettorenditen, Profit Factor, historische Verlusthäufigkeit ab −1 % und maximalen historischen Rückgang der simulierten Strategie. Angenommen werden 0,10 % Gebühr pro Orderseite, 0,07 % Ausführungsabweichung pro Seite sowie der zuletzt gemessene Spread. Diese Annahmen sind nicht deine individuell verifizierten Pionex-Kosten.</p>
+<p><b>Unsicherheit:</b> Die Gewinnwahrscheinlichkeit ist eine geglättete historische Trefferhäufigkeit und <b>keine auf die Zukunft kalibrierte Wahrscheinlichkeit</b>. Der untere historische Nettorendite-Schätzwert basiert auf einem Block-Bootstrap. Die Suche über viele Coins wird zusätzlich durch Mehrfachtest-Korrektur begrenzt.</p>
+<p><b>Was fehlt vor Echtgeld?</b> Echte Orderbuch-Fills, dein Gebührenmodell, Latenz- und Liquiditätstests und ein ausreichend langer unabhängiger Papertrading-Verlauf. Solange diese fehlen, handelt es sich um Forschungssignale, keine belastbar ausführbare Handelsempfehlung.</p>
 </div></details>
-<footer><span>BTC Vorlauf · Evidenzbasiertes Forschungswerkzeug, keine Anlageberatung oder automatische Order</span><a href="https://www.pionex.com/docs/api-docs/trade-api/market" target="_blank" rel="noopener">Öffentliche Pionex-Schnittstelle ↗</a></footer>
+<div class="secondary-line">Diese Website prüft automatisch stündlich neue Pionex-Marktdaten. Ein Klick lädt die jüngste gespeicherte Berechnung, führt jedoch keine neue minutenlange Analyse auf deinem Smartphone aus. Es werden keine Orders ausgelöst.</div>
+<footer><span>BTC EDGE V5 · Forschungsmodell, keine Anlageberatung</span><a href="https://www.pionex.com/docs/api-docs/trade-api/market" target="_blank" rel="noreferrer">Pionex öffentliche Kurse ↗</a></footer>
 </main>
 <script>
-(()=>{
-"use strict";
-const DATA="https://raw.githubusercontent.com/boderaster-ship-it/boderaster-ship-it.github.io/main/pionex-leadlag/data/trading.json";
-const API="https://api.github.com/repos/boderaster-ship-it/boderaster-ship-it.github.io/contents/pionex-leadlag/data/trading.json?ref=main";
+(()=>{"use strict";
+const dataURL="https://raw.githubusercontent.com/boderaster-ship-it/boderaster-ship-it.github.io/main/pionex-leadlag/data/v5.json";
+const backupURL="https://api.github.com/repos/boderaster-ship-it/boderaster-ship-it.github.io/contents/pionex-leadlag/data/v5.json?ref=main";
 const $=id=>document.getElementById(id);
-const nf=(x,d=1)=>Number.isFinite(x)?x.toLocaleString("de-DE",{maximumFractionDigits:d,minimumFractionDigits:d}):"–";
-const pct=(x,d=2)=>Number.isFinite(x)?(x>0?"+":"")+nf(x,d)+" %":"–";
-const time=x=>new Date(x).toLocaleString("de-DE",{timeZone:"Europe/Berlin",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
-function add(tag,cls,text){const el=document.createElement(tag);if(cls)el.className=cls;if(text!==undefined)el.textContent=text;return el;}
-function text(id,value){$(id).textContent=value;}
-function move(id,n){text(id,pct(n));$(id).className=n>=0?"up":"down";}
-async function load(){
- const paths=[DATA+"?_="+Date.now(),API+"&_="+Date.now()];
- for(let i=0;i<paths.length;i++){
+const fmt=(x,d=1)=>typeof x==="number"&&Number.isFinite(x)?x.toLocaleString("de-DE",{minimumFractionDigits:d,maximumFractionDigits:d}):"–";
+const pct=(x,d=2)=>typeof x==="number"&&Number.isFinite(x)?(x>0?"+":"")+fmt(x,d)+" %":"–";
+const local=x=>new Date(x).toLocaleString("de-DE",{timeZone:"Europe/Berlin",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});
+const make=(name,cls,content)=>{let x=document.createElement(name);if(cls)x.className=cls;if(content!==undefined)x.textContent=content;return x;};
+const put=(id,s)=>{$(id).textContent=s;};
+const move=(id,val)=>{put(id,pct(val));$(id).className=typeof val==="number"?(val<0?"down":"up"):"";};
+async function getData(){
+ for(const [i,url] of [dataURL+"?v="+Date.now(),backupURL+"&v="+Date.now()].entries()){
+  let timer,controller=new AbortController();
   try{
-   const ctl=new AbortController();const timer=setTimeout(()=>ctl.abort(),13000);
-   let r;
-   try{r=await fetch(paths[i],{cache:"no-store",signal:ctl.signal});}
-   finally{clearTimeout(timer);}
+   timer=setTimeout(()=>controller.abort(),12000);
+   const r=await fetch(url,{cache:"no-store",signal:controller.signal});
    if(!r.ok)continue;
-   if(i===0){const j=await r.json();if(j.version===4)return j;}
+   let data;
+   if(!i)data=await r.json();
    else{
-    const content=(await r.json()).content||"";
-    const raw=Uint8Array.from(atob(content.replace(/\s/g,"")),ch=>ch.charCodeAt(0));
-    const j=JSON.parse(new TextDecoder().decode(raw));
-    if(j.version===4)return j;
+    const base64=(await r.json()).content||"";
+    const bytes=Uint8Array.from(atob(base64.replace(/\s/g,"")),s=>s.charCodeAt(0));
+    data=JSON.parse(new TextDecoder().decode(bytes));
    }
-  }catch(e){ /* alternate source */ }
+   if(data.version===5&&Array.isArray(data.results))return data;
+  }catch(err){ /* try source 2 */ }
+  finally{clearTimeout(timer);}
  }
- throw Error("Die V4-Analyse wird noch erstellt. Der alte Scanner wird bewusst nicht als neues Handelssignal angezeigt.");
+ throw Error("Version 5 wird noch erstellt. Der alte Datensatz wird nicht als neuer Handelsnachweis verwendet.");
 }
-function clear(node){node.replaceChildren();}
-function infoBox(parent,title,body){let b=add("div","clean");b.append(add("b","",title),add("p","",body));parent.append(b);}
-function card(record,strong){
- const e=record.evidence,f=record.event;
- const c=add("article","item "+(strong?"strong":""));
- const header=add("div","header");
- header.append(add("div","coin",record.symbol.replace("_USDT","")),
-              add("span","tag "+(strong?"green":""),strong?"VALIDIERTER MODELLTEST":"UNBESTÄTIGT"));
- c.append(header);
- c.append(add("h3","",record.direction==="up"?
-   "Historisch möglich: Kurs steigt in "+record.horizon_hours+" Stunden um mindestens "+nf(record.target_pct)+" %":
-   "Historischer Rückgang in "+record.horizon_hours+" Stunden · kein Spot-Kauf"));
- const grid=add("div","stats");
- for(const [label,value,color] of [
-  ["Kursziel getroffen",nf(e.p_target,1)+" %",""],
-  ["Ohne BTC-Signal",nf(e.base_target,1)+" %",""],
-  ["Ø netto pro Trade",pct(e.net_average_pct,2),e.net_average_pct>0?"up":"down"],
-  ["Unabhängige Testfälle",String(e.n),""]
+function empty(id,title,message){
+ const x=$(id);x.replaceChildren();const b=make("div","empty");
+ b.append(make("b","",title),make("p","",message));x.append(b);
+}
+function detailCard(x,validated){
+ const t=x.test,card=make("article","card"+(validated?" highlight":""));
+ const head=make("div","card-top"),name=make("div","");
+ name.append(make("div","coin",x.symbol.replace("_USDT","")),make("div","pair","Pionex · "+x.symbol.replace("_"," / ")));
+ head.append(name,make("div","tag"+(validated?" positive":""),validated?"HISTORISCH VALIDIERTER TEST":"EXPERIMENTELL · KEIN KAUF"));
+ card.append(head);
+ card.append(make("div","narrative","BTC-Signal: "+pct(x.btc_signal_pct)+
+    " vor "+x.lag_hours+" Stunden. Erwartetes Nachlauffenster: "+x.horizon_hours+
+    " Stunden. Altcoin seitdem: "+pct(x.coin_since_signal_pct)+"."));
+ const metrics=make("div","mainmetric");
+ for(const [label,value,sub,cls] of [
+  ["Gewinnwahrscheinlichkeit",pct(t.net_profit_prob_pct,1),"historische Gewinne nach Kosten",""],
+  ["Ø Nettorendite",pct(t.avg_net_pct,2),"je abgeschlossenem simulierten Trade",t.avg_net_pct>0?"up":"down"],
+  ["Vorteil gegenüber Vergleich",pct(t.edge_over_best_baseline_pct,2),"gegen beste einfache Strategie",t.edge_over_best_baseline_pct>0?"up":"down"],
+  ["Risikogröße",pct(t.loss_risk_pct,1),"Verlust von mindestens 1 %",""]
  ]){
-  const div=add("div","stat");div.append(add("span","",label),add("b",color,value));grid.append(div);
- } c.append(grid);
- const evt=add("div","event");
- evt.textContent="BTC bewegte sich "+(f.age_hours||0)+" Std. zuvor um "+pct(f.btc_pct)+
-    ". Seitdem hat sich "+record.symbol.replace("_USDT","")+" um "+pct(f.already_pct)+
-    " verändert. Reaktion "+(f.unpriced?"noch nicht voll eingepreist (Modellfilter)":"bereits deutlich eingepreist (Modellfilter)")+".";
- c.append(evt);
- c.append(add("div","caption","Historische Nettorendite: untere 95%-Schätzgrenze: "+
-   pct(e.net_lower95_pct,2)+" · BTC-bereinigter Ø-Nettoertrag: "+
-   pct(e.btc_adjusted_net_mean_pct,2)+" · Fehlerquote nach Mehrfachtest: "+
-   nf(e.fdr_q*100,1)+" %. Dies sind historische Messwerte, keine sichere Prognose."));
- return c;
-}
-function draw(data){
- const records=Array.isArray(data.results)?data.results:[];
- const age=Date.now()-new Date(data.data_through).getTime();
- const stale=!Number.isFinite(age)||age>3*3600000||age< -3600000;
- const buys=stale?[]:records.filter(x=>x.trade_eligible&&x.active&&x.direction==="up");
- const watch=stale?[]:records.filter(x=>x.status==="watch"&&x.active&&x.direction==="up");
- const risks=stale?[]:records.filter(x=>x.status==="risk"&&x.active);
- text("timestamp","Berechnung: "+time(data.generated_at)+" Uhr · Kursdaten bis "+time(data.data_through)+" Uhr");
- move("btc3",data.btc_change_pct?.["3h"]);
- move("btc6",data.btc_change_pct?.["6h"]);
- move("btc24",data.btc_change_pct?.["24h"]);
- text("coinCount",String(data.analyzed_coins??records.length));
- text("history",(data.history_days||90)+" Tage");
- text("buy-count",buys.length?"("+buys.length+")":"");
- text("watch-count",watch.length?"("+watch.length+")":"");
- text("state",stale?
-  "Achtung: Die Marktdaten sind älter als drei Stunden. Aktuelle Einstiege sind gesperrt.":
-  "Live-Bewertung aus dem letzten abgeschlossenen Stundenkurs. Die Analyse selbst läuft serverseitig und wird ungefähr stündlich erneuert. Beim Nachladen werden die fertigen Ergebnisse angezeigt.");
- const verdict=$("verdict");verdict.className="verdict "+(buys.length?"good":"critical");
- if(stale){
-  text("verdict-title","NICHT HANDELN · Daten veraltet");
-  text("verdict-text","Für eine Entscheidung müssen die aktuellen Kurse zuerst vom Hintergrunddienst neu ausgewertet werden.");
- }else if(buys.length){
-  text("verdict-title",buys.length+" potenziell getestete Spot-Chance"+(buys.length===1?"":"n"));
-  text("verdict-text","Diese Kandidaten haben die vordefinierten historischen Testhürden bestanden. Vor Echtgeldhandel müssen Ausführungspreis und reale Gebühren separat überprüft werden.");
- }else{
-  text("verdict-title","AKTUELL KEIN STATISTISCH BELEGTER KAUF");
-  text("verdict-text","Unter den untersuchten Pionex-Coins erfüllt zurzeit keiner gleichzeitig die Bedingungen für einen neuen BTC-Folge-Trade: ein noch nicht eingepreistes Signal, positive Nettorendite, unabhängige Bestätigung und Kontrolle zufälliger Treffer. Eine Nicht-Transaktion ist hier die datenbasierte Entscheidung.");
+  const m=make("div","metric");m.append(make("span","",label),make("strong",cls,value),make("small","",sub));metrics.append(m);
  }
- text("verdict-small","Getestet: "+records.length+" Coins · Aktuelle Beobachtungen: "+watch.length+" · Risikohinweise: "+risks.length+". Keine automatische Order.");
- const buyContainer=$("buys");clear(buyContainer);
- if(buys.length)buys.slice(0,5).forEach(x=>buyContainer.append(card(x,true)));
- else infoBox(buyContainer,"Keine historische Strategie erfüllt die Handelshürden","Es ist kein Kaufkandidat vorhanden. Eine Richtungsquote von beispielsweise 60 % reicht ohne positiven Nettovorteil nicht aus.");
- const watchContainer=$("watches");clear(watchContainer);
- if(watch.length)watch.slice(0,5).forEach(x=>watchContainer.append(card(x,false)));
- else infoBox(watchContainer,"Keine positive, aktuelle Beobachtung","Die historischen Muster rechtfertigen derzeit auch kein überzeugendes Vorab-Signal. Es wäre methodisch falsch, trotzdem Coins als Kaufchancen zu bewerben.");
- const diag=$("diagnostics");clear(diag);
- const pos=records.filter(x=>x.direction==="up"&&x.evidence?.net_average_pct>0).length;
- const negatives=records.filter(x=>x.evidence?.net_average_pct<=0).length;
- diag.append(add("b","","Warum fehlen Kaufchancen?"));
- diag.append(add("p","","Von "+records.length+" geprüften Coin-Modellen hatten "+negatives+
- " nach den konservativ angesetzten Kosten eine negative durchschnittliche Nettorendite im unabhängigen Test. "+
- pos+" positive Mittelwerte allein reichen nicht für eine Kaufempfehlung, solange Unsicherheit, BTC-Marktbewegung und Mehrfachtests nicht ebenfalls bestanden sind."+
- (risks.length?" Aktuell wurden "+risks.length+" Hinweise auf mögliche Abwärtsbewegungen gefunden; sie sind keine Short-Empfehlung.":"")));
- const rows=$("alltable");clear(rows);
- for(const r of records){
-  const e=r.evidence,tr=add("tr","");
-  const values=[r.symbol.replace("_USDT",""),r.direction==="up"?"Steigen":"Fallen",
-   r.horizon_hours+" Std.",r.lag_hours+" Std.",nf(e.p_target,1)+" %",
-   nf(e.base_target,1)+" %",pct(e.net_average_pct,2),String(e.n),
-   r.trade_eligible?"Test bestanden":r.status==="watch"?"Unbestätigt":"Kein Kaufsignal"];
-  for(let i=0;i<values.length;i++)tr.append(add("td",i===6?(e.net_average_pct>0?"pos":"neg"):"",values[i]));
-  rows.append(tr);
+ card.append(metrics);
+ const f=make("div","facts");
+ for(const [label,value] of [
+  ["Historische Testtrades",String(t.n)],
+  ["Risiko: Max. Drawdown",pct(t.drawdown_pct,1)],
+  ["Profit Factor",fmt(t.profit_factor,2)],
+  ["Niedrigster bootstrap-basierter Durchschnitt",pct(t.net_lower90_pct,2)],
+  ["Wahrscheinlichkeit Kursziel netto +"+fmt(x.target_net_pct,2)+" %",pct(t.hit_prob_pct,1)],
+  ["Rundum-Kostenannahme",pct(x.assumed_round_trip_cost_pct,2)]
+ ]){
+  const z=make("div","",label);z.append(make("b","",value));f.append(z);
+ }
+ card.append(f);
+ card.append(make("div","caution",validated?
+  "Historisch geprüft, aber ohne reale Ausführungstests. Zuerst Papertrading!":
+  "Nicht vollständig validiert. Eine positive Vergangenheit garantiert keinen handelbaren Vorteil."));
+ return card;
+}
+function render(data){
+ const rows=data.results;
+ const stale=Date.now()-Date.parse(data.data_through)>3*3600000||!Number.isFinite(Date.parse(data.data_through));
+ const eligible=stale?[]:rows.filter(r=>r.status==="opportunity"&&r.validated&&r.signal_current);
+ const watching=stale?[]:rows.filter(r=>r.status==="watch"&&r.signal_current);
+ const historical=rows.filter(r=>r.validated);
+ put("timestamp","Berechnung "+local(data.generated_at)+" Uhr · Schlusskurs bis "+local(data.data_through)+" Uhr");
+ put("markets",String(data.analyzed_coins));put("validated",String(eligible.length));
+ put("watchcount",String(watching.length));put("period",(data.period_days||180)+" Tage");
+ move("btc3",data.btc_change_pct?.["3h"]);move("btc6",data.btc_change_pct?.["6h"]);move("btc24",data.btc_change_pct?.["24h"]);
+ put("notice",stale?
+  "Warnung: Der Kursdatenstand ist älter als 3 Stunden. Aktuelle Handelssignale werden bis zur nächsten erfolgreichen Berechnung gesperrt.":
+  "Letzter erfolgreich berechneter Stundenstand. Alle Prozentangaben sind historische Backtest-Schätzungen, keine sichere Zukunftsprognose.");
+ const decision=$("decision");decision.className="decision"+(stale?" stale":eligible.length?" positive":"");
+ if(stale){
+  put("verdict","KEIN TRADE · DATEN VERALTET");
+  put("explanation","Ohne aktuellen Kursdatenstand lässt sich keine heutige Handelsentscheidung begründen. Bitte den nächsten Hintergrundlauf abwarten.");
+ }else if(eligible.length){
+  put("verdict",eligible.length+" HISTORISCH GEPRÜFTE"+(eligible.length===1?" CHANCE":" CHANCEN"));
+  put("explanation","Die Modelle haben den zurückgehaltenen Test mit positivem durchschnittlichen Netto-Mehrwert und ausreichender statistischer Absicherung bestanden. Reale Orderausführung ist weiterhin ungetestet: zunächst nur Papertrading.");
+ }else{
+  put("verdict","AKTUELL KEIN NACHGEWIESENER KAUFVORTEIL");
+  put("explanation","Keine der untersuchten BTC-Nachlaufstrategien ist gerade gleichzeitig aktuell, noch nicht eingepreist und in unabhängigen Testdaten wirtschaftlich/statistisch ausreichend bestätigt. Die korrekte Entscheidung ist daher: keine aus diesem Modell begründete Spot-Order.");
+ }
+ const positive=rows.filter(r=>typeof r.test.avg_net_pct==="number"&&r.test.avg_net_pct>0).length;
+ put("verdict-meta",rows.length+" Modelle getestet · "+positive+" mit positivem historischen Mittelwert · "+historical.length+" mit historisch bestätigtem Testergebnis · "+watching.length+" aktuelle experimentelle Beobachtungen");
+ const sales=$("opportunities");sales.replaceChildren();
+ if(eligible.length)eligible.slice(0,5).forEach(x=>sales.append(detailCard(x,true)));
+ else empty("opportunities","Kein statistisch belegter Einstieg","Die Website zeigt bewusst keinen Ersatz-Kaufkandidaten an. Mehr als 50 % Trefferquote oder eine kurzfristig positive Durchschnittsrendite reichen allein nicht aus.");
+ const watches=$("watchlist");watches.replaceChildren();
+ if(watching.length)watching.slice(0,5).forEach(x=>watches.append(detailCard(x,false)));
+ else empty("watchlist","Derzeit keine aussagekräftige Beobachtung","Coin-Reaktionen können historisch auffallen, ohne dass sie zum aktuellen Einstiegszeitpunkt noch handelbar sind.");
+ const negatives=rows.filter(r=>r.test.avg_net_pct!==null&&r.test.avg_net_pct<=0).length;
+ const low=rows.filter(r=>r.test.net_lower90_pct===null||r.test.net_lower90_pct<=0).length;
+ $("exclusions").replaceChildren(make("b","", "Warum nicht einfach den stärksten Coin kaufen?"),
+ make("p","",negatives+" von "+rows.length+" Coin-Modellen waren im unabhängigen Test nach den angesetzten Kosten durchschnittlich nicht profitabel. "+
+ low+" Modelle hatten keine positive untere Bootstrap-Schätzgrenze. Auch ein positiver historischer Mittelwert genügt nicht, wenn der Vorteil gegenüber einfachen Vergleichsstrategien oder die unabhängige statistische Prüfung fehlt."));
+ const tbody=$("rows");tbody.replaceChildren();
+ for(const r of rows){
+  const t=r.test,tr=make("tr","");
+  const cells=[r.symbol.replace("_USDT",""),r.lag_hours+" Std.",r.horizon_hours+" Std.",pct(t.net_profit_prob_pct,1),
+   pct(t.avg_net_pct,2),pct(t.edge_over_best_baseline_pct,2),pct(t.loss_risk_pct,1),String(t.n),
+   r.status==="opportunity"?"PAPERTEST":r.status==="watch"?"BEOBACHTEN":"KEIN TRADE"];
+  cells.forEach((v,i)=>tr.append(make("td",i===4||i===5?(String(v).startsWith("-")?"bad":"good"):"",v)));
+  tbody.append(tr);
  }
 }
 async function refresh(){
- const btn=$("reload");btn.disabled=true;btn.textContent="⟳ Daten laden …";
- try{const d=await load();draw(d);}
- catch(e){text("state",String(e.message||e));text("verdict-title","NOCH KEIN VALIDIERTER NEUER DATENSATZ");
- text("verdict-text","Die neue Prüfung läuft im Hintergrund. Bis sie abgeschlossen ist, geben wir bewusst keine historischen Karten als aktuelle Kaufchancen aus.");
- clear($("buys"));infoBox($("buys"),"Analyse wird aufgebaut","Bitte später erneut auf „Neue Auswertung laden“ drücken.");
- clear($("watches"));infoBox($("watches"),"Noch kein Ergebnis","Es werden keine hypothetischen Signale erfunden.");}
- finally{btn.disabled=false;btn.textContent="↻ Neue Auswertung laden";}
+ const btn=$("reload");btn.disabled=true;btn.textContent="⟳ Lade Marktauswertung …";
+ try{render(await getData());}
+ catch(err){put("notice",String(err.message||err));put("verdict","DATENPRÜFUNG NOCH NICHT VERFÜGBAR");
+ put("explanation","Der neue V5-Datensatz wird gerade berechnet. Es werden bis zum ersten erfolgreichen Test keine alten Prozentkarten als aktuelle Trading-Signale gezeigt.");
+ empty("opportunities","Analyse im Aufbau","Bitte später neu laden.");empty("watchlist","Noch keine neue Analyse","Keine erfundenen Ergebnisse.");}
+ finally{btn.disabled=false;btn.textContent="↻ Neueste Prognose laden";}
 }
 $("reload").addEventListener("click",refresh);refresh();
 })();
-</script>
-</body>
-</html>
+</script></body></html>
