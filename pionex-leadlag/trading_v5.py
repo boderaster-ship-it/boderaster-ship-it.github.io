@@ -391,7 +391,7 @@ def track_forward_shadow(results, price_data, btc_bars):
     file=DATA/"paper_v5.json"
     try:
         prior=json.loads(file.read_text(encoding="utf-8")) if file.exists() else {}
-        signals=prior.get("signals",[])
+        signals=prior.get("signals",prior.get("observations",[]))
         if not isinstance(signals,list):
             signals=[]
     except (ValueError,OSError,TypeError):
@@ -467,6 +467,7 @@ def track_forward_shadow(results, price_data, btc_bars):
         "settled":len(settled),
         "profitable":wins,
         "average_proxy_net_pct":round(avg([s["net_proxy_pct"] for s in settled]),3) if settled else None,
+        "signals":signals,
         "observations":signals[-60:],
         "method":"Observed signals only after creation. Shadow entry at next hourly close, exit after H hours; no actual market fills."
     }
