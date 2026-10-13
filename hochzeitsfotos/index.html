@@ -87,6 +87,31 @@ body.directions-open{overflow:hidden}
 body.invitation-open{overflow:hidden}
 @media(max-width:680px){.invitation-actions{grid-template-columns:1fr;max-width:290px;margin:11px auto 8px;gap:9px}.invitation-trigger{min-height:49px;font-size:12px}.invitation-modal-overlay{padding:8px}.invitation-modal{border-radius:12px;padding:16px 8px 14px}.invitation-modal h2{font-size:26px;margin:4px 43px 10px}.invitation-image-link img{max-height:none;width:100%}}
 
+
+/* Lightweight public counters, hidden entry integrated into the existing right footer heart. */
+.stats-entry{display:inline-block;padding:0 2px;border:0;background:transparent;color:#dca635;font:inherit;font-size:14px;line-height:inherit;vertical-align:baseline;cursor:pointer}
+.stats-entry:hover{color:#b28c44}.stats-entry:focus-visible{outline:2px solid #a17a36;outline-offset:4px;border-radius:5px}
+.stats-overlay{position:fixed;inset:0;z-index:600;display:flex;justify-content:center;align-items:center;overflow-y:auto;padding:16px;background:#172c28c9;backdrop-filter:blur(5px)}
+.stats-panel{width:min(620px,100%);max-height:calc(100dvh - 32px);overflow-y:auto;margin:auto;padding:25px clamp(17px,4vw,31px) 27px;background:#fffbf3;border:1.5px solid #d4a34b;border-radius:19px;box-shadow:0 24px 55px #050b083d;position:relative;text-align:left;color:#263b35}
+.stats-panel h2{font:600 clamp(28px,5.5vw,42px)/1.1 "Cormorant Garamond",serif;margin:4px 45px 18px 0}
+.stats-panel p{color:#65746e;font-size:13px;line-height:1.6}
+.stats-close{position:absolute;top:12px;right:13px;width:36px;height:36px;border:0;border-radius:50%;background:#eee5d6;color:#263d36;font-size:23px;z-index:2}
+.stats-auth label{display:block;font-size:13px;font-weight:700;margin-bottom:8px}
+.stats-auth input{display:block;width:100%;height:47px;border:1.5px solid #c5b892;background:white;color:#293f33;border-radius:9px;padding:10px 13px;font-size:17px}
+.stats-auth button[type=submit],.stats-refresh{border:0;margin-top:12px;border-radius:50px;background:#294039;color:white;font-weight:700;padding:12px 22px;min-height:44px;font-size:13px}
+.stats-error{color:#a43e37!important;min-height:19px;margin:8px 0 0}
+.stats-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin:12px 0 19px}
+.stats-card{border:1px solid #e2d1ac;border-radius:13px;padding:18px 10px;background:white;text-align:center}
+.stats-number{display:block;font:600 clamp(31px,7vw,44px)/1.15 "Cormorant Garamond",serif;color:#2a473b;font-variant-numeric:tabular-nums}
+.stats-caption{display:block;color:#67746b;font-size:12px;font-weight:700;margin-top:3px}
+.stats-section-title{font:600 24px/1.15 "Cormorant Garamond",serif;margin:17px 0 8px}
+.stats-table{width:100%;border-collapse:collapse;font-size:13px;color:#32443a}
+.stats-table td{padding:10px 3px;border-bottom:1px solid #e7dbc1}
+.stats-table td:last-child{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.stats-note{font-size:11px!important;color:#7b7b72!important}
+body.stats-open{overflow:hidden}
+@media(max-width:420px){.stats-panel{padding:20px 15px}.stats-cards{gap:7px}.stats-card{padding:12px 6px}.stats-table{font-size:12px}}
+
 </style>
 </head>
 <body>
@@ -135,7 +160,7 @@ body.invitation-open{overflow:hidden}
   </div>
 </section>
 </main>
-<footer class="footer"><div class="script">Raquel &amp; Robin</div><p><span class="heart">♡</span> 23.10.-30.10.2026 <span class="heart">♡</span></p><p data-de="Eine Website für unsere Gäste. Die Fotos werden direkt im iCloud-Album geteilt." data-es="Una web para nuestros invitados. Las fotos se comparten directamente en iCloud.">Eine Website für unsere Gäste. Die Fotos werden direkt im iCloud-Album geteilt.</p></footer>
+<footer class="footer"><div class="script">Raquel &amp; Robin</div><p><span class="heart">♡</span> 23.10.-30.10.2026 <button type="button" class="heart stats-entry" id="stats-entry" aria-label="Besucherstatistik öffnen / Abrir estadísticas" title="Besucherstatistik">♡</button></p><p data-de="Eine Website für unsere Gäste. Die Fotos werden direkt im iCloud-Album geteilt." data-es="Una web para nuestros invitados. Las fotos se comparten directamente en iCloud.">Eine Website für unsere Gäste. Die Fotos werden direkt im iCloud-Album geteilt.</p></footer>
 </div>
 <div id="directions-overlay" class="directions-overlay" hidden>
   <section id="directions-dialog" class="directions-dialog" role="dialog" aria-modal="true" aria-labelledby="directions-title">
@@ -159,6 +184,31 @@ body.invitation-open{overflow:hidden}
       <img id="invitation-image" src="" alt="Originale Hochzeitseinladung Raquel und Robin">
     </a>
     <a class="invitation-enlarge" id="invitation-enlarge" href="#" target="_blank" rel="noopener noreferrer" data-de="↗ In voller Größe öffnen" data-es="↗ Abrir en tamaño completo">↗ In voller Größe öffnen</a>
+  </section>
+</div>
+
+
+<div class="stats-overlay" id="stats-overlay" hidden>
+  <section class="stats-panel" role="dialog" aria-modal="true" aria-labelledby="stats-title" id="stats-dialog">
+    <button class="stats-close" id="stats-close" type="button" aria-label="Schließen / Cerrar">×</button>
+    <h2 id="stats-title" data-de="Unsere Website in Zahlen" data-es="Nuestra web en cifras">Unsere Website in Zahlen</h2>
+    <form class="stats-auth" id="stats-auth">
+      <label for="stats-password" data-de="Passwort" data-es="Contraseña">Passwort</label>
+      <input id="stats-password" type="password" autocomplete="off" placeholder="••••••••" required>
+      <button type="submit" data-de="Statistik öffnen" data-es="Ver estadísticas">Statistik öffnen</button>
+      <p id="stats-error" class="stats-error" role="alert" aria-live="polite"></p>
+    </form>
+    <div id="stats-dashboard" hidden>
+      <div class="stats-cards">
+        <div class="stats-card"><strong class="stats-number" id="stats-pageviews">–</strong><span class="stats-caption" data-de="Seitenaufrufe" data-es="Visitas a la página">Seitenaufrufe</span></div>
+        <div class="stats-card"><strong class="stats-number" id="stats-unique">–</strong><span class="stats-caption" data-de="Verschiedene Browser" data-es="Navegadores distintos">Verschiedene Browser</span></div>
+      </div>
+      <h3 class="stats-section-title" data-de="Klicks nach Funktion" data-es="Clics por función">Klicks nach Funktion</h3>
+      <table class="stats-table"><tbody id="stats-rows"></tbody></table>
+      <p id="stats-status" role="status" aria-live="polite"></p>
+      <button type="button" class="stats-refresh" id="stats-refresh" data-de="↻ Zahlen aktualisieren" data-es="↻ Actualizar cifras">↻ Zahlen aktualisieren</button>
+      <p class="stats-note" data-de="Zählung seit Aktivierung. Ein Browser wird als ein Besucher gezählt, auch bei mehreren Besuchen. Verschiedene Geräte und private Browserfenster können mehrfach zählen. Keine individuellen Besucherkennungen, Namen oder E-Mail-Adressen werden an den Zähler gesendet. Die Zählwerte sind öffentlich und nicht manipulationssicher." data-es="Conteo desde la activación. Un navegador cuenta como un visitante, aunque entre varias veces. Otros dispositivos o la navegación privada pueden contar varias veces. No se envían identificadores individuales, nombres ni correos al contador. Las cifras son públicas y pueden manipularse.">Zählung seit Aktivierung. Ein Browser wird als ein Besucher gezählt, auch bei mehreren Besuchen. Verschiedene Geräte und private Browserfenster können mehrfach zählen. Keine individuellen Besucherkennungen, Namen oder E-Mail-Adressen werden an den Zähler gesendet. Die Zählwerte sind öffentlich und nicht manipulationssicher.</p>
+    </div>
   </section>
 </div>
 
@@ -273,6 +323,153 @@ body.invitation-open{overflow:hidden}
       else if(!event.shiftKey&&i===focusable.length-1){event.preventDefault();focusable[0].focus();}
     }
   });
+
+
+  // Anonymous numerical counters. No visitor identity, IP address or individual
+  // browser ID is sent in application requests. The separate counter service
+  // necessarily sees the connection IP at the transport layer.
+  var countApiBase="https://countapi.mileshilliard.com/api/v1/";
+  var countPrefix="rr_wedding_2026_2f8c19_";
+  var eventLabels={
+    upload:["Fotos hochladen","Subir fotos"],
+    invitation_de:["Einladung Deutschland","Invitación de Alemania"],
+    invitation_es:["Einladung Spanien","Invitación de España"],
+    location_de:["Wegbeschreibung Schloss","Cómo llegar al castillo"],
+    location_es:["Wegbeschreibung Villa","Cómo llegar a la villa"],
+    apple_de:["Apple Karten – Schloss","Mapas de Apple – Castillo"],
+    google_de:["Google Maps – Schloss","Google Maps – Castillo"],
+    apple_es:["Apple Karten – Villa","Mapas de Apple – Villa"],
+    google_es:["Google Maps – Villa","Google Maps – Villa"],
+    full_image:["Einladung in voller Größe","Invitación a tamaño completo"]
+  };
+  var countKeys=["pageviews","unique"].concat(Object.keys(eventLabels));
+  var statsLoaded=false;
+  function counterRequest(operation,key){
+    return fetch(countApiBase+operation+"/"+countPrefix+key,{
+      mode:"cors",cache:"no-store",credentials:"omit",referrerPolicy:"no-referrer",keepalive:operation==="hit"
+    }).then(function(response){
+      if(response.status===404 && operation==="get")return {value:0};
+      if(!response.ok)throw new Error("Counter HTTP "+response.status);
+      return response.json();
+    }).then(function(data){return Number(data.value)||0;});
+  }
+  function countEvent(key){
+    counterRequest("hit",key).catch(function(){ /* Nonessential measurement never interrupts navigation */ });
+  }
+  // Count every real load; approximate unique browsers by a single local yes/no marker.
+  // No generated visitor identifier is transmitted or persisted on the server.
+  countEvent("pageviews");
+  try{
+    if(!localStorage.getItem("rr_wedding_browser_counted_v1")){
+      localStorage.setItem("rr_wedding_browser_counted_v1","yes");
+      counterRequest("hit","unique").catch(function(){
+        try{localStorage.removeItem("rr_wedding_browser_counted_v1");}catch(ignore){}
+      });
+    }
+  }catch(ignore){ /* Private/blocked storage: total visits still work, unique estimate skips this browser. */ }
+  // Capture outgoing upload link and every invitation/location/map interaction.
+  var uploadLink=document.querySelector(".action-group .primary-btn");
+  if(uploadLink)uploadLink.addEventListener("click",function(){countEvent("upload");});
+  document.querySelectorAll(".invitation-trigger").forEach(function(button){
+    button.addEventListener("click",function(){
+      countEvent(button.getAttribute("data-invite")==="germany"?"invitation_de":"invitation_es");
+    });
+  });
+  document.querySelectorAll(".location-trigger").forEach(function(button){
+    button.addEventListener("click",function(){
+      countEvent(button.getAttribute("data-place")==="schloss"?"location_de":"location_es");
+    });
+  });
+  function countMapClick(service){
+    var openPlace=document.getElementById("directions-place").textContent;
+    var loc=openPlace==="Schloss Neuenbürg"?"de":"es";
+    countEvent(service+"_"+loc);
+  }
+  document.getElementById("apple-directions").addEventListener("click",function(){countMapClick("apple");});
+  document.getElementById("google-directions").addEventListener("click",function(){countMapClick("google");});
+  document.getElementById("invitation-image-link").addEventListener("click",function(){countEvent("full_image");});
+  document.getElementById("invitation-enlarge").addEventListener("click",function(){countEvent("full_image");});
+
+  var statsOverlay=document.getElementById("stats-overlay");
+  var statsClose=document.getElementById("stats-close");
+  var statsEntry=document.getElementById("stats-entry");
+  var statsDashboard=document.getElementById("stats-dashboard");
+  var statsAuth=document.getElementById("stats-auth");
+  var previousStatsFocus=null;
+  var statsRows=document.getElementById("stats-rows");
+  function statsLang(){return document.documentElement.lang==="es"?1:0;}
+  function closeStats(){
+    statsOverlay.hidden=true;
+    document.body.classList.remove("stats-open");
+    if(previousStatsFocus)previousStatsFocus.focus();
+  }
+  function loadStats(){
+    var lang=statsLang();
+    document.getElementById("stats-status").textContent=lang?"Actualizando datos…":"Zahlen werden geladen…";
+    var cells={
+      pageviews:document.getElementById("stats-pageviews"),
+      unique:document.getElementById("stats-unique")
+    };
+    statsRows.textContent="";
+    var rows={};
+    Object.keys(eventLabels).forEach(function(k){
+      var tr=document.createElement("tr");
+      var label=document.createElement("td");
+      label.textContent=eventLabels[k][lang];
+      var val=document.createElement("td");
+      val.textContent="…";
+      tr.appendChild(label);tr.appendChild(val);statsRows.appendChild(tr);
+      rows[k]=val;
+    });
+    return Promise.all(countKeys.map(function(key){
+      return counterRequest("get",key).then(function(value){
+        if(cells[key])cells[key].textContent=value.toLocaleString(lang?"es-ES":"de-DE");
+        if(rows[key])rows[key].textContent=value.toLocaleString(lang?"es-ES":"de-DE");
+        return true;
+      }).catch(function(){
+        if(cells[key])cells[key].textContent="–";
+        if(rows[key])rows[key].textContent="–";
+        return false;
+      });
+    })).then(function(results){
+      var failed=results.some(function(x){return !x;});
+      document.getElementById("stats-status").textContent=failed
+        ?(lang?"Algunas cifras no están disponibles.":"Einige Zahlen sind momentan nicht verfügbar.")
+        :(lang?"Última actualización: ahora.":"Stand: gerade aktualisiert.");
+    });
+  }
+  statsEntry.addEventListener("click",function(){
+    previousStatsFocus=statsEntry;
+    statsOverlay.hidden=false;
+    document.body.classList.add("stats-open");
+    if(statsLoaded){loadStats();statsClose.focus();}
+    else{document.getElementById("stats-password").value="";document.getElementById("stats-error").textContent="";document.getElementById("stats-password").focus();}
+  });
+  statsAuth.addEventListener("submit",function(e){
+    e.preventDefault();
+    var value=document.getElementById("stats-password").value;
+    if(value!=="RaRo2310"){
+      document.getElementById("stats-error").textContent=statsLang()?"Contraseña incorrecta.":"Falsches Passwort.";
+      return;
+    }
+    statsLoaded=true;statsAuth.hidden=true;statsDashboard.hidden=false;
+    statsClose.focus();loadStats();
+  });
+  statsClose.addEventListener("click",closeStats);
+  statsOverlay.addEventListener("click",function(event){if(event.target===statsOverlay)closeStats();});
+  statsOverlay.addEventListener("keydown",function(e){
+    if(e.key==="Escape"){e.preventDefault();closeStats();return;}
+    if(e.key==="Tab"){
+      var candidates=Array.from(statsOverlay.querySelectorAll("button:not([hidden]),input:not([hidden])")).filter(function(node){
+        return !node.closest("[hidden]") && !node.disabled;
+      });
+      if(!candidates.length)return;
+      var i=candidates.indexOf(document.activeElement);
+      if(e.shiftKey&&i<=0){e.preventDefault();candidates[candidates.length-1].focus();}
+      else if(!e.shiftKey&&i===candidates.length-1){e.preventDefault();candidates[0].focus();}
+    }
+  });
+  document.getElementById("stats-refresh").addEventListener("click",loadStats);
 
 })();
 </script>
