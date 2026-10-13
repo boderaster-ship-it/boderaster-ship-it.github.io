@@ -59,7 +59,7 @@ main{padding-top:27px;padding-bottom:45px}.eyebrow{letter-spacing:1.7px;text-tra
 <div class="cards" id="cards"><div class="empty" style="grid-column:1/-1"><div class="sign">…</div><h3>Analyse wird geladen</h3><p>Bitte einen Moment warten.</p></div></div>
 <details class="method" id="alldetails" style="margin-top:16px"><summary>Alle untersuchten Coins und ihre Wahrscheinlichkeit vergleichen <span id="tablecount"></span></summary><div class="alltable-wrap"><table class="alltable"><thead><tr><th>Coin</th><th>Richtung</th><th>In</th><th>Ziel</th><th>Richtungsquote</th><th>Ohne BTC</th><th>Zielquote</th><th>BTC-Nachlauf</th><th>Bewertung</th></tr></thead><tbody id="allrows"></tbody></table><div class="table-note">Wahrscheinlichkeiten sind historische relative Trefferhäufigkeiten, keine versprochenen Kurse. Die „Quote“ wird durch die Anzahl Vergleichsfälle beeinflusst.</div></div></details>
 <div class="sectiontitle">Wie fundiert ist die Auswertung?</div>
-<div class="trust"><div><strong id="coins">–</strong><span>handelbare USDT-Paare untersucht</span></div><div><strong id="hourhistory">90 Tage</strong><span>Stundenhistorie zur Prüfung des Nachlaufs</span></div><div><strong id="minutehistory">–</strong><span id="minutelabel">Minutenarchiv im Aufbau · maximal 10.000 Pionex-Kerzen rückwirkend</span></div></div>
+<div class="trust"><div><strong id="coins">–</strong><span>handelbare USDT-Paare untersucht</span></div><div><strong id="hourhistory">90 Tage</strong><span>Stundenhistorie zur Prüfung des Nachlaufs</span></div><div><strong>3–12 Std.</strong><span>Vorhersagezeitraum · bewusst kein Minuten-Trading</span></div></div>
 <details class="method"><summary>Wie wird die Wahrscheinlichkeit ermittelt? · Methodik und Grenzen</summary><div class="explain">
 <p><b>1. Nur Pionex:</b> Die Auswahl stammt aus öffentlich verfügbaren, tatsächlich aktivierten USDT-Spot-Paaren. Extrem große Handelsspannen und geringe Umsätze werden automatisch ausgeschlossen.</p>
 <p><b>2. Verzögerung:</b> In den älteren 70 % der 90-Tage-Stundenhistorie werden Kombinationen aus 2 bis 24 Stunden Nachlauf und Prognosefenstern von 3, 6 oder 12 Stunden verglichen. Gewählt wird nur anhand der Trainingsdaten. Kleine Zufallseffekte können trotzdem vorkommen.</p>
@@ -181,11 +181,7 @@ function draw(data){
  setMove("#btc3",btc["3h"]);setMove("#btc6",btc["6h"]);setMove("#btc24",btc["24h"]);
  safely("#coins",String(data.analyzed_coins??"–"));
  safely("#hourhistory",(data.hourly_days??90)+" Tage");
- safely("#minutehistory",(data.minute_cache_coins??0)+" / "+((data.analyzed_coins??0)+1));
- const coverage=Number(data.minute_cache_coverage_days||0);
- safely("#minutelabel",data.minute_cache_coins?
-   "Minutenarchiv: "+format(coverage,1)+" / 14 Tage · unabhängig von Stundenprognosen":
-   "Zusätzliches Minutenarchiv im Aufbau · Stundenanalyse separat verfügbar");
+ // The minute archive is maintained separately and is not relevant for this hourly forecast view.
  const predictions=currentVersion&&Array.isArray(data.predictions)?data.predictions:[];
  const confirmed=predictions.filter(i=>i.status==="validated");
  const exploratory=predictions.filter(i=>i.status==="exploratory");
