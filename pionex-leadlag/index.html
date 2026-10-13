@@ -55,8 +55,8 @@ footer{border-top:1px solid #264450;margin-top:26px;padding-top:18px;font-size:1
 <div id="watchlist" class="cards"><div class="empty">Analyse wird geladen …</div></div>
 <div class="section-head"><h2>Warum scheitern Strategien?</h2><small>Alle negativen Ergebnisse bleiben überprüfbar</small></div>
 <div id="exclusions" class="empty">Lade unabhängigen Backtest …</div>
-<div class="section-head"><h2>Fortlaufender Schattenhandel</h2><small>Nur Signale, die nach Erstellung beobachtet wurden – keine rückwirkenden Trades</small></div>
-<div class="empty" id="forward"><b>Wird aufgebaut …</b><p>Künftige Muster werden protokolliert und erst nach Ablauf der Haltedauer ausgewertet.</p></div>
+<div class="section-head"><h2>Fortlaufender Vorwärtstest</h2><small>Nur Signale, die nach Erstellung beobachtet wurden – keine rückwirkenden Trades</small></div>
+<div class="empty" id="forward"><b>Wird aufgebaut …</b><p>Künftige Signale werden erst nach ihrem tatsächlichen Auftreten gespeichert und später ausgewertet – auch zuvor abgelehnte Modelle, damit Fehlschläge nicht verborgen bleiben.</p></div>
 <details class="accordion"><summary>Alle geprüften Coins und echten Backtest-Zahlen anzeigen</summary><div class="tblwrap"><table class="tbl"><thead><tr><th>Coin</th><th>Nachlauf</th><th>Halten</th><th>Profit-Wahrsch.</th><th>Ø netto</th><th>Vergleichsvorteil</th><th>Risiko: -1 %</th><th>Trades</th><th>Status</th></tr></thead><tbody id="rows"></tbody></table></div></details>
 <details class="accordion"><summary>Statistische Methodik und Grenzen – wie viel kann ich den Zahlen vertrauen?</summary><div class="inner">
 <p><b>Kein nachträgliches Optimieren der Testdaten:</b> 55 % der 180-Tage-Stundenhistorie dienen der Festlegung des Bitcoin-Impulses, 20 % zur Auswahl des Zeitversatzes und der Haltedauer, die letzten 25 % bleiben bis zur abschließenden Prüfung unberührt. Zwischen den Zeiträumen werden Überlappungen gesperrt.</p>
@@ -182,13 +182,13 @@ function render(data){
  const track=data.shadow_forward||{};
  const forward=$("forward");
  forward.replaceChildren();
- forward.append(make("b","", (track.settled||0)+" später überprüfte Schatten-Trades"));
+ forward.append(make("b","", (track.settled||0)+" überprüfte Forschungssignale"));
  forward.append(make("p","", (track.pending||0)+" Beobachtungen sind noch offen. "+
   (track.settled?
     "Historische Erfolgsquote dieser erst später ausgewerteten Signale: "+fmt(100*(track.profitable||0)/track.settled,1)+" %. "+
     "Ø Netto-Kursproxy: "+pct(track.average_proxy_net_pct,2)+". ":
     "Noch kein ausreichender Vorwärtsnachweis vorhanden. ")+
-  "Es sind ausschließlich Kursproxies für die Folgestunden, keine echten Pionex-Orderausführungen."));
+  "Auch abgelehnte Muster werden erfasst. Es sind ausschließlich Kursproxies für die Folgestunden, keine echten Pionex-Orderausführungen."));
  const tbody=$("rows");tbody.replaceChildren();
  for(const r of rows){
   const t=r.test,tr=make("tr","");
