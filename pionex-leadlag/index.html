@@ -43,6 +43,13 @@ footer{border-top:1px solid #264450;margin-top:26px;padding-top:18px;font-size:1
 .archive-tile strong{font-size:19px;display:block;color:#dcf5ef;margin:9px 0 5px;font-variant-numeric:tabular-nums;line-height:1.2}
 .archive-tile small{display:block;font-size:10px;color:#9bb6c1;line-height:1.65}
 @media(max-width:700px){.archive-grid{grid-template-columns:1fr}.archive-tile{padding:12px}.archive-tile strong{font-size:18px}}
+
+.lag-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.lag-tile{background:#102936;border:1px solid #31515b;border-radius:11px;padding:15px}
+.lag-tile strong{display:block;font-size:18px;color:#d7f0e8}
+.lag-tile small{font-size:11px;color:#aac4c8;line-height:1.5;display:block;margin-top:8px}
+.lag-tile .indicator{color:#77dec7;font-size:14px;font-weight:800;margin-top:6px}
+@media(max-width:720px){.lag-grid{grid-template-columns:1fr}}
 </style></head>
 <body>
 <header><div class="shell"><div class="brand"><div class="logo">↗</div><div><strong>BTC <em>EDGE</em></strong><small>PIONEX · TRADING-LABOR V5</small></div></div><span class="side-label">● SPOT / USDT</span></div></header>
@@ -71,6 +78,9 @@ footer{border-top:1px solid #264450;margin-top:26px;padding-top:18px;font-size:1
  <div class="archive-tile"><span>15-Minuten-Kurse</span><strong id="archive15m">Wird aufgebaut</strong><small id="archive15mdetail">Bis zu 95 Tage rückwirkend · separat gespeichert</small></div>
 </div>
 <div class="notice" id="archiveNotice">Prüfe die verfügbaren archivierten Zeitreihen. Der unabhängige V5-Handels-Backtest verwendet derzeit noch Stundenkerzen. Minutendaten werden nicht als bereits geprüfte Handelssignale ausgegeben.</div>
+<div class="section-head"><h2>BTC-Zeitversatz · 15-Minuten-Analyse</h2><small>Aus echten gespeicherten Kerzen · Training und unabhängiger Test</small></div>
+<div id="lagStatus" class="notice">Die 15-Minuten-Historie wird importiert. Ein zeitlicher Zusammenhang wird erst nach dem unabhängigen Test angezeigt.</div>
+<div class="lag-grid" id="lagCards"></div>
 <div class="section-head"><h2>Historisch geprüfte Spot-Chancen</h2><small>Maximal 5 · nur mit positivem unabhängigen Netto-Nachweis</small></div>
 <div id="opportunities" class="cards"><div class="empty">Analyse wird geladen …</div></div>
 <div class="section-head"><h2>Beobachtungen (kein Kaufsignal)</h2><small>Bei Auffälligkeiten: Rendite, Risiko und bereits erfolgte Kursreaktion</small></div>
@@ -161,6 +171,41 @@ async function loadArchiveStatus(){
   put("archiveNotice","Die ersten Kursarchive werden aktuell aufgebaut. Der Import benötigt einmalig länger. "+
     "Mehrere Monate minutengenauer Kurse können nicht rückwirkend über die Pionex-API geladen werden. "+
     "Die 15-Minuten-Historie ist separat im Aufbau; der heutige Trading-Backtest basiert noch auf Stundenkursen.");
+ }
+}
+async function loadLagStatus(){
+ try{
+  const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),9000);
+  let resp;
+  try{resp=await fetch(archiveBase+"lag15m.json?x="+Date.now(),{cache:"no-store",signal:ctl.signal});}
+  finally{clearTimeout(timer);}
+  if(!resp.ok)throw Error("Model not yet available");
+  const j=await resp.json();
+  if(j.version!==1||!j.ready){
+   put("lagStatus","Der unabhängige 15-Minuten-Test startet, sobald mindestens 12 Paare mit ausreichender Historie vorliegen. Bis dahin keine statistische Aussage.");
+   return;
+  }
+  put("lagStatus",j.analysable+" Paare über Training (60 %) und einen zeitlich späteren Test (40 %) verglichen. "+
+    j.independently_confirmed_lags+" zeitversetzte Beziehungen bestehen die strengen Kriterien. "+
+    "Das ist eine Korrelationsanalyse, ausdrücklich KEINE Kaufempfehlung.");
+  const parent=$("lagCards");parent.replaceChildren();
+  const top=j.matches.filter(x=>x.test_corr>0&&x.test_pairs>=170).slice(0,6);
+  for(const m of top){
+   const box=make("article","lag-tile");
+   box.append(make("strong","",m.symbol.replace("_USDT","")),
+     make("div","indicator","BTC-Versatz: "+fmt(m.lag_hours,2)+" Stunden"),
+     make("small","","Unabhängige Testkorrelation: "+fmt(m.test_corr,3)+
+       " · "+m.test_pairs+" zeitlich versetzte Vergleichspaare"),
+     make("small","",m.validated_association?
+       "Statistisch bestätigt – Handelbarkeit nicht geprüft.":
+       "Nur explorativer Zusammenhang – nicht bestätigt."));
+   parent.append(box);
+  }
+  if(!top.length){
+   put("lagStatus",j.analysable+" Paare untersucht, aber keine positive unabhängige BTC-Nachlaufkorrelation gefunden. Es werden keine Zusammenhänge erfunden.");
+  }
+ }catch(e){
+  put("lagStatus","Die ersten vollständigen 15-Minuten-Zeitreihen werden aufgebaut. Die Ergebnisse erscheinen erst nach ausreichend vollständigem Import und unabhängiger Validierung.");
  }
 }
 function empty(id,title,message){
@@ -452,7 +497,7 @@ async function refresh(manual=false){
   if(!manual){
    lastSeenDataset=d.generated_at;
    render(d);
-   loadArchiveStatus();
+   loadArchiveStatus();loadLagStatus();
   }else{
    const same=lastSeenDataset===d.generated_at;
    lastSeenDataset=d.generated_at;
