@@ -1,0 +1,17 @@
+name: Pionex Fifteen-Minute Research
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '24 4,10,16,22 * * *'
+permissions:
+  contents: write
+jobs:
+  assess:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python pionex-leadlag/leadlag_15m.py
