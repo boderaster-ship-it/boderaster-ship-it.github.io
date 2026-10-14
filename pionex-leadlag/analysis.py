@@ -29,9 +29,9 @@ HOUR = 3600000
 MIN = 60000
 DAYS_HOURLY = 90
 DAYS_MINUTE = 14
-MAX_COINS = 60
-MIN_VOLUME = 300000
-MAX_SPREAD = 0.60
+MAX_COINS = 300
+MIN_VOLUME = 30000
+MAX_SPREAD = 3.00
 THREADS_HOURLY = 5
 THREADS_MINUTE = 5
 HORIZONS = (3, 6, 12)
@@ -97,7 +97,7 @@ def fetch_history(symbol, interval, step, days, folder, now):
     # Pionex limits 1M klines to the latest 10,000 bars (~6.9 days).
     # Preserve older cached bars up to 14 days, but never paginate beyond
     # 9,700 bars of market API history in a single run.
-    remote_cutoff = max(cutoff, now - 9700 * MIN) if step == MIN else cutoff
+    remote_cutoff = max(cutoff, now - 9700 * step)
     present = load_bars(target)
     cache = {t: c for t, c in present if t >= cutoff}
     oldest = min(cache) if cache else None
@@ -113,7 +113,7 @@ def fetch_history(symbol, interval, step, days, folder, now):
         try:
             data = fetch("/market/klines", params)
         except RuntimeError as exc:
-            if step == MIN and "MARKET_INVALID_TIME" in str(exc) and cache:
+            if "MARKET_INVALID_TIME" in str(exc) and cache:
                 say("Pionex minute API history limit reached; preserving", symbol, len(cache))
                 break
             raise
