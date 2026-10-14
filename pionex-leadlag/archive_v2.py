@@ -243,7 +243,7 @@ def collect_medium(pairs, state, now, mode):
     return {"checked":len(selected),"saved_bars":saved,"errors":errors}
 
 
-def publish_status(pairs, state, mode, report, now):
+def publish_status(pairs, state, mode, report, now, state_path, public_path):
     metas=state.get("symbols",{})
     all_symbols=[x["symbol"] for x in pairs]
     coverage={}
@@ -283,8 +283,8 @@ def publish_status(pairs, state, mode, report, now):
     state["last_run"]=status["updated_at"]
     state["universe"]=all_symbols
     DATA.mkdir(exist_ok=True)
-    STATE.write_text(json.dumps(state,separators=(",",":"),ensure_ascii=False)+"\n",encoding="utf-8")
-    PUBLIC.write_text(json.dumps(status,separators=(",",":"),ensure_ascii=False)+"\n",encoding="utf-8")
+    state_path.write_text(json.dumps(state,separators=(",",":"),ensure_ascii=False)+"\n",encoding="utf-8")
+    public_path.write_text(json.dumps(status,separators=(",",":"),ensure_ascii=False)+"\n",encoding="utf-8")
     return status
 
 
@@ -293,11 +293,15 @@ def run():
     if mode not in ("1m","5m","15m"):raise ValueError("Choose 1m, 5m or 15m")
     now=(int(time.time()*1000)//MIN)*MIN
     pairs=get_pair_list()
-    state=safe_json(STATE,{"version":VERSION,"symbols":{}})
+    # Each interval owns its own state and public status. Background minute
+    # and multimonth workflows can never overwrite each other's cursor.
+    state_path=DATA/("archive-state-"+mode+".json")
+    public_path=DATA/("archive-"+mode+".json")
+    state=safe_json(state_path,{"version":VERSION,"symbols":{}})
     say("ARCHIVE",mode,"Pionex pairs",len(pairs),"at",iso(now))
     if mode=="1m":report=collect_1m(pairs,state,now)
     else:report=collect_medium(pairs,state,now,mode)
-    status=publish_status(pairs,state,mode,report,now)
+    status=publish_status(pairs,state,mode,report,now,state_path,public_path)
     try_commit("Update Pionex persistent "+mode+" OHLC archive + SQLite day shards")
     say("Archive result",status["coverage"],"batch errors",len(report["errors"]))
 
