@@ -35,7 +35,7 @@ footer{border-top:1px solid #264450;margin-top:26px;padding-top:18px;font-size:1
 <div class="eyebrow">Statistische Aussagekraft · praktisch handelbare Signale</div>
 <h1>Gibt es jetzt einen <span>messbaren Handelsvorteil?</span></h1>
 <p class="subtitle">Bitcoin bewegt sich. Welche Altcoins reagieren später – und lässt sich diese Verzögerung nach Kosten tatsächlich profitabel ausnutzen? Wir vergleichen jede gefundene Strategie mit einfachen Alternativen und testen sie auf bisher ungesehenen Daten.</p>
-<div class="actionbar"><button id="reload" class="primary">↻ Neueste Prognose laden</button><span class="updated" id="timestamp">Der letzte Datensatz wird geladen …</span></div>
+<div class="actionbar"><button id="reload" class="primary">↻ Live-Kurse und Signale prüfen</button><span class="updated" id="timestamp">Der letzte Datensatz wird geladen …</span></div>
 <div class="notice" id="notice" role="status">Berechnungsdaten werden geprüft.</div>
 <div class="btcstrip">
 <div><span>BTC · letzte 3 Stunden</span><strong id="btc3">–</strong></div>
@@ -67,7 +67,7 @@ footer{border-top:1px solid #264450;margin-top:26px;padding-top:18px;font-size:1
 <p><b>Unsicherheit:</b> Die Gewinnwahrscheinlichkeit ist eine geglättete historische Trefferhäufigkeit und <b>keine auf die Zukunft kalibrierte Wahrscheinlichkeit</b>. Der untere historische Nettorendite-Schätzwert basiert auf einem Block-Bootstrap. Die Suche über viele Coins wird zusätzlich durch Mehrfachtest-Korrektur begrenzt.</p>
 <p><b>Was fehlt vor Echtgeld?</b> Echte Orderbuch-Fills, dein Gebührenmodell, Latenz- und Liquiditätstests und ein ausreichend langer unabhängiger Papertrading-Verlauf. Solange diese fehlen, handelt es sich um Forschungssignale, keine belastbar ausführbare Handelsempfehlung.</p>
 </div></details>
-<div class="secondary-line">Diese Website prüft automatisch stündlich neue Pionex-Marktdaten. Ein Klick lädt die jüngste gespeicherte Berechnung, führt jedoch keine neue minutenlange Analyse auf deinem Smartphone aus. Es werden keine Orders ausgelöst.</div>
+<div class="secondary-line">Der Button ruft aktuelle, vollständig abgeschlossene Pionex-Stundenkerzen über einen öffentlichen Datenabrufdienst ab und prüft aktuelle Signale mit den zuletzt gespeicherten Modellparametern. Die 180-Tage-Backtests werden unabhängig davon serverseitig aktualisiert. Die Anzeige unterscheidet ausdrücklich zwischen dem Stand des historischen Tests und den Live-Kursen. Kein API-Key, keine Orders.</div>
 <footer><span>BTC EDGE V5 · Forschungsmodell, keine Anlageberatung</span><a href="https://www.pionex.com/docs/api-docs/trade-api/market" target="_blank" rel="noreferrer">Pionex öffentliche Kurse ↗</a></footer>
 </main>
 <script>
@@ -199,14 +199,162 @@ function render(data){
   tbody.append(tr);
  }
 }
-async function refresh(){
- const btn=$("reload");btn.disabled=true;btn.textContent="⟳ Lade Marktauswertung …";
- try{render(await getData());}
- catch(err){put("notice",String(err.message||err));put("verdict","DATENPRÜFUNG NOCH NICHT VERFÜGBAR");
- put("explanation","Der neue V5-Datensatz wird gerade berechnet. Es werden bis zum ersten erfolgreichen Test keine alten Prozentkarten als aktuelle Trading-Signale gezeigt.");
- empty("opportunities","Analyse im Aufbau","Bitte später neu laden.");empty("watchlist","Noch keine neue Analyse","Keine erfundenen Ergebnisse.");}
- finally{btn.disabled=false;btn.textContent="↻ Neueste Prognose laden";}
+const HOUR=3600000;
+let lastSeenDataset=null;
+function signedLog(a,b){return a>0&&b>0?100*Math.log(b/a):null;}
+async function liveCandles(sym){
+ // Pionex doesn't permit direct cross-origin browser access. A public reader
+ // provides the unmodified exchange response; we still verify recency and
+ // reject missing or incomplete bars before using it.
+ if(!/^[A-Z0-9]{2,24}_USDT$/.test(sym))throw Error("Ungültiges Paar");
+ const query="https://api.pionex.com/api/v1/market/klines?symbol="+sym+
+             "&interval=60M&limit=52&fresh="+Math.floor(Date.now()/20000);
+ const u="https://r.jina.ai/"+query;
+ const ctl=new AbortController(),timeout=setTimeout(()=>ctl.abort(),14000);
+ try{
+  const r=await fetch(u,{signal:ctl.signal,cache:"no-store",credentials:"omit"});
+  if(!r.ok)throw Error("Kursdienst HTTP "+r.status);
+  const raw=await r.text();
+  const position=raw.indexOf("Markdown Content:");
+  if(position<0)throw Error("Unerwartete Kursantwort");
+  const json=JSON.parse(raw.slice(position+"Markdown Content:".length).trim());
+  if(json.result!==true||!Array.isArray(json.data?.klines))throw Error("Pionex-Kerzen fehlen");
+  const bars=json.data.klines.map(x=>({t:Number(x.time),c:Number(x.close)}))
+    .filter(x=>Number.isFinite(x.t)&&Number.isFinite(x.c)&&x.c>0&&x.t+HOUR<=Date.now()-3000)
+    .sort((a,b)=>a.t-b.t);
+  if(!bars.length||bars.length<30)throw Error("Zu wenige vollständige Kerzen");
+  return bars;
+ }finally{clearTimeout(timeout);}
 }
-$("reload").addEventListener("click",refresh);refresh();
+function moneyAge(s){return Math.max(0,Math.round((Date.now()-Date.parse(s))/60000));}
+async function refreshRealtime(data){
+ const sourceDate=data.generated_at;
+ put("notice","Kontaktiere Pionex: prüfe die neuesten vollständig abgeschlossenen Bitcoin-Stundenkerzen …");
+ const btc=await liveCandles("BTC_USDT");
+ const last=btc[btc.length-1];
+ const timeThrough=new Date(last.t+HOUR).toISOString();
+ if(Date.now()-Date.parse(timeThrough)>125*60000){
+  throw Error("Der öffentliche Kursdienst lieferte keine frischen BTC-Kerzen. Keine neue Trading-Bewertung möglich.");
+ }
+ const byTime=new Map(btc.map(x=>[x.t,x.c]));
+ const btcDelta={};
+ for(const h of [3,6,24]){
+  const before=byTime.get(last.t-h*HOUR);
+  btcDelta[h+"h"]=before?signedLog(before,last.c):null;
+ }
+ const rows=data.results.map(x=>({...x,signal_current:false,
+   status:x.validated?"validated_inactive":"excluded"}));
+ const withConfig=rows.filter(x=>Number.isFinite(x.signal_params?.btc_trigger_pct)&&
+                                Number.isFinite(x.signal_params?.btc_beta));
+ const newData={...data,data_through:timeThrough,btc_change_pct:btcDelta,
+   results:rows,live_report:{last_backtest:sourceDate,eligible:withConfig.length,checked:0,failed:0}};
+ // Never describe a stale 180d model as freshly validated.
+ if(withConfig.length===0){
+   return {...newData,live_report:{...newData.live_report,note:
+     "Aktuelle BTC-Kurse geladen. Modellparameter fehlen noch im zuletzt gespeicherten Test: Altcoin-Signale können bis zum nächsten Hintergrundlauf nicht neu geprüft werden."}};
+ }
+ let next=0,checked=0,failed=0,completed=0;
+ const invalid=[];
+ async function worker(){
+  while(next<withConfig.length){
+   const item=withConfig[next++];
+   try{
+    const alt=await liveCandles(item.symbol);
+    const lookup=new Map(alt.map(x=>[x.t,x.c]));
+    const event=byTime.get(last.t-item.lag_hours*HOUR);
+    const eventBefore=byTime.get(last.t-(item.lag_hours+3)*HOUR);
+    const altEvent=lookup.get(last.t-item.lag_hours*HOUR);
+    const altLatest=lookup.get(last.t);
+    if(!event||!eventBefore||!altEvent||!altLatest){
+     throw Error("Coin-/BTC-Zeitreihe unvollständig");
+    }
+    const movement=signedLog(eventBefore,event);
+    const repriced=signedLog(altEvent,altLatest);
+    const threshold=item.signal_params.btc_trigger_pct;
+    const maxRepricing=Math.max(.20,.55*item.signal_params.btc_beta*movement);
+    const active=movement>=threshold&&repriced<maxRepricing;
+    item.signal_current=active;
+    item.btc_signal_pct=Math.round(movement*100)/100;
+    item.coin_since_signal_pct=Math.round(repriced*100)/100;
+    item.unpriced_limit_pct=Math.round(maxRepricing*100)/100;
+    item.signal_time_utc=new Date(last.t-item.lag_hours*HOUR).toISOString();
+    item.status=active?
+      (item.validated?"opportunity":
+       item.market_valid&&item.test?.n>=12&&
+       item.test.avg_net_pct>0&&item.test.edge_over_best_baseline_pct>0?
+         "watch":"excluded"):
+       (item.validated?"validated_inactive":"excluded");
+    checked++;
+   }catch(e){failed++;invalid.push(item.symbol);}
+   completed++;
+   if(completed%4===0||completed===withConfig.length){
+    put("notice","Pionex-Kurse werden geprüft: "+completed+"/"+withConfig.length+
+       " Paare abgeschlossen, "+checked+" mit gültigen neuen Kursen …");
+   }
+  }
+ }
+ // Hard cap on concurrent calls and public gateway load.
+ await Promise.all(Array.from({length:Math.min(5,withConfig.length)},worker));
+ rows.sort((a,b)=>{
+  const rank=x=>x.status==="opportunity"?0:x.status==="watch"?1:x.status==="validated_inactive"?2:3;
+  return rank(a)-rank(b)||((b.test?.edge_over_best_baseline_pct||0)-(a.test?.edge_over_best_baseline_pct||0));
+ });
+ newData.live_report={...newData.live_report,checked,failed,
+    checked_at:new Date().toISOString(),missing:invalid.slice(0,12)};
+ return newData;
+}
+function stampLive(data){
+ const r=data.live_report;
+ if(!r)return;
+ put("timestamp","BTC-Kurse bis "+local(data.data_through)+" Uhr · Historischer Modelltest: "+
+                  local(r.last_backtest)+" Uhr");
+ const base="Frische BTC-Kurse geprüft. "+r.checked+" von "+r.eligible+
+            " Coin-Modellen aktuell nachgerechnet"+
+            (r.failed?" ("+r.failed+" nicht abrufbar)":"")+".";
+ if(r.note){
+  put("notice",r.note+" "+
+     "Historische Prüfung vom "+local(r.last_backtest)+" Uhr.");
+ }else if(r.failed){
+  put("notice",base+" Nicht abrufbare Coins werden vorsichtshalber NICHT als mögliche Trades angezeigt.");
+ }else{
+  put("notice",base+" Der 180-Tage-Backtest wurde dabei nicht neu trainiert.");
+ }
+ const verdict=$("verdict");
+ if(r.checked<r.eligible&&r.eligible>0&&verdict.textContent.includes("KEIN NACHGEWIESENER")){
+  put("explanation","Auf Basis der neu eingelesenen Pionex-Stundenkerzen wurde kein vollständiges, historisch validiertes Kauf-Signal gefunden. "+
+      r.failed+" Kursreihen fehlen. Für diese Paare ist keine aktuelle Aussage zulässig.");
+ }
+}
+async function refresh(manual=false){
+ const btn=$("reload");btn.disabled=true;
+ btn.textContent=manual?"⟳ Live-Kurse werden geprüft …":"⟳ Lade gespeicherte Analyse …";
+ try{
+  const d=await getData();
+  if(!manual){
+   lastSeenDataset=d.generated_at;
+   render(d);
+  }else{
+   const same=lastSeenDataset===d.generated_at;
+   lastSeenDataset=d.generated_at;
+   const live=await refreshRealtime(d);
+   render(live);stampLive(live);
+   if(same&&!live.live_report.checked){
+    put("notice",$("notice").textContent+
+       " Seit der letzten Abfrage liegt noch keine neue historische Modellrechnung vor.");
+   }
+  }
+ }catch(err){
+  put("notice","Aktualisierung nicht abgeschlossen: "+String(err.message||err)+
+    ". Alte Daten dürfen nicht als aktuelle Signale verwendet werden.");
+  put("verdict","KEIN TRADE · AKTUALISIERUNG FEHLGESCHLAGEN");
+  put("explanation","Der Live-Datenabruf ist fehlgeschlagen oder nicht vollständig. Bitte erneut versuchen; bis dahin keine aktuelle Handelsempfehlung.");
+  empty("opportunities","Kein aktuelles Handelssignal","Die alten Ergebnisse bleiben nicht als vermeintlich frische Kaufchancen stehen.");
+  empty("watchlist","Kein frischer Status","Keine neuen Daten verfügbar.");
+ }finally{
+  btn.disabled=false;btn.textContent="↻ Live-Kurse und Signale prüfen";
+ }
+}
+
+$("reload").addEventListener("click",()=>refresh(true));refresh(false);
 })();
 </script></body></html>
