@@ -1,0 +1,30 @@
+name: Pionex Minute Database
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "19 0,6,12,18 * * *"
+  push:
+    paths:
+      - "pionex-leadlag/archive_v2.py"
+      - "pionex-leadlag/test_archive_v2.py"
+      - ".github/workflows/pionex-archive-minute.yml"
+permissions:
+  contents: write
+concurrency:
+  group: pionex-archive-minute
+  cancel-in-progress: false
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check Pionex archive invariants
+        run: python -m unittest discover -s pionex-leadlag -p test_archive_v2.py -v
+      - name: Incremental SQLite minute archive
+        run: python pionex-leadlag/archive_v2.py 1m
