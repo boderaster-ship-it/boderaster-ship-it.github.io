@@ -164,7 +164,9 @@ def metrics(trades, horizon, pars, beta):
         return {"n":0,"hit_prob_pct":None,"hit_ci_pct":None,
                 "net_profit_prob_pct":None,"avg_net_pct":None,
                 "btc_excess_net_pct":None,"net_ci_pct":None,"drawdown_pct":None,
-                "profit_factor":None,"wins":0,"median_net_pct":None,"loss_risk_pct":None}
+                "profit_factor":None,"wins":0,"median_net_pct":None,"loss_risk_pct":None,
+                "net_p10_pct":None,"net_p25_pct":None,"net_p75_pct":None,
+                "net_p90_pct":None,"loss_avg_pct":None,"gain_avg_pct":None}
     hits=sum(v>=pars["target"] for v in vals)
     netwins=sum(v>0 for v in vals)
     loss=sum(v<=-1 for v in vals)
@@ -182,6 +184,16 @@ def metrics(trades, horizon, pars, beta):
             "profit_ci_pct":[round(100*low,1),round(100*high,1)],
             "avg_net_pct":round(avg(vals),3),
             "median_net_pct":round(statistics.median(vals),3),
+            # Scenario quantiles are unconditional *historical* net-return outcomes
+            # for this fixed model in held-out data, not future price targets.
+            "net_p10_pct":round(quantile(vals,.10),3),
+            "net_p25_pct":round(quantile(vals,.25),3),
+            "net_p75_pct":round(quantile(vals,.75),3),
+            "net_p90_pct":round(quantile(vals,.90),3),
+            "loss_avg_pct":round(avg([v for v in vals if v<0]),3)
+                            if any(v<0 for v in vals) else None,
+            "gain_avg_pct":round(avg([v for v in vals if v>0]),3)
+                            if any(v>0 for v in vals) else None,
             "btc_excess_net_pct":round(avg(afterbtc),3) if afterbtc else None,
             "profit_factor":round(good/bad,2) if bad>0 else (99 if good>0 else 0),
             "drawdown_pct":round(maxdd,2),
@@ -326,6 +338,8 @@ def evaluate_coin(info, btc_bars, alt_bars, generated):
     return {
         "symbol":info["symbol"],"lag_hours":lag,"horizon_hours":horizon,
         "target_net_pct":round(pars["target"],2),
+        "next_decision_hour_utc":dt.datetime.fromtimestamp(
+            (times[-1]+HOUR)/1000,dt.timezone.utc).isoformat(timespec="minutes"),
         "signal_time_utc":signal_t.isoformat(timespec="minutes"),
         "latest_bar_utc":now.isoformat(timespec="minutes"),
         "btc_signal_pct":round(live["shock_pct"],2),
