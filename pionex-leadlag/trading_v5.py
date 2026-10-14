@@ -19,7 +19,7 @@ from analysis import (HOUR, HOUR_DIR, DATA, parallel_collect,
 
 DAY = 24 * HOUR
 DAYS = 180
-MAX_COINS = 60
+MAX_COINS = 240
 HORIZONS = (3, 6, 12)
 LAGS = (1, 2, 3, 4, 6, 9, 12, 18, 24)
 FEE_PER_SIDE = .10
