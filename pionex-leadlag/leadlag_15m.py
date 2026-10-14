@@ -73,10 +73,13 @@ def one_sided_probability(r,pairs):
 def analyze(btc,coin,symbol):
     bm=dict(btc);am=dict(coin)
     both=sorted(set(bm).intersection(am))
-    if len(both)<2000:return None
+    # Refuse short or sparse histories: high-resolution does not by itself
+    # mean statistically more independent market events.
+    if len(both)<60*24*4:return None
     grid=list(range(both[0],both[-1]+STEP,STEP))
     b=returns(btc,grid);a=returns(coin,grid)
     n=len(grid)
+    if len(both)/n < .95:return None
     train=int(n*.60)
     mid=train//2
     chosen=None
