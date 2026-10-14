@@ -2,7 +2,7 @@ name: Pionex BTC Lead-Lag Research
 on:
   workflow_dispatch:
   schedule:
-    - cron: "17 * * * *"
+    - cron: "7,22,37,52 * * * *"
   push:
     paths:
       - "pionex-leadlag/trading_v5.py"
