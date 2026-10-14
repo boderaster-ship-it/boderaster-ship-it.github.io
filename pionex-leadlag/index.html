@@ -152,7 +152,8 @@ async function loadArchiveStatus(){
    const stale=Date.now()-Date.parse(status.updated_at)>36*3600000;
    put(id,c.pairs+" / "+status.spot_pairs_discovered+" Paare"+(stale?" · alt":""));
    put(detail,fmt(c.total_candles,0)+" echte Kerzen · Median "+fmt(c.median_coverage_days,1)+
-     " Tage · "+c.fresh_pairs_36h+" Paare zuletzt frisch");
+     " Tage · "+(c.median_completeness_pct==null?"Lückenanalyse ausstehend":fmt(c.median_completeness_pct,1)+" % beobachtete Kerzen")+
+     " · "+c.fresh_pairs_36h+" Paare frisch");
    return {interval,ready:true,stale,coverage:c,status};
   }catch(e){
    put(id,"Noch im Aufbau");
