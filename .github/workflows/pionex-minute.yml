@@ -1,8 +1,6 @@
-name: Pionex Minute History Archive
+name: Legacy Minute Import (Manual Only)
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "11 3 * * *"
   push:
     paths:
       - ".github/workflows/pionex-minute.yml"
