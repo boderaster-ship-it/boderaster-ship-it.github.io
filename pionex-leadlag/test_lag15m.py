@@ -7,7 +7,7 @@ from leadlag_15m import STEP, analyze, fdr
 
 
 class LagScreenTests(unittest.TestCase):
-    def make_series(self,lag,seed=8,n=3600,unrelated=False):
+    def make_series(self,lag,seed=8,n=7200,unrelated=False):
         rng=random.Random(seed)
         btc_returns=[rng.gauss(0,.8) for _ in range(n)]
         alt_returns=[(1.15*btc_returns[t-lag] if t>=lag and not unrelated else 0)
