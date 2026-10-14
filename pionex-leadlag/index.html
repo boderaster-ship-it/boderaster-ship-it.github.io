@@ -28,6 +28,14 @@ main{padding-top:28px!important;padding-bottom:37px!important}.eyebrow{font-size
 .tblwrap{overflow:auto;max-height:580px}.tbl{border-collapse:collapse;width:100%;text-align:left;white-space:nowrap;font-size:11px}.tbl th{position:sticky;top:0;background:#193644;font-weight:850;color:#a6c7ca;font-size:10px}.tbl th,.tbl td{padding:12px;border-bottom:1px solid #2b4652}.tbl tr:nth-child(2n){background:#102c38}.tbl td.good{color:#80e4c0}.tbl td.bad{color:#ffa0a5}
 footer{border-top:1px solid #264450;margin-top:26px;padding-top:18px;font-size:11px;color:#97b2ba;display:flex;flex-wrap:wrap;justify-content:space-between;gap:9px}
 @media(max-width:720px){.shell{padding-left:14px;padding-right:14px}header .shell{min-height:64px}.brand strong{font-size:15px}.brand small{font-size:9px}.side-label{font-size:8px;padding:7px}.actionbar{align-items:stretch}.actionbar .primary{width:100%}h1{font-size:34px}.metrics{grid-template-columns:repeat(2,1fr);gap:8px}.metrics>div{padding:12px}.metrics strong{font-size:24px}.btcstrip{gap:7px}.btcstrip>div{padding:11px}.btcstrip strong{font-size:22px}.cards{grid-template-columns:1fr}.section-head{flex-direction:column;align-items:start}.section-head small{text-align:left}.decision h2{font-size:23px}}
+
+.scenarios{background:#0b2430;border:1px solid #304f59;border-radius:10px;padding:12px;margin-top:14px}
+.scenario-label{font-size:11px;font-weight:800;color:#cae7e8;line-height:1.5;margin-bottom:10px}
+.scenario-cases{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.scenario-box{border:1px solid #2b4952;border-radius:8px;padding:9px 7px}
+.scenario-box span{display:block;font-size:9px;line-height:1.4;color:#9bb4bd}
+.scenario-box strong{display:block;font-size:16px;letter-spacing:-.5px;margin-top:6px}
+.notice.partial{border-color:#b78b50;background:#392d20;color:#f8d7ad}
 </style></head>
 <body>
 <header><div class="shell"><div class="brand"><div class="logo">↗</div><div><strong>BTC <em>EDGE</em></strong><small>PIONEX · TRADING-LABOR V5</small></div></div><span class="side-label">● SPOT / USDT</span></div></header>
@@ -108,44 +116,69 @@ function empty(id,title,message){
 function detailCard(x,validated){
  const t=x.test,card=make("article","card"+(validated?" highlight":""));
  const head=make("div","card-top"),name=make("div","");
- name.append(make("div","coin",x.symbol.replace("_USDT","")),make("div","pair","Pionex · "+x.symbol.replace("_"," / ")));
- head.append(name,make("div","tag"+(validated?" positive":""),validated?"HISTORISCH VALIDIERTER TEST":"EXPERIMENTELL · KEIN KAUF"));
+ name.append(make("div","coin",x.symbol.replace("_USDT","")),
+             make("div","pair","Pionex Spot · "+x.symbol.replace("_"," / ")));
+ head.append(name,make("div","tag"+(validated?" positive":""),
+  validated?"MODELL BESTÄTIGT":"NICHT BESTÄTIGT · KEIN KAUF"));
  card.append(head);
- card.append(make("div","narrative","BTC-Signal: "+pct(x.btc_signal_pct)+
-    " vor "+x.lag_hours+" Stunden. Erwartetes Nachlauffenster: "+x.horizon_hours+
-    " Stunden. Altcoin seitdem: "+pct(x.coin_since_signal_pct)+"."));
+ card.append(make("div","narrative",
+  "Einstieg: "+(validated?"nur Papertrading":"nicht statistisch abgesichert")+
+  ". BTC vor "+x.lag_hours+" Stunden: "+pct(x.btc_signal_pct)+
+  ". Coin seitdem: "+pct(x.coin_since_signal_pct)+
+  ". Historischer Testhorizont: "+x.horizon_hours+" Stunden."));
  const metrics=make("div","mainmetric");
  for(const [label,value,sub,cls] of [
-  ["Gewinnwahrscheinlichkeit",pct(t.net_profit_prob_pct,1),"historische Gewinne nach Kosten",""],
-  ["Ø Nettorendite",pct(t.avg_net_pct,2),"je abgeschlossenem simulierten Trade",t.avg_net_pct>0?"up":"down"],
-  ["Vorteil gegenüber Vergleich",pct(t.edge_over_best_baseline_pct,2),"gegen beste einfache Strategie",t.edge_over_best_baseline_pct>0?"up":"down"],
-  ["Risikogröße",pct(t.loss_risk_pct,1),"Verlust von mindestens 1 %",""]
+   ["Profitwahrscheinlichkeit",fmt(t.net_profit_prob_pct,1)+" %",
+    "historisch nach Kosten, "+t.n+" Testtrades",""],
+   ["Ø Nettoergebnis",pct(t.avg_net_pct,2),"je historischem Trade",t.avg_net_pct>0?"up":"down"],
+   ["Mehrwert zu Vergleich",pct(t.edge_over_best_baseline_pct,2),
+    "gegen beste einfache Strategie",t.edge_over_best_baseline_pct>0?"up":"down"],
+   ["Verlustrisiko ≥ 1 %",fmt(t.loss_risk_pct,1)+" %",
+    "in unabhängigen Testtrades",""]
  ]){
-  const m=make("div","metric");m.append(make("span","",label),make("strong",cls,value),make("small","",sub));metrics.append(m);
+  const m=make("div","metric");
+  m.append(make("span","",label),make("strong",cls,value),make("small","",sub));metrics.append(m);
  }
  card.append(metrics);
- const f=make("div","facts");
+ const scenarios=make("div","scenarios");
+ scenarios.append(make("div","scenario-label","Netto-Renditeszenarien aus historischen Testtrades (keine Kursziele)"));
+ const cases=make("div","scenario-cases");
  for(const [label,value] of [
-  ["Historische Testtrades",String(t.n)],
-  ["Risiko: Max. Drawdown",pct(t.drawdown_pct,1)],
-  ["Profit Factor",fmt(t.profit_factor,2)],
-  ["Untere Nettorendite-Schätzgrenze",pct(t.net_lower90_pct,2)],
-  ["Untere Mehrertrags-Schätzgrenze",pct(t.edge_lower90_pct,2)],
-  ["Wahrscheinlichkeit Kursziel netto +"+fmt(x.target_net_pct,2)+" %",pct(t.hit_prob_pct,1)],
-  ["Rundum-Kostenannahme",pct(x.assumed_round_trip_cost_pct,2)]
+   ["Ungünstig · 10 %",t.net_p10_pct],
+   ["Median · 50 %",t.median_net_pct],
+   ["Günstig · 90 %",t.net_p90_pct]
  ]){
-  const z=make("div","",label);z.append(make("b","",value));f.append(z);
+  let wrap=make("div","scenario-box");
+  wrap.append(make("span","",label),make("strong",value<0?"down":"up",pct(value,2)));
+  cases.append(wrap);
  }
- card.append(f);
- card.append(make("div","caution",validated?
-  "Historisch geprüft, aber ohne reale Ausführungstests. Zuerst Papertrading!":
-  "Nicht vollständig validiert. Eine positive Vergangenheit garantiert keinen handelbaren Vorteil."));
+ scenarios.append(cases);card.append(scenarios);
+ const facts=make("div","facts");
+ for(const [label,value] of [
+   ["95%-Intervall Profitquote",(t.profit_ci_pct||[]).map(x=>fmt(x,1)+" %").join(" – ")||"–"],
+   ["Wahrscheinlichkeit Nettoziel ≥ "+fmt(x.target_net_pct,2)+" %",fmt(t.hit_prob_pct,1)+" %"],
+   ["Historischer max. Rückgang",pct(t.drawdown_pct,1)],
+   ["Untere Ertrags-Schätzgrenze",pct(t.net_lower90_pct,2)],
+   ["Untere Vorteil-Schätzgrenze",pct(t.edge_lower90_pct,2)],
+   ["Angenommene Handelskosten",pct(x.assumed_round_trip_cost_pct,2)]
+ ]){
+  let z=make("div","",label);z.append(make("b","",value));facts.append(z);
+ }
+ card.append(facts);
+ const reevaluate=x.live_next_check_utc||x.next_decision_hour_utc;
+ card.append(make("div","caution",
+  "Nächste Modellprüfung: "+(reevaluate?local(reevaluate)+" Uhr":"nach der nächsten Stundenkerze")+
+  ". Die historischen Werte sind keine aktuelle Renditezusage. "+
+  (validated?"Zuerst mit Papertrades überprüfen.":"Ein Echtgeld-Einstieg ist damit nicht begründet.")));
  return card;
 }
 function render(data){
  const rows=data.results;
  const stale=Date.now()-Date.parse(data.data_through)>3*3600000||!Number.isFinite(Date.parse(data.data_through));
- const eligible=stale?[]:rows.filter(r=>r.status==="opportunity"&&r.validated&&r.signal_current);
+ const partial=Boolean(data.live_report&&data.live_report.failed>0);
+ const backtestTooOld=data.live_report&&Date.now()-Date.parse(data.live_report.last_backtest)>24*3600000;
+ const blocked=stale||partial||backtestTooOld;
+ const eligible=blocked?[]:rows.filter(r=>r.status==="opportunity"&&r.validated&&r.signal_current);
  const watching=stale?[]:rows.filter(r=>r.status==="watch"&&r.signal_current);
  const historical=rows.filter(r=>r.validated);
  put("timestamp","Berechnung "+local(data.generated_at)+" Uhr · Schlusskurs bis "+local(data.data_through)+" Uhr");
@@ -155,22 +188,31 @@ function render(data){
  put("notice",stale?
   "Warnung: Der Kursdatenstand ist älter als 3 Stunden. Aktuelle Handelssignale werden bis zur nächsten erfolgreichen Berechnung gesperrt.":
   "Letzter erfolgreich berechneter Stundenstand. Alle Prozentangaben sind historische Backtest-Schätzungen, keine sichere Zukunftsprognose.");
- const decision=$("decision");decision.className="decision"+(stale?" stale":eligible.length?" positive":"");
+ const decision=$("decision");decision.className="decision"+(stale||partial||backtestTooOld?" stale":eligible.length?" positive":"");
  if(stale){
   put("verdict","KEIN TRADE · DATEN VERALTET");
   put("explanation","Ohne aktuellen Kursdatenstand lässt sich keine heutige Handelsentscheidung begründen. Bitte den nächsten Hintergrundlauf abwarten.");
+ }else if(partial){
+  put("verdict","PRÜFUNG UNVOLLSTÄNDIG · KEINE HANDELSFREIGABE");
+  put("explanation","Nur "+data.live_report.checked+" von "+data.live_report.eligible+
+    " relevanten Coins konnten mit frischen Pionex-Kursen geprüft werden. "+
+    data.live_report.failed+" Paare fehlen. Daraus darf KEINE vollständige Handelsentscheidung abgeleitet werden.");
+ }else if(backtestTooOld){
+  put("verdict","KEINE HANDELSFREIGABE · MODELLTEST VERALTET");
+  put("explanation","Frische Kurse sind verfügbar, aber der historische 180-Tage-Modelltest ist älter als 24 Stunden. Bitte neue Testberechnung abwarten.");
  }else if(eligible.length){
   put("verdict",eligible.length+" HISTORISCH GEPRÜFTE"+(eligible.length===1?" CHANCE":" CHANCEN"));
   put("explanation","Die Modelle haben den zurückgehaltenen Test mit positivem durchschnittlichen Netto-Mehrwert und ausreichender statistischer Absicherung bestanden. Reale Orderausführung ist weiterhin ungetestet: zunächst nur Papertrading.");
  }else{
   put("verdict","AKTUELL KEIN NACHGEWIESENER KAUFVORTEIL");
-  put("explanation","Keine der untersuchten BTC-Nachlaufstrategien ist gerade gleichzeitig aktuell, noch nicht eingepreist und in unabhängigen Testdaten wirtschaftlich/statistisch ausreichend bestätigt. Die korrekte Entscheidung ist daher: keine aus diesem Modell begründete Spot-Order.");
+  put("explanation","Unter den vollständig überprüften Kandidaten ist derzeit keine BTC-Nachlaufstrategie gleichzeitig aktuell, noch nicht eingepreist und in unabhängigen Testdaten wirtschaftlich/statistisch ausreichend bestätigt. Die korrekte Entscheidung ist daher: keine aus diesem Modell begründete Spot-Order.");
  }
  const positive=rows.filter(r=>typeof r.test.avg_net_pct==="number"&&r.test.avg_net_pct>0).length;
  put("verdict-meta",rows.length+" Modelle getestet · "+positive+" mit positivem historischen Mittelwert · "+historical.length+" mit historisch bestätigtem Testergebnis · "+watching.length+" aktuelle experimentelle Beobachtungen");
  const sales=$("opportunities");sales.replaceChildren();
  if(eligible.length)eligible.slice(0,5).forEach(x=>sales.append(detailCard(x,true)));
- else empty("opportunities","Kein statistisch belegter Einstieg","Die Website zeigt bewusst keinen Ersatz-Kaufkandidaten an. Mehr als 50 % Trefferquote oder eine kurzfristig positive Durchschnittsrendite reichen allein nicht aus.");
+ else empty("opportunities","Kein statistisch belegter Einstieg",partial?"Nicht alle Kandidaten konnten aktuell geprüft werden. Eine vollständige Kaufentscheidung ist nicht möglich.":
+ "Mehr als 50 % historische Gewinnquote oder eine positive Durchschnittsrendite reichen allein nicht aus.");
  const watches=$("watchlist");watches.replaceChildren();
  if(watching.length)watching.slice(0,5).forEach(x=>watches.append(detailCard(x,false)));
  else empty("watchlist","Derzeit keine aussagekräftige Beobachtung","Coin-Reaktionen können historisch auffallen, ohne dass sie zum aktuellen Einstiegszeitpunkt noch handelbar sind.");
