@@ -251,8 +251,15 @@ def publish_status(pairs, state, mode, report, now, state_path, public_path):
         records=[metas.get(s,{}).get(interval,{}) for s in all_symbols]
         valid=[v for v in records if int(v.get("bars",0))>0]
         fresh=[v for v in valid if now-int(v.get("last_ms",0))<=36*HOUR]
+        completeness=[]
+        for meta in valid:
+            step={"1m":MIN,"5m":5*MIN,"15m":15*MIN}[interval]
+            expected=max(1,int((meta["last_ms"]-meta["first_ms"])/step)+1)
+            completeness.append(min(100.,100*int(meta["bars"])/expected))
         coverage[interval]={
             "pairs":len(valid),
+            "median_completeness_pct":round(sorted(completeness)[len(completeness)//2],1)
+                if completeness else 0,
             "fresh_pairs_36h":len(fresh),
             "oldest_ms":min((int(v["first_ms"]) for v in valid),default=None),
             "newest_ms":max((int(v["last_ms"]) for v in valid),default=None),
