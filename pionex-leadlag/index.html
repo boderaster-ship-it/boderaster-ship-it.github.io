@@ -206,7 +206,7 @@ async function liveCandles(sym){
  // Pionex doesn't permit direct cross-origin browser access. A public reader
  // provides the unmodified exchange response; we still verify recency and
  // reject missing or incomplete bars before using it.
- if(!/^[A-Z0-9]{2,24}_USDT$/.test(sym))throw Error("Ungültiges Paar");
+ if(!/^[A-Z0-9]{1,24}_USDT$/.test(sym))throw Error("Ungültiges Paar");
  const query="https://api.pionex.com/api/v1/market/klines?symbol="+sym+
              "&interval=60M&limit=52&fresh="+Math.floor(Date.now()/20000);
  const u="https://r.jina.ai/"+query;
@@ -244,8 +244,16 @@ async function refreshRealtime(data){
  }
  const rows=data.results.map(x=>({...x,signal_current:false,
    status:x.validated?"validated_inactive":"excluded"}));
+ // Live requests are restricted to historical candidates with a possible
+ // spot-trading edge. Models with negative holdout return cannot become
+ // validated trades merely because their current price changed.
  const withConfig=rows.filter(x=>Number.isFinite(x.signal_params?.btc_trigger_pct)&&
-                                Number.isFinite(x.signal_params?.btc_beta));
+                                Number.isFinite(x.signal_params?.btc_beta)&&
+                                x.market_valid&&
+                                (x.validated||(x.test?.n>=12&&
+                                 x.test.avg_net_pct>0&&
+                                 x.test.edge_over_best_baseline_pct>0)))
+                      .slice(0,15);
  const newData={...data,data_through:timeThrough,btc_change_pct:btcDelta,
    results:rows,live_report:{last_backtest:sourceDate,eligible:withConfig.length,checked:0,failed:0}};
  // Never describe a stale 180d model as freshly validated.
@@ -289,7 +297,7 @@ async function refreshRealtime(data){
    completed++;
    if(completed%4===0||completed===withConfig.length){
     put("notice","Pionex-Kurse werden geprüft: "+completed+"/"+withConfig.length+
-       " Paare abgeschlossen, "+checked+" mit gültigen neuen Kursen …");
+       " Kandidaten abgeschlossen, "+checked+" mit gültigen Kursdaten …");
    }
   }
  }
@@ -309,7 +317,7 @@ function stampLive(data){
  put("timestamp","BTC-Kurse bis "+local(data.data_through)+" Uhr · Historischer Modelltest: "+
                   local(r.last_backtest)+" Uhr");
  const base="Frische BTC-Kurse geprüft. "+r.checked+" von "+r.eligible+
-            " Coin-Modellen aktuell nachgerechnet"+
+            " historisch relevanten Kandidaten neu bewertet"+
             (r.failed?" ("+r.failed+" nicht abrufbar)":"")+".";
  if(r.note){
   put("notice",r.note+" "+
