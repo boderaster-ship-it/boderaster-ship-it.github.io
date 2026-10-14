@@ -245,28 +245,37 @@ const HOUR=3600000;
 let lastSeenDataset=null;
 function signedLog(a,b){return a>0&&b>0?100*Math.log(b/a):null;}
 async function liveCandles(sym){
- // Pionex doesn't permit direct cross-origin browser access. A public reader
- // provides the unmodified exchange response; we still verify recency and
- // reject missing or incomplete bars before using it.
  if(!/^[A-Z0-9]{1,24}_USDT$/.test(sym))throw Error("Ungültiges Paar");
  const query="https://api.pionex.com/api/v1/market/klines?symbol="+sym+
-             "&interval=60M&limit=52&fresh="+Math.floor(Date.now()/20000);
- const u="https://r.jina.ai/"+query;
- const ctl=new AbortController(),timeout=setTimeout(()=>ctl.abort(),14000);
- try{
-  const r=await fetch(u,{signal:ctl.signal,cache:"no-store",credentials:"omit"});
-  if(!r.ok)throw Error("Kursdienst HTTP "+r.status);
-  const raw=await r.text();
-  const position=raw.indexOf("Markdown Content:");
-  if(position<0)throw Error("Unerwartete Kursantwort");
-  const json=JSON.parse(raw.slice(position+"Markdown Content:".length).trim());
-  if(json.result!==true||!Array.isArray(json.data?.klines))throw Error("Pionex-Kerzen fehlen");
-  const bars=json.data.klines.map(x=>({t:Number(x.time),c:Number(x.close)}))
-    .filter(x=>Number.isFinite(x.t)&&Number.isFinite(x.c)&&x.c>0&&x.t+HOUR<=Date.now()-3000)
-    .sort((a,b)=>a.t-b.t);
-  if(!bars.length||bars.length<30)throw Error("Zu wenige vollständige Kerzen");
-  return bars;
- }finally{clearTimeout(timeout);}
+             "&interval=60M&limit=52&fresh="+Date.now();
+ const readers=[
+   {url:"https://r.jina.ai/"+query,kind:"jina"},
+   {url:"https://api.allorigins.win/raw?url="+encodeURIComponent(query)+"&fresh="+Date.now(),kind:"json"}
+ ];
+ let lastError="Keine gültige Antwort";
+ for(let attempt=0;attempt<2;attempt++){
+  for(const reader of readers){
+   const controller=new AbortController();
+   const timeout=setTimeout(()=>controller.abort(),11500);
+   try{
+    const response=await fetch(reader.url,{signal:controller.signal,cache:"no-store",credentials:"omit"});
+    if(!response.ok)throw Error("Datenabruf HTTP "+response.status);
+    const raw=await response.text();
+    const at=raw.indexOf("Markdown Content:");
+    const parsed=JSON.parse(reader.kind==="jina"?(at<0?"":raw.slice(at+"Markdown Content:".length).trim()):raw);
+    if(parsed.result!==true||!Array.isArray(parsed.data?.klines))
+      throw Error("Pionex-Kerzen fehlen");
+    const bars=parsed.data.klines.map(x=>({t:Number(x.time),c:Number(x.close)}))
+      .filter(x=>Number.isFinite(x.t)&&Number.isFinite(x.c)&&x.c>0&&x.t+HOUR<=Date.now()-3000)
+      .sort((a,b)=>a.t-b.t);
+    if(bars.length<30)throw Error("Zu wenige abgeschlossene Kerzen");
+    return bars;
+   }catch(e){lastError=String(e?.message||e);}
+   finally{clearTimeout(timeout);}
+  }
+  if(attempt===0)await new Promise(resolve=>setTimeout(resolve,750));
+ }
+ throw Error("Pionex-Kurse für "+sym+" nicht verifizierbar: "+lastError);
 }
 function moneyAge(s){return Math.max(0,Math.round((Date.now()-Date.parse(s))/60000));}
 async function refreshRealtime(data){
@@ -311,6 +320,8 @@ async function refreshRealtime(data){
    try{
     const alt=await liveCandles(item.symbol);
     const lookup=new Map(alt.map(x=>[x.t,x.c]));
+    if(!lookup.has(last.t)||Date.now()-(alt[alt.length-1].t+HOUR)>125*60000)
+      throw Error('Coin-Kursdaten nicht auf der aktuellen BTC-Stunde');
     const event=byTime.get(last.t-item.lag_hours*HOUR);
     const eventBefore=byTime.get(last.t-(item.lag_hours+3)*HOUR);
     const altEvent=lookup.get(last.t-item.lag_hours*HOUR);
@@ -328,6 +339,7 @@ async function refreshRealtime(data){
     item.coin_since_signal_pct=Math.round(repriced*100)/100;
     item.unpriced_limit_pct=Math.round(maxRepricing*100)/100;
     item.signal_time_utc=new Date(last.t-item.lag_hours*HOUR).toISOString();
+    item.live_next_check_utc=new Date(last.t+2*HOUR).toISOString();
     item.status=active?
       (item.validated?"opportunity":
        item.market_valid&&item.test?.n>=12&&
@@ -356,23 +368,26 @@ async function refreshRealtime(data){
 function stampLive(data){
  const r=data.live_report;
  if(!r)return;
+ $("notice").classList.remove("partial");
  put("timestamp","BTC-Kurse bis "+local(data.data_through)+" Uhr · Historischer Modelltest: "+
                   local(r.last_backtest)+" Uhr");
- const base="Frische BTC-Kurse geprüft. "+r.checked+" von "+r.eligible+
+ const base=(r.failed?"⚠ Prüfung UNVOLLSTÄNDIG. ":"✓ Live-Prüfung vollständig. ")+
+            "Frische BTC-Kurse geprüft. "+r.checked+" von "+r.eligible+
             " historisch relevanten Kandidaten neu bewertet"+
             (r.failed?" ("+r.failed+" nicht abrufbar)":"")+".";
  if(r.note){
   put("notice",r.note+" "+
      "Historische Prüfung vom "+local(r.last_backtest)+" Uhr.");
  }else if(r.failed){
-  put("notice",base+" Nicht abrufbare Coins werden vorsichtshalber NICHT als mögliche Trades angezeigt.");
+  put("notice",base+" Keine Handelsfreigabe, solange relevante Coin-Kurse fehlen. Bitte erneut prüfen.");
+  $("notice").classList.add("partial");
  }else{
   put("notice",base+" Der 180-Tage-Backtest wurde dabei nicht neu trainiert.");
  }
  const verdict=$("verdict");
- if(r.checked<r.eligible&&r.eligible>0&&verdict.textContent.includes("KEIN NACHGEWIESENER")){
-  put("explanation","Auf Basis der neu eingelesenen Pionex-Stundenkerzen wurde kein vollständiges, historisch validiertes Kauf-Signal gefunden. "+
-      r.failed+" Kursreihen fehlen. Für diese Paare ist keine aktuelle Aussage zulässig.");
+ if(r.checked<r.eligible&&r.eligible>0){
+  put("explanation","Die Live-Abfrage war unvollständig: "+r.checked+"/"+r.eligible+" relevant eingestufte Coin-Paare geprüft. "+
+      r.failed+" Paare sind nicht verifizierbar. Deshalb kann derzeit ausdrücklich keine vollständige Handelsentscheidung getroffen werden.");
  }
 }
 async function refresh(manual=false){
