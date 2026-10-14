@@ -196,7 +196,7 @@ function render(data){
   put("verdict","PRÜFUNG UNVOLLSTÄNDIG · KEINE HANDELSFREIGABE");
   put("explanation","Nur "+data.live_report.checked+" von "+data.live_report.eligible+
     " relevanten Coins konnten mit frischen Pionex-Kursen geprüft werden. "+
-    data.live_report.failed+" Paare fehlen. Daraus darf KEINE vollständige Handelsentscheidung abgeleitet werden.");
+    (data.live_report.failed===1?"1 Paar fehlt.":data.live_report.failed+" Paare fehlen.")+" Daraus darf KEINE vollständige Handelsentscheidung abgeleitet werden.");
  }else if(backtestTooOld){
   put("verdict","KEINE HANDELSFREIGABE · MODELLTEST VERALTET");
   put("explanation","Frische Kurse sind verfügbar, aber der historische 180-Tage-Modelltest ist älter als 24 Stunden. Bitte neue Testberechnung abwarten.");
@@ -387,7 +387,7 @@ function stampLive(data){
  const verdict=$("verdict");
  if(r.checked<r.eligible&&r.eligible>0){
   put("explanation","Die Live-Abfrage war unvollständig: "+r.checked+"/"+r.eligible+" relevant eingestufte Coin-Paare geprüft. "+
-      r.failed+" Paare sind nicht verifizierbar. Deshalb kann derzeit ausdrücklich keine vollständige Handelsentscheidung getroffen werden.");
+      (r.failed===1?"1 Paar ist":" "+r.failed+" Paare sind")+" nicht verifizierbar. Deshalb kann derzeit ausdrücklich keine vollständige Handelsentscheidung getroffen werden.");
  }
 }
 async function refresh(manual=false){
