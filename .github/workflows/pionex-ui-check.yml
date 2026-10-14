@@ -1,0 +1,21 @@
+name: Pionex Scanner UI Regression
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "pionex-leadlag/index.html"
+      - "pionex-leadlag/test_frontend.cjs"
+      - ".github/workflows/pionex-ui-check.yml"
+permissions:
+  contents: read
+jobs:
+  ui-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Validate incomplete-feed handling, refresh and risk cards
+        run: node pionex-leadlag/test_frontend.cjs
