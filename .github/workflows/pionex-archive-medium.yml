@@ -1,0 +1,31 @@
+name: Pionex Multimonth Candles
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "37 1,7,13 * * *"
+    - cron: "47 20 * * *"
+  push:
+    paths:
+      - ".github/workflows/pionex-archive-medium.yml"
+permissions:
+  contents: write
+concurrency:
+  group: pionex-archive-medium
+  cancel-in-progress: false
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Collect 95 days of quarter-hour market candles
+        if: github.event.schedule != '47 20 * * *'
+        run: python pionex-leadlag/archive_v2.py 15m
+      - name: Collect 30 days of five-minute market candles
+        if: github.event.schedule == '47 20 * * *'
+        run: python pionex-leadlag/archive_v2.py 5m
