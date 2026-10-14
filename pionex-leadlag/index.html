@@ -36,6 +36,13 @@ footer{border-top:1px solid #264450;margin-top:26px;padding-top:18px;font-size:1
 .scenario-box span{display:block;font-size:9px;line-height:1.4;color:#9bb4bd}
 .scenario-box strong{display:block;font-size:16px;letter-spacing:-.5px;margin-top:6px}
 .notice.partial{border-color:#b78b50;background:#392d20;color:#f8d7ad}
+
+.archive-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:16px 0}
+.archive-tile{background:#112a36;border:1px solid #2c505c;padding:14px;border-radius:11px}
+.archive-tile span{display:block;color:#9eb8c1;font-size:11px;font-weight:800}
+.archive-tile strong{font-size:19px;display:block;color:#dcf5ef;margin:9px 0 5px;font-variant-numeric:tabular-nums;line-height:1.2}
+.archive-tile small{display:block;font-size:10px;color:#9bb6c1;line-height:1.65}
+@media(max-width:700px){.archive-grid{grid-template-columns:1fr}.archive-tile{padding:12px}.archive-tile strong{font-size:18px}}
 </style></head>
 <body>
 <header><div class="shell"><div class="brand"><div class="logo">↗</div><div><strong>BTC <em>EDGE</em></strong><small>PIONEX · TRADING-LABOR V5</small></div></div><span class="side-label">● SPOT / USDT</span></div></header>
@@ -57,6 +64,13 @@ footer{border-top:1px solid #264450;margin-top:26px;padding-top:18px;font-size:1
 <div><strong id="watchcount">–</strong><span>zu beobachtende, unbestätigte Ansätze</span></div>
 <div><strong id="period">180 Tage</strong><span>Trainings-, Auswahl- und Testhistorie</span></div>
 </div>
+<div class="section-head"><h2>Aufbau des Kursdatenarchivs</h2><small>Gespeichert und inkrementell ergänzt · tatsächlicher Datenstand</small></div>
+<div class="archive-grid">
+ <div class="archive-tile"><span>1-Minuten-Kurse</span><strong id="archive1m">Wird aufgebaut</strong><small id="archive1mdetail">SQLite-Tagesdatenbank · fortlaufende Archivierung</small></div>
+ <div class="archive-tile"><span>5-Minuten-Kurse</span><strong id="archive5m">Wird aufgebaut</strong><small id="archive5mdetail">Bis zu 30 Tage rückwirkend · separat gespeichert</small></div>
+ <div class="archive-tile"><span>15-Minuten-Kurse</span><strong id="archive15m">Wird aufgebaut</strong><small id="archive15mdetail">Bis zu 95 Tage rückwirkend · separat gespeichert</small></div>
+</div>
+<div class="notice" id="archiveNotice">Prüfe die verfügbaren archivierten Zeitreihen. Der unabhängige V5-Handels-Backtest verwendet derzeit noch Stundenkerzen. Minutendaten werden nicht als bereits geprüfte Handelssignale ausgegeben.</div>
 <div class="section-head"><h2>Historisch geprüfte Spot-Chancen</h2><small>Maximal 5 · nur mit positivem unabhängigen Netto-Nachweis</small></div>
 <div id="opportunities" class="cards"><div class="empty">Analyse wird geladen …</div></div>
 <div class="section-head"><h2>Beobachtungen (kein Kaufsignal)</h2><small>Bei Auffälligkeiten: Rendite, Risiko und bereits erfolgte Kursreaktion</small></div>
@@ -80,6 +94,7 @@ footer{border-top:1px solid #264450;margin-top:26px;padding-top:18px;font-size:1
 </main>
 <script>
 (()=>{"use strict";
+const archiveBase="https://raw.githubusercontent.com/boderaster-ship-it/boderaster-ship-it.github.io/main/pionex-leadlag/data/";
 const dataURL="https://raw.githubusercontent.com/boderaster-ship-it/boderaster-ship-it.github.io/main/pionex-leadlag/data/v5.json";
 const backupURL="https://api.github.com/repos/boderaster-ship-it/boderaster-ship-it.github.io/contents/pionex-leadlag/data/v5.json?ref=main";
 const $=id=>document.getElementById(id);
@@ -108,6 +123,45 @@ async function getData(){
   finally{clearTimeout(timer);}
  }
  throw Error("Version 5 wird noch erstellt. Der alte Datensatz wird nicht als neuer Handelsnachweis verwendet.");
+}
+async function loadArchiveStatus(){
+ const entries=[["1m","archive1m","archive1mdetail"],
+                ["5m","archive5m","archive5mdetail"],
+                ["15m","archive15m","archive15mdetail"]];
+ const out=await Promise.all(entries.map(async ([interval,id,detail])=>{
+  try{
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);
+   let response;
+   try{response=await fetch(archiveBase+"archive-"+interval+".json?now="+Date.now(),
+                              {cache:"no-store",signal:controller.signal});}
+   finally{clearTimeout(timer);}
+   if(!response.ok)throw Error("Noch keine abgeschlossene Lieferung");
+   const status=await response.json();
+   if(status.version!==2||!status.coverage?.[interval])throw Error("Archivformat ungültig");
+   const c=status.coverage[interval];
+   const stale=Date.now()-Date.parse(status.updated_at)>36*3600000;
+   put(id,c.pairs+" / "+status.spot_pairs_discovered+" Paare"+(stale?" · alt":""));
+   put(detail,fmt(c.total_candles,0)+" echte Kerzen · Median "+fmt(c.median_coverage_days,1)+
+     " Tage · "+c.fresh_pairs_36h+" Paare zuletzt frisch");
+   return {interval,ready:true,stale,coverage:c,status};
+  }catch(e){
+   put(id,"Noch im Aufbau");
+   return {interval,ready:false};
+  }
+ }));
+ const available=out.filter(x=>x.ready);
+ if(available.length){
+  const latest=available.reduce((a,b)=>!a||Date.parse(a.status.updated_at)<Date.parse(b.status.updated_at)?b:a,null);
+  const core=available.find(x=>x.interval==="1m");
+  put("archiveNotice","Archivstand: "+local(latest.status.updated_at)+" Uhr. "+
+      "Es werden nur tatsächlich vorhandene Marktkerzen gezählt; fehlende Minuten werden nicht geschätzt. "+
+      (core?"Die Minutendatenbank erfasst derzeit "+core.coverage.pairs+" Paar-Zeitreihen. ":"")+
+      "Der 180-Tage-V5-Backtest nutzt derzeit weiterhin Stundenkerzen. Die zusätzlichen Intervalle werden aufgebaut und getrennt qualitätsgeprüft.");
+ }else{
+  put("archiveNotice","Die ersten Kursarchive werden aktuell aufgebaut. Der Import benötigt einmalig länger. "+
+    "Mehrere Monate minutengenauer Kurse können nicht rückwirkend über die Pionex-API geladen werden. "+
+    "Die 15-Minuten-Historie ist separat im Aufbau; der heutige Trading-Backtest basiert noch auf Stundenkursen.");
+ }
 }
 function empty(id,title,message){
  const x=$(id);x.replaceChildren();const b=make("div","empty");
@@ -398,11 +452,13 @@ async function refresh(manual=false){
   if(!manual){
    lastSeenDataset=d.generated_at;
    render(d);
+   loadArchiveStatus();
   }else{
    const same=lastSeenDataset===d.generated_at;
    lastSeenDataset=d.generated_at;
    const live=await refreshRealtime(d);
    render(live);stampLive(live);
+   loadArchiveStatus();
    if(same&&!live.live_report.checked){
     put("notice",$("notice").textContent+
        " Seit der letzten Abfrage liegt noch keine neue historische Modellrechnung vor.");
