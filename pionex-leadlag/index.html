@@ -50,6 +50,19 @@ footer{border-top:1px solid #264450;margin-top:26px;padding-top:18px;font-size:1
 .lag-tile small{font-size:11px;color:#aac4c8;line-height:1.5;display:block;margin-top:8px}
 .lag-tile .indicator{color:#77dec7;font-size:14px;font-weight:800;margin-top:6px}
 @media(max-width:720px){.lag-grid{grid-template-columns:1fr}}
+
+.research-overview{background:#102d3b;border:1px solid #3b6b72;border-radius:13px;padding:18px;margin:0 0 14px}
+.research-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px}
+.research-head strong{font-size:18px;color:#91ead6}
+.research-head small{font-size:11px;color:#b4ced2}
+.research-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+.research-mini{background:#0a2431;border:1px solid #315765;padding:13px;border-radius:10px}
+.research-mini strong{font-size:20px;display:block;color:#e9f9f5}
+.research-mini span{font-size:13px;font-weight:850;display:block;color:#7ae4ce;margin-top:5px}
+.research-mini small{font-size:11px;color:#aec8cd;display:block;margin-top:6px;line-height:1.45}
+.research-warning{font-size:12px;line-height:1.55;color:#aec3c9;margin:12px 0 0}
+.lag-tile.lag-confirmed{border-color:#67b6a3}
+@media(max-width:720px){.research-overview{padding:13px}.research-card-grid{grid-template-columns:1fr}}
 </style></head>
 <body>
 <header><div class="shell"><div class="brand"><div class="logo">↗</div><div><strong>BTC <em>EDGE</em></strong><small>PIONEX · TRADING-LABOR V5</small></div></div><span class="side-label">● SPOT / USDT</span></div></header>
@@ -65,6 +78,8 @@ footer{border-top:1px solid #264450;margin-top:26px;padding-top:18px;font-size:1
 <div><span>BTC · letzte 24 Stunden</span><strong id="btc24">–</strong></div>
 </div>
 <section class="decision" id="decision"><span class="overline">AKTUELLE HANDELSENTSCHEIDUNG</span><h2 id="verdict">Warte auf Analyse …</h2><p id="explanation">Lade die letzte unabhängige Prüfung.</p><div id="verdict-meta" class="statusmeta"></div></section>
+<div class="section-head"><h2>Gefundene BTC-Nachläufer</h2><small>Statistische 15-Minuten-Forschung · getrennt von Kaufempfehlungen</small></div>
+<div id="researchOverview" class="research-overview"><div class="notice">Lade die tatsächlich berechneten Zeitversatz-Ergebnisse …</div></div>
 <div class="metrics">
 <div><strong id="markets">–</strong><span>Pionex-Coins untersucht</span></div>
 <div><strong id="validated">–</strong><span>historisch bestätigte aktive Kandidaten</span></div>
@@ -175,38 +190,72 @@ async function loadArchiveStatus(){
  }
 }
 async function loadLagStatus(){
+ const overview=$("researchOverview");
  try{
   const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),9000);
   let resp;
   try{resp=await fetch(archiveBase+"lag15m.json?x="+Date.now(),{cache:"no-store",signal:ctl.signal});}
   finally{clearTimeout(timer);}
-  if(!resp.ok)throw Error("Model not yet available");
+  if(!resp.ok)throw Error("Independent model is not available");
   const j=await resp.json();
-  if(j.version!==1||!j.ready){
-   put("lagStatus","Der unabhängige 15-Minuten-Test startet, sobald mindestens 12 Paare mit ausreichender Historie vorliegen. Bis dahin keine statistische Aussage.");
+  if(j.version!==1||!j.ready||!Array.isArray(j.matches)){
+   put("lagStatus","Für die unabhängige 15-Minuten-Prüfung fehlen noch genügend vollständige Daten.");
+   overview.replaceChildren(make("div","notice","15-Minuten-Analyse noch nicht vollständig verfügbar."));
    return;
   }
-  put("lagStatus",j.analysable+" Paare über Training (60 %) und einen zeitlich späteren Test (40 %) verglichen. "+
-    j.independently_confirmed_lags+" zeitversetzte Beziehungen bestehen die strengen Kriterien. "+
-    "Das ist eine Korrelationsanalyse, ausdrücklich KEINE Kaufempfehlung.");
+  const confirmed=j.matches.filter(x=>x.validated_association);
+  const longLags=j.matches.filter(x=>x.lag_hours>=2&&x.test_corr>0&&!x.validated_association)
+                    .sort((a,b)=>b.test_corr-a.test_corr);
+  const ageHours=(Date.now()-Date.parse(j.generated_at))/3600000;
+  const ageLabel=ageHours>12?" · Datenstand älter als 12 Stunden":"";
+  put("lagStatus",j.analysable+" Pionex-Paare geprüft, "+confirmed.length+
+      " statistisch bestätigte BTC-Nachlauf-Korrelationen."+ageLabel+
+      " Statistik ist keine Aussage über künftige Nettorendite.");
   const parent=$("lagCards");parent.replaceChildren();
-  const top=j.matches.filter(x=>x.test_corr>0&&x.test_pairs>=170).slice(0,6);
-  for(const m of top){
-   const box=make("article","lag-tile");
-   box.append(make("strong","",m.symbol.replace("_USDT","")),
-     make("div","indicator","BTC-Versatz: "+fmt(m.lag_hours,2)+" Stunden"),
-     make("small","","Unabhängige Testkorrelation: "+fmt(m.test_corr,3)+
-       " · "+m.test_pairs+" zeitlich versetzte Vergleichspaare"),
+  for(const m of [...confirmed,...longLags].slice(0,8)){
+   const card=make("article","lag-tile"+(m.validated_association?" lag-confirmed":""));
+   card.append(make("strong","",m.symbol.replace("_USDT","")),
+     make("div","indicator","Nachlauf: "+fmt(m.lag_hours,2)+" Stunden"),
+     make("small","","Testkorrelation r = "+fmt(m.test_corr,3)+
+        " · "+m.test_pairs+" unabhängige historische Stichprobenfenster"),
      make("small","",m.validated_association?
-       "Statistisch bestätigt – Handelbarkeit nicht geprüft.":
-       "Nur explorativer Zusammenhang – nicht bestätigt."));
-   parent.append(box);
+        "Korrelation statistisch bestätigt – noch KEIN handelbares Signal.":
+        "Mehrstündiger Hinweis, statistisch NICHT bestätigt."));
+   parent.append(card);
   }
-  if(!top.length){
-   put("lagStatus",j.analysable+" Paare untersucht, aber keine positive unabhängige BTC-Nachlaufkorrelation gefunden. Es werden keine Zusammenhänge erfunden.");
+  overview.replaceChildren();
+  const head=make("div","research-head");
+  head.append(make("strong","",confirmed.length+" statistisch bestätigte Beziehungen"),
+              make("small","","15-Minuten-Kursdaten · "+j.analysable+" Coins getestet · Berechnung "+
+               local(j.generated_at)+" Uhr"));
+  overview.append(head);
+  if(confirmed.length){
+   const cards=make("div","research-card-grid");
+   for(const m of confirmed.slice(0,4)){
+    const card=make("div","research-mini");
+    card.append(make("strong","",m.symbol.replace("_USDT","")),
+      make("span","","BTC-Nachlauf "+fmt(m.lag_hours,2)+" Stunden"),
+      make("small","","Korrelation "+fmt(m.test_corr,3)+" · "+m.test_pairs+" Testfälle"),
+      make("small","","Statistisch bestätigte Beziehung, kein Gewinnnachweis"));
+    cards.append(card);
+   }
+   overview.append(cards);
+  }else{
+   overview.append(make("p","","Bislang erfüllt kein Zeitversatz die vordefinierten statistischen Prüfkriterien."));
   }
+  if(longLags.length){
+   const m=longLags[0];
+   overview.append(make("p","research-warning",
+      "Längere Zeitversätze von mehreren Stunden werden ebenfalls untersucht (z. B. "+
+      m.symbol.replace("_USDT","")+" bei "+fmt(m.lag_hours,1)+" Stunden). "+
+      "Bisher ist keiner davon statistisch bestätigt. Diese Muster dürfen nicht als Tradesignale verwendet werden."));
+  }
+  overview.append(make("p","research-warning",
+    "Wichtig: Diese Korrelationen sind keine validierten Handelsstrategien. "+
+    "Nach Pionex-Gebühren, Slippage und unabhängigen Renditetests ist weiterhin kein profitabler Einstieg bestätigt."));
  }catch(e){
-  put("lagStatus","Die ersten vollständigen 15-Minuten-Zeitreihen werden aufgebaut. Die Ergebnisse erscheinen erst nach ausreichend vollständigem Import und unabhängiger Validierung.");
+  put("lagStatus","Die unabhängige 15-Minuten-Auswertung konnte nicht geladen werden. Letzte Kursdaten bleiben separat verfügbar.");
+  overview.replaceChildren(make("div","notice","Statistische Zeitversatz-Ergebnisse vorübergehend nicht abrufbar. Es werden keine Ergebnisse erfunden."));
  }
 }
 function empty(id,title,message){
@@ -504,7 +553,7 @@ async function refresh(manual=false){
    lastSeenDataset=d.generated_at;
    const live=await refreshRealtime(d);
    render(live);stampLive(live);
-   loadArchiveStatus();
+   loadArchiveStatus();loadLagStatus();
    if(same&&!live.live_report.checked){
     put("notice",$("notice").textContent+
        " Seit der letzten Abfrage liegt noch keine neue historische Modellrechnung vor.");
