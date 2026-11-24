@@ -219,7 +219,7 @@ function act(){if(state.paused||state.ending||state.phase!=='playing')return;sou
  case 'photo':capture();flow.simCert=9;state.autoTime=9;state.autoStep=1;state.autoRun=false;setCert('sofa');msg('10 Fotos im Pool');break;
  case 'sofa':state.autoRun=true;state.autoStep=2;state.autoTime=15;flow.simCert=15;setCert('addons');break;
  case 'addons':state.autoTime=90;flow.simCert=55;state.autoRun=false;flow.records=jobs.map(j=>({...j}));setCert('review');break;
- case 'review':if(flow.checked.size!==10)return;state.autoTime=80;flow.simCert=80;setCert('export');break;
+ case 'review':if(!flow.records.length||flow.records.length!==jobs.length)return;flow.checked=new Set(flow.records.map((_,i)=>i));flow.review=-1;state.autoTime=80;flow.simCert=80;setCert('export');break;
  case 'export':if(!flow.channels.size)return;flow.records.forEach(r=>r.channels=[...flow.channels]);flow.simCert=90;state.autoTime=90;state.autoStep=3;finish();break;
  }}else{const j=jobs[state.manualItem];if(!j)return;switch(flow.manualPhase){
  case 'pick':itemPick(state.manualItem);break;
@@ -242,13 +242,28 @@ function tick(dt){if(state.phase==='outro'){endingScene.elapsed+=dt;return}if(st
 }
 function optionList(values,correct,cb){const root=$('taskContent');let el=document.createElement('div');el.className='task-options';values.forEach(x=>{let b=document.createElement('button');b.textContent=x.label||x.value||x;b.onclick=()=>{if(state.paused)return;let value=x.value??x;let ok=correct===null||value===correct;[...el.children].forEach(b=>b.classList.remove('selected','wrong','ok'));b.classList.add(ok?'selected':'wrong');flow.correct=ok;if(ok){if(cb)cb(value);$('act').disabled=false;sound()}else{$('act').disabled=true;msg('Noch nicht richtig. Versuch es erneut.')}};el.append(b)});root.append(el)}
 function inputBox(id,placeholder){let el=document.createElement('input');el.id=id;el.className='taskinput';el.placeholder=placeholder;el.autocomplete='off';el.setAttribute('aria-label',placeholder);$('taskContent').append(el)}
-function renderTask(){let cert=state.role==='cert',p=cert?flow.certPhase:flow.manualPhase,j=jobs[Math.min(9,state.manualItem)],title='',detail='',button='Weiter',disabled=false;const root=$('taskContent');root.replaceChildren();$('act').classList.toggle('manual',!cert);$('act').classList.remove('hidden');$('phaseLabel').textContent=cert?'CERTORO APP':'ARTIKEL '+(state.manualItem+1)+' / 10';$('taskCount').textContent=cert?({approach:'1/6',photo:'2/6',sofa:'3/6',addons:'4/6',review:'5/6',export:'6/6'}[p]):({pick:'1/11',photo:'2/11',identify:'3/11',title:'4/11',category:'5/11',description:'6/11',price:'7/11',image:'8/11',marketing:'9/11',compliance:'10/11',listing:'11/11'}[p]);
+function renderTask(){let cert=state.role==='cert',p=cert?flow.certPhase:flow.manualPhase,j=jobs[Math.min(9,state.manualItem)],title='',detail='',button='Weiter',disabled=false;const root=$('taskContent');const reviewScroll=root.querySelector('.bulkReviewList')?.scrollTop||0;root.replaceChildren();$('act').classList.toggle('manual',!cert);$('act').classList.remove('hidden');$('phaseLabel').textContent=cert?'CERTORO APP':'ARTIKEL '+(state.manualItem+1)+' / 10';$('taskCount').textContent=cert?({approach:'1/6',photo:'2/6',sofa:'3/6',addons:'4/6',review:'5/6',export:'6/6'}[p]):({pick:'1/11',photo:'2/11',identify:'3/11',title:'4/11',category:'5/11',description:'6/11',price:'7/11',image:'8/11',marketing:'9/11',compliance:'10/11',listing:'11/11'}[p]);
  if(cert){switch(p){
  case 'approach':title='Zur Palette';detail='Tippe auf die Produkte.';button='Zur Palette gehen';break;
  case 'photo':title='Alle Artikel im Sucher';detail='10 Produkte · ein Foto-Pool';button='Foto aufnehmen';break;
  case 'sofa':title='Foto-Pool erfasst';detail='Jetzt zur Lounge.';button='Auf das Sofa setzen';break;
  case 'addons':title='Dein digitaler Assistent';detail='Wähle, was die KI zusätzlich erledigt.';button='Auftrag ausführen';let g=document.createElement('div');g.className='task-options';for(let [k,n] of addons){let b=document.createElement('button');b.textContent=n;b.classList.toggle('selected',state.addons.has(k));b.onclick=()=>{if(state.paused)return;state.addons.has(k)?state.addons.delete(k):state.addons.add(k);b.classList.toggle('selected',state.addons.has(k));sound()};g.append(b)}root.append(g);break;
- case 'review':title='10 Listings auf einen Schlag';detail='Tippe auf die zehn fertigen Listings, um sie zu prüfen.';button='Alle geprüften Listings weiter';disabled=flow.checked.size!==10;let chips=document.createElement('div');chips.className='reviewchips';for(let i=0;i<10;i++){let b=document.createElement('button');b.textContent=flow.checked.has(i)?'✓':String(i+1);b.classList.toggle('ok',flow.checked.has(i));b.onclick=()=>{if(state.paused)return;flow.review=i;refresh()};chips.append(b)}root.append(chips);if(flow.review>=0){let i=flow.review,r=flow.records[i];listingPreview(i,r.title+' · '+r.category+' · '+r.price+' €');let b=document.createElement('button');b.className='action secondary';b.textContent='Angaben bestätigen';b.onclick=()=>{if(state.paused)return;flow.checked.add(i);flow.review=-1;refresh();sound()};root.append(b)}break;
+ case 'review':{
+ title=flow.records.length+' Listings auf einen Schlag';detail='Scrolle durch die Artikel und bestätige alle gemeinsam.';button='Alle geprüft – fertig';disabled=flow.records.length!==jobs.length;
+ const list=document.createElement('ol');list.className='bulkReviewList';list.tabIndex=0;list.setAttribute('aria-label','Alle erstellten Produktlistings');
+ flow.records.forEach((r,i)=>{
+  const row=document.createElement('li');row.className='bulkReviewRow';
+  const cv=document.createElement('canvas');cv.width=160;cv.height=120;cv.setAttribute('aria-hidden','true');
+  const ctx=cv.getContext('2d');ctx.fillStyle='#efeff2';ctx.fillRect(0,0,160,120);productArt(ctx,160,120,i);
+  const info=document.createElement('div');info.className='bulkReviewInfo';
+  const name=document.createElement('strong');name.textContent=r.title;
+  const meta=document.createElement('span');meta.textContent=r.category+' · EAN '+r.ean;
+  info.append(name,meta);
+  const price=document.createElement('span');price.className='bulkReviewPrice';price.textContent=new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR',maximumFractionDigits:2}).format(r.price);
+  row.append(cv,info,price);list.append(row);
+ });
+ root.append(list);list.scrollTop=reviewScroll;break;
+ }
  case 'export':{title='Vertriebskanäle wählen';detail='10 geprüfte Angebote exportieren. Mehrfachauswahl möglich.';button='Export starten'+(flow.channels.size?' · '+flow.channels.size+' Kanäle':'');disabled=!flow.channels.size;const g=document.createElement('div');g.className='task-options';for(const channel of ['eBay','Shopify','JTL-Wawi CSV','Datei-Export']){const b=document.createElement('button');b.textContent=channel;b.setAttribute('aria-pressed',String(flow.channels.has(channel)));b.classList.toggle('selected',flow.channels.has(channel));b.onclick=()=>{if(state.paused)return;flow.channels.has(channel)?flow.channels.delete(channel):flow.channels.add(channel);b.classList.toggle('selected',flow.channels.has(channel));b.setAttribute('aria-pressed',String(flow.channels.has(channel)));$('act').disabled=!flow.channels.size;$('act').textContent='Export starten'+(flow.channels.size?' · '+flow.channels.size+' Kanäle':'');sound()};g.append(b)}root.append(g);break;}
  }}else{switch(p){
  case 'pick':title=j.name;detail='Nimm den markierten Artikel von der Palette.';button='Artikel aufnehmen';break;
