@@ -125,16 +125,17 @@ function resize(){let w=innerWidth,h=innerHeight;renderer.setPixelRatio(Math.min
 function play(name){if(!mixer||currentAction===name)return;let a=actions[name]||actions.idle;if(!a)return;if(currentAction&&actions[currentAction])actions[currentAction].fadeOut(.20);a.paused=false;a.reset().fadeIn(.20).play();currentAction=name}
 const intro={step:0,choice:false,done:false,transition:0,model:null,desk:null,cam:null,speech:true,lastLine:'',entered:0};
 let trainerProps,trainingKey,stageGlows=[],deliveryFX=[],resultBoard;
+const INTRO_RATE=1.12;
 const script=[
- {name:'Lagerleiter',tag:'ERSTER ARBEITSTAG',line:'Willkommen, Certoro! Ich zeige dir, wie wir hier Artikel anlegen.',action:'Los geht’s',cam:'two'},
- {name:'Lagerleiter',tag:'SCHRITT 01 / 03',line:'Zuerst fotografieren wir jedes Produkt einzeln.',action:'Produktfotos machen',cam:'product'},
- {name:'Lagerleiter',tag:'SCHRITT 02 / 03',line:'Dann suchen wir die EAN und alle Produktdaten zusammen.',action:'Artikelnummer finden',cam:'desk'},
- {name:'Lagerleiter',tag:'SCHRITT 03 / 03',line:'Jetzt schreiben wir Titel und Beschreibung. Für jeden Artikel.',action:'Titel erfassen',cam:'desk'},
- {name:'Certoro',tag:'EIN ANDERER WEG',line:'Ich hab’s verstanden.',action:'Weiter',cam:'hero'},
- {name:'Certoro',tag:'EIN ANDERER WEG',line:'Aber das geht doch viel einfacher. Gib mir eine ganze Palette!',action:'Zeig es mir!',cam:'hero'},
- {name:'Lagerleiter',tag:'DIE HERAUSFORDERUNG',line:'Na gut. Gleiche Ware, gleicher Auftrag. Zeig mir, was du kannst.',action:'Tore öffnen',cam:'two'}
+ {name:'Lagerleiter',tag:'ERSTER ARBEITSTAG',line:'Diese Produkte sollen online verkauft werden. Ich zeige dir, wie.',cam:'two',seconds:5.721,visual:'Dein Auftrag: Produkte online zum Verkauf anbieten.'},
+ {name:'Lagerleiter',tag:'SCHRITT 1 VON 3',line:'Zuerst fotografieren wir jedes Produkt einzeln.',cam:'product',seconds:3.396,visual:'01 · PRODUKTFOTO AUFNEHMEN'},
+ {name:'Lagerleiter',tag:'SCHRITT 2 VON 3',line:'Dann suchen wir die Artikelnummer und die Produktdaten.',cam:'desk',seconds:4.049,visual:'02 · ARTIKELNUMMER UND DATEN RECHERCHIEREN'},
+ {name:'Lagerleiter',tag:'SCHRITT 3 VON 3',line:'Jetzt schreiben wir Titel und Beschreibung.',cam:'desk',seconds:3.318,visual:'03 · VERKAUFSANGEBOT ERSTELLEN'},
+ {name:'Certoro',tag:'EIN ANDERER WEG',line:'Ich hab’s verstanden.',cam:'hero',seconds:1.150,visual:''},
+ {name:'Certoro',tag:'EIN ANDERER WEG',line:'Aber das geht doch viel einfacher. Gib mir eine ganze Palette!',cam:'hero',seconds:3.083,visual:''},
+ {name:'Lagerleiter',tag:'DIE HERAUSFORDERUNG',line:'Jeder bekommt zehn Produkte. Wer hat zuerst alle Angebote fertig?',cam:'delivery',seconds:5.068,visual:'10 PRODUKTE · 2 MITARBEITER · 1 AUFGABE'}
 ];
-const VOICE_URLS = ["https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_114631_31d44b8c-e7f5-4fd9-9291-03ecda6ee943.mp3", "https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_114630_cf56d928-e09f-48c2-8cb3-94b37dcc6c17.mp3", "https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_114532_13b4c53d-c6fb-4ef7-b30f-a79695782b17.mp3", "https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_114630_96b6aa6e-aa07-43d0-9af8-383c1a715ad8.mp3", "https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_114530_9afbe869-78a2-4253-a359-d417fcaa39a9.mp3", "https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_114632_19c64e89-5efb-4e71-91f2-96bedc51e1a2.mp3", "https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_114632_1377c2a2-69c9-4fdd-9d54-4a1b954f460f.mp3", "https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_114629_b3a43d45-e688-414b-bb69-7f0161378012.mp3", "https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_114635_488826b5-9988-48e1-90c2-5a4bfd7f671b.mp3"];
+const VOICE_URLS = ["https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_153449_f6d346d5-9d79-4c85-b0da-feaae1d72102.mp3","https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_114630_cf56d928-e09f-48c2-8cb3-94b37dcc6c17.mp3","https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_153448_7f26eb8e-b7f6-49c3-8154-b22a1f67e9b9.mp3","https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_153447_f51e9091-2ea5-43fe-b7a7-4180b413d2a2.mp3","https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_114530_9afbe869-78a2-4253-a359-d417fcaa39a9.mp3","https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_114632_19c64e89-5efb-4e71-91f2-96bedc51e1a2.mp3","https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_153447_fcb07435-130d-4d31-a456-c82424b442f8.mp3","https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_114629_b3a43d45-e688-414b-bb69-7f0161378012.mp3","https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_114635_488826b5-9988-48e1-90c2-5a4bfd7f671b.mp3"];
 const VOICE_LINES=[...script.map(s=>s.line),'Ich bin fertig. Wie weit bist du?','Ich bin noch dabei, die Artikel einzeln anzulegen …'];
 let voiceSource=null, voicePlaying=false, voiceWho='', voiceTicket=0, voiceAudio=null, voiceLine=-1;
 const voiceBytes=VOICE_URLS.map(url=>fetch(url,{cache:'force-cache'}).then(r=>{if(!r.ok)throw Error('Audio HTTP '+r.status);return r.arrayBuffer()}).catch(()=>null));
@@ -150,16 +151,51 @@ async function say(line,who){
   let buf=voiceDecoded.get(i);
   if(!buf){let bytes=await voiceBytes[i];if(!bytes)throw Error('No audio');buf=await ac.decodeAudioData(bytes.slice(0));voiceDecoded.set(i,buf)}
   if(ticket!==voiceTicket||state.muted)return;
-  const src=ac.createBufferSource(),gain=ac.createGain();gain.gain.value=.92;src.buffer=buf;src.connect(gain);gain.connect(ac.destination);voiceSource=src;voicePlaying=true;src.onended=()=>{if(ticket===voiceTicket){voicePlaying=false;voiceSource=null}};src.start();
+  const src=ac.createBufferSource(),gain=ac.createGain();gain.gain.value=.92;src.buffer=buf;src.playbackRate.value=state.phase==='intro'?INTRO_RATE:1;src.connect(gain);gain.connect(ac.destination);voiceSource=src;voicePlaying=true;src.onended=()=>{if(ticket===voiceTicket){voicePlaying=false;voiceSource=null}};src.start();
  }catch(e){
   if(ticket!==voiceTicket||state.muted)return;
-  try{const audio=new Audio(VOICE_URLS[i]);voiceAudio=audio;audio.onended=()=>{if(ticket===voiceTicket){voicePlaying=false;voiceAudio=null}};await audio.play();if(ticket===voiceTicket)voicePlaying=true;else audio.pause()}catch(e){if(ticket===voiceTicket)voicePlaying=false}
+  try{const audio=new Audio(VOICE_URLS[i]);audio.playbackRate=state.phase==='intro'?INTRO_RATE:1;voiceAudio=audio;audio.onended=()=>{if(ticket===voiceTicket){voicePlaying=false;voiceAudio=null}};await audio.play();if(ticket===voiceTicket)voicePlaying=true;else audio.pause()}catch(e){if(ticket===voiceTicket)voicePlaying=false}
  }
 }
-function replayVoice(){if(voiceLine<0)return;if(state.muted){state.muted=false;$('sound').textContent='Ton an'}say(VOICE_LINES[voiceLine],voiceWho)}
-function storyStep(){const q=script[intro.step];if(!q)return;intro.entered=performance.now()/1000;intro.choice=false;$('viewfinder').classList.toggle('hidden',intro.step!==1);$('story').classList.remove('hidden');$('storyTag').textContent=q.tag;$('speaker').textContent=q.name;$('storyLine').textContent=q.line;$('storyAct').textContent=q.action;$('storyAct').disabled=false;$('storyTask').replaceChildren();$('story').classList.toggle('bull',q.name==='Certoro');$('chapter').textContent='01 / EINARBEITUNG';if(intro.step===1){let box=document.createElement('div');box.className='camera-frame';box.innerHTML='<i></i><i></i><i></i><i></i><span>PRODUKT 001 · KAMERA BEREIT</span>'; $('storyTask').append(box)}if(intro.step===2){let box=document.createElement('div');box.className='story-options';['426010000103','426010000100','426010000109'].forEach(e=>{let b=document.createElement('button');b.textContent=e;b.onclick=()=>{if(e==='426010000100'){intro.choice=true;b.classList.add('selected');$('storyAct').disabled=false;sound('scan')}else{b.classList.add('wrong');sound()}};box.append(b)});$('storyTask').append(box);$('storyAct').disabled=true}if(intro.step===3){let box=document.createElement('input');box.id='tutorialTitle';box.className='taskinput';box.placeholder='Standmixer · Neu';box.setAttribute('aria-label','Produkttitel');box.oninput=()=>{$('storyAct').disabled=box.value.trim().length<5};$('storyTask').append(box);$('storyAct').disabled=true}say(q.line,q.name);autoCamera=true;overview=false}
-function advanceStory(){if(state.phase!=='intro'||$('storyAct').disabled)return;if(intro.step===1)capture();else sound();if(intro.step===3&&$('tutorialTitle').value.trim().length<5)return;if(intro.step===6){stopVoice();$('viewfinder').classList.add('hidden');intro.done=true;state.phase='arrival';state.gate=0;$('story').classList.add('hidden');$('chapter').textContent='02 / WARENEINGANG';sound('gate');toast('ZWEI PALETTEN · GLEICHE WARE');return}intro.step++;storyStep()}
-function start(){if(!model)return;state.phase='intro';intro.step=0;intro.done=false;state.gate=0;$('overlay').classList.add('hidden');$('top').classList.add('cinematic');$('chapter').classList.remove('hidden');$('race').classList.add('hidden');$('storyAct').onclick=advanceStory;storyStep();sound()}
+function replayVoice(){if(voiceLine<0)return;if(state.phase==='intro')intro.elapsed=0;if(state.muted){state.muted=false;$('sound').textContent='Ton an'}say(VOICE_LINES[voiceLine],voiceWho)}
+function storyStep(){
+ const q=script[intro.step];if(!q)return;intro.elapsed=0;intro.shutter=false;
+ $('viewfinder').classList.toggle('hidden',intro.step!==1);
+ $('story').classList.remove('hidden');$('story').classList.add('autoIntro');$('storyTag').textContent=q.tag;
+ $('speaker').textContent=q.name;$('storyLine').textContent=q.line;
+ $('storyAct').textContent='Einführung überspringen';$('storyAct').disabled=false;$('storyTask').replaceChildren();
+ $('story').classList.toggle('bull',q.name==='Certoro');$('chapter').textContent='DEIN ZIEL · 10 PRODUKTE ONLINE ANBIETEN';
+ if(q.visual){const el=document.createElement('div');el.className='introVisual';el.textContent=q.visual;$('storyTask').append(el)}
+ if(intro.step===2){const el=document.createElement('div');el.className='introSample';el.textContent='Artikelnummer: 426010000100 · Standmixer';$('storyTask').append(el)}
+ if(intro.step===3){const el=document.createElement('div');el.className='introSample';el.textContent='Standmixer · Neuware · Originalverpackt';$('storyTask').append(el)}
+ if(intro.step===6)sound('gate');
+ say(q.line,q.name);autoCamera=true;overview=false;
+}
+function finishIntro(){
+ if(state.phase!=='intro')return;stopVoice();$('viewfinder').classList.add('hidden');intro.done=true;
+ $('story').classList.add('hidden');$('story').classList.remove('autoIntro');$('chapter').textContent='02 / WARENEINGANG';
+ if(state.gate>=1){choose();return}
+ state.phase='arrival';sound('gate');toast('ZWEI PALETTEN · GLEICHE WARE');
+}
+function advanceStory(){
+ if(state.phase!=='intro')return;
+ if(intro.step>=script.length-1){finishIntro();return}
+ intro.step++;storyStep();
+}
+function tickIntro(dt){
+ const q=script[intro.step];intro.elapsed+=dt;
+ if(intro.step===1&&!intro.shutter&&intro.elapsed>=1.35){intro.shutter=true;capture()}
+ if(intro.step===6)advanceGate(dt);
+ const duration=Math.max(1.55,q.seconds/INTRO_RATE+.20);
+ // Audio may start late on slow connections: allow it to finish, with a finite fallback.
+ if(intro.elapsed>=duration&&(!voicePlaying||intro.elapsed>=duration+2))advanceStory();
+}
+function start(){
+ if(!model||state.phase!=='menu')return;
+ state.phase='intro';intro.step=0;intro.done=false;state.gate=0;
+ $('overlay').classList.add('hidden');$('top').classList.add('cinematic');$('chapter').classList.remove('hidden');$('race').classList.add('hidden');
+ $('storyAct').onclick=finishIntro;storyStep();sound();
+}
 function makeTraining(){const g=group(scene,0,0,.55);intro.desk=g;
  const dark=mat(0x24232c,.45,.22),silver=mat(0x77818c,.37,.75),wood=mat(0x554c45,.65);
  box(g,2.25,.13,.91,0,1.04,0,wood);for(let x of [-.96,.96])for(let z of [-.34,.34])box(g,.075,1,.075,x,.50,z,silver);
@@ -178,16 +214,17 @@ function makeTraining(){const g=group(scene,0,0,.55);intro.desk=g;
  g.visible=false;
 }
 function cinematicActors(dt,time){
- if(!['intro','arrival','choose'].includes(state.phase)||!model)return false;let active=state.phase==='intro';intro.desk.visible=active;
+ if(!['intro','arrival','choose'].includes(state.phase)||!model)return false;let active=state.phase==='intro'&&intro.step!==6;intro.desk.visible=active;
  let cp='idle',cert=v(-1.62,0,1.10),man=v(1.34,0,1.07);if(!active){cert=v(-3.25,0,2.25);man=v(3.25,0,2.25)}
  let a=active?script[intro.step]:null;if(a?.name==='Certoro'&&voicePlaying&&voiceWho==='Certoro')cp='talk';else if(active&&intro.step===1)cp='point';
  certPos.lerp(cert,1-Math.exp(-dt*5));manualPos.lerp(man,1-Math.exp(-dt*5));model.position.copy(certPos);worker.g.position.copy(manualPos);model.rotation.y=lerp(model.rotation.y,active?.60:0,1-Math.exp(-dt*5));worker.g.rotation.y=lerp(worker.g.rotation.y,active?-.45:0,1-Math.exp(-dt*5));play(cp);
  if(phoneModel)phoneModel.visible=active&&intro.step===1;if(mixer)mixer.update(dt);
- let gest=active&&a?.name==='Lagerleiter'&&voicePlaying?Math.sin(time*4)*.17:0;worker.arms.forEach(([arm,f],i)=>{arm.rotation.x=i===0?-.38-gest:-.12;arm.rotation.z=i===0?.14:-.14;f.rotation.x=i===0?-.62-gest:0});worker.legs.forEach(([a,k])=>{a.rotation.x=0;k.rotation.x=0});scanBeam.visible=false;return true
+ let gest=active&&a?.name==='Lagerleiter'&&voicePlaying?Math.sin(time*4)*.17:0;worker.arms.forEach(([arm,f],i)=>{const demo=active&&intro.step>=1&&intro.step<=3;arm.rotation.x=demo?(intro.step===1?-1.05:-.65)+gest:(i===0?-.38-gest:-.12);arm.rotation.z=i===0?.14:-.14;f.rotation.x=demo?(intro.step===1?-.80:-.65+Math.sin(time*9+i)*.12):(i===0?-.62-gest:0)});worker.legs.forEach(([a,k])=>{a.rotation.x=0;k.rotation.x=0});scanBeam.visible=false;return true
 }
 function cinematicCamera(dt){let portrait=innerWidth/innerHeight<.85;let target,angle,elev,distance;
  if(state.phase==='intro'){let q=script[intro.step];const shot=q.cam;
- if(shot==='hero'){target=v(-1.52,1.66,1.0);angle=.13;elev=.12;distance=portrait?4.65:4.3}
+ if(shot==='delivery'){target=v(0,1.5,-3.4);angle=0;elev=.35;distance=portrait?16.2:13.0}
+ else if(shot==='hero'){target=v(-1.52,1.66,1.0);angle=.13;elev=.12;distance=portrait?4.65:4.3}
  else if(shot==='product'){target=v(-.18,1.23,.53);angle=.17;elev=.24;distance=portrait?4.7:5.1}
  else if(shot==='desk'){target=v(.43,1.27,.60);angle=-.15;elev=.18;distance=portrait?5.25:5.2}
  else{target=v(-.05,1.31,.8);angle=.05;elev=.13;distance=portrait?8.2:7.1}}
@@ -203,7 +240,11 @@ const ray=new T.Raycaster(),pointer=new T.Vector2();
 function refresh(){flow.uiKey='';updateUI()}
 function msg(t){toast(t);sound()}
 function capture(){ $('flash').style.opacity='.75';setTimeout(()=>$('flash').style.opacity='0',120);sound('scan') }
-function choose(){state.phase='choose';$('chapter').textContent='03 / DEINE ENTSCHEIDUNG';$('race').classList.add('hidden');$('panel').innerHTML='<div class="eyebrow">Der Auftrag ist da</div><div class="hero" style="font-size:clamp(40px,6.4vw,68px)">Wer bist<span class="accent">du?</span></div><div class="roles"><button class="role cert" id="chooseCert"><div class="label">KI-gestützt</div><div class="role-title">CERTORO</div><div class="desc">Der neue Mitarbeiter.</div><div class="choose">Spielen →</div></button><button class="role man" id="chooseManual"><div class="label">Herkömmlich</div><div class="role-title">MANUELL</div><div class="desc">Der erfahrene Lagerleiter.</div><div class="choose">Spielen →</div></button></div>';$('overlay').classList.remove('hidden');$('chooseCert').onclick=()=>select('cert');$('chooseManual').onclick=()=>select('manual')}
+function choose(){
+ state.phase='choose';$('chapter').classList.add('hidden');$('race').classList.add('hidden');
+ $('panel').innerHTML='<div class="eyebrow">DEINE HERAUSFORDERUNG</div><div class="hero" style="font-size:clamp(35px,6.2vw,65px)">10 Produkte.<span class="accent">1 Aufgabe.</span></div><p class="subtitle">Wer bringt seine Produkte zuerst online in den Verkauf?<br>Wähle deinen Mitarbeiter.</p><div class="roles"><button class="role cert" id="chooseCert"><div class="label">MIT KI</div><div class="role-title">CERTORO</div><div class="desc">Arbeite mit Smartphone und KI.</div><div class="choose">Certoro spielen →</div></button><button class="role man" id="chooseManual"><div class="label">OHNE KI</div><div class="role-title">LAGERLEITER</div><div class="desc">Arbeite mit Kamera und Computer.</div><div class="choose">Lagerleiter spielen →</div></button></div>';
+ $('overlay').classList.remove('hidden');$('chooseCert').onclick=()=>select('cert');$('chooseManual').onclick=()=>select('manual');
+}
 function select(role){$('top').classList.remove('cinematic');$('chapter').classList.add('hidden');state.role=role;state.phase='playing';state.elapsed=0;state.autoTime=0;state.manualTime=0;state.autoStep=0;state.manualItem=0;state.manualStep=0;state.autoRun=false;state.manualRun=false;state.addons.clear();flow.certPhase='approach';flow.manualPhase='pick';flow.selected=-1;flow.checked.clear();flow.review=-1;flow.channel=null;flow.channels.clear();flow.records=[];flow.manualDraft={};flow.simCert=0;flow.simManual=0;flow.feedback='';$('overlay').classList.add('hidden');$('race').classList.remove('hidden');$('hud').classList.remove('hidden');$('pause').classList.remove('hidden');$('view').classList.remove('hidden');$('certRace').classList.toggle('active',role==='cert');$('manualRace').classList.toggle('active',role==='manual');autoCamera=true;overview=false;refresh();sound()}
 function setCert(p){flow.certPhase=p;flow.feedback='';flow.correct=false;refresh()}
 function setManual(p){flow.manualPhase=p;flow.feedback='';flow.correct=false;refresh()}
@@ -235,7 +276,8 @@ function act(){if(state.paused||state.ending||state.phase!=='playing')return;sou
  case 'listing':if(!flow.correct)return;flow.manualDraft.channel=flow.channel;flow.records.push({...flow.manualDraft,sku:j.sku});flow.simManual+=35;state.manualTime=flow.simManual;state.manualItem++;state.manualStep=0;state.manualRun=false;flow.selected=-1;flow.channel=null;flow.manualDraft={};if(state.manualItem===10){finish();return}setManual('pick');msg('Artikel '+state.manualItem+' fertig');break;
  }}}
 function fmt(sec){sec=Math.max(0,Math.floor(sec+1e-5));return String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0')}
-function tick(dt){if(state.phase==='outro'){endingScene.elapsed+=dt;return}if(state.phase==='arrival'){state.gate=Math.min(1,state.gate+dt/4.8);let d=clamp(state.gate*1.9,0,1),travel=clamp((state.gate-.38)/.62,0,1);doorGroups.forEach(g=>g.position.y=3.95*d*d*(3-2*d));pallets.forEach(p=>p.position.z=lerp(-8.6,-1.9,travel*travel*(3-2*travel)));laneLights.forEach(l=>l.material.color.set(state.gate>.45?0x87f943:0xff544f));if(state.gate>=1)choose();return}if(state.phase!=='playing'||state.paused||state.ending)return;state.elapsed+=dt;
+function advanceGate(dt){state.gate=Math.min(1,state.gate+dt/4.8);let d=clamp(state.gate*1.9,0,1),travel=clamp((state.gate-.38)/.62,0,1);doorGroups.forEach(g=>g.position.y=3.95*d*d*(3-2*d));pallets.forEach(p=>p.position.z=lerp(-8.6,-1.9,travel*travel*(3-2*travel)));laneLights.forEach(l=>l.material.color.set(state.gate>.45?0x87f943:0xff544f));}
+function tick(dt){if(state.phase==='intro'){tickIntro(dt);return}if(state.phase==='outro'){endingScene.elapsed+=dt;return}if(state.phase==='arrival'){advanceGate(dt);if(state.gate>=1)choose();return}if(state.phase!=='playing'||state.paused||state.ending)return;state.elapsed+=dt;
  // Rival is a visual simulation; no timers gate any player action.
  if(state.role==='cert'){state.manualTime=Math.min(1800,state.elapsed);state.manualItem=Math.floor(state.manualTime/180);state.manualStep=Math.min(5,Math.floor((state.manualTime%180)/30));state.manualRun=true}
  else{state.autoTime=Math.min(90,state.elapsed);state.autoStep=state.autoTime<9?0:state.autoTime<15?1:state.autoTime<90?2:3;state.autoRun=state.autoStep<3}
@@ -244,13 +286,13 @@ function optionList(values,correct,cb){const root=$('taskContent');let el=docume
 function inputBox(id,placeholder){let el=document.createElement('input');el.id=id;el.className='taskinput';el.placeholder=placeholder;el.autocomplete='off';el.setAttribute('aria-label',placeholder);$('taskContent').append(el)}
 function renderTask(){let cert=state.role==='cert',p=cert?flow.certPhase:flow.manualPhase,j=jobs[Math.min(9,state.manualItem)],title='',detail='',button='Weiter',disabled=false;const root=$('taskContent');const reviewScroll=root.querySelector('.bulkReviewList')?.scrollTop||0;root.replaceChildren();$('act').classList.toggle('manual',!cert);$('act').classList.remove('hidden');$('phaseLabel').textContent=cert?'CERTORO APP':'ARTIKEL '+(state.manualItem+1)+' / 10';$('taskCount').textContent=cert?({approach:'1/6',photo:'2/6',sofa:'3/6',addons:'4/6',review:'5/6',export:'6/6'}[p]):({pick:'1/11',photo:'2/11',identify:'3/11',title:'4/11',category:'5/11',description:'6/11',price:'7/11',image:'8/11',marketing:'9/11',compliance:'10/11',listing:'11/11'}[p]);
  if(cert){switch(p){
- case 'approach':title='Zur Palette';detail='Tippe auf die Produkte.';button='Zur Palette gehen';break;
- case 'photo':title='Alle Artikel im Sucher';detail='10 Produkte · ein Foto-Pool';button='Foto aufnehmen';break;
- case 'sofa':title='Foto-Pool erfasst';detail='Jetzt zur Lounge.';button='Auf das Sofa setzen';break;
- case 'addons':title='Dein digitaler Assistent';detail='Wähle, was die KI zusätzlich erledigt.';button='Auftrag ausführen';let g=document.createElement('div');g.className='task-options';for(let [k,n] of addons){let b=document.createElement('button');b.textContent=n;b.classList.toggle('selected',state.addons.has(k));b.onclick=()=>{if(state.paused)return;state.addons.has(k)?state.addons.delete(k):state.addons.add(k);b.classList.toggle('selected',state.addons.has(k));sound()};g.append(b)}root.append(g);break;
+ case 'approach':title='Deine 10 Produkte';detail='Tippe auf die Palette oder den Button.';button='Zur Palette gehen';break;
+ case 'photo':title='Alle Produkte fotografieren';detail='Certoro erfasst die gesamte Palette auf einmal.';button='Alle Produkte erfassen';break;
+ case 'sofa':title='10 Produkte erfasst';detail='Die KI übernimmt. Setz dich aufs Sofa.';button='Auf das Sofa setzen';break;
+ case 'addons':title='Was soll Certoro erledigen?';detail='Wähle zusätzliche Funktionen aus.';button='Auftrag ausführen';let g=document.createElement('div');g.className='task-options';for(let [k,n] of addons){let b=document.createElement('button');b.textContent=n;b.classList.toggle('selected',state.addons.has(k));b.onclick=()=>{if(state.paused)return;state.addons.has(k)?state.addons.delete(k):state.addons.add(k);b.classList.toggle('selected',state.addons.has(k));sound()};g.append(b)}root.append(g);break;
  case 'review':{
- title=flow.records.length+' Listings auf einen Schlag';detail='Scrolle durch die Artikel und bestätige alle gemeinsam.';button='Alle geprüft – fertig';disabled=flow.records.length!==jobs.length;
- const list=document.createElement('ol');list.className='bulkReviewList';list.tabIndex=0;list.setAttribute('aria-label','Alle erstellten Produktlistings');
+ title=flow.records.length+' fertige Verkaufsangebote';detail='Scrolle durch die Artikel und bestätige alle gemeinsam.';button='Alle geprüft – fertig';disabled=flow.records.length!==jobs.length;
+ const list=document.createElement('ol');list.className='bulkReviewList';list.tabIndex=0;list.setAttribute('aria-label','Alle erstellten Verkaufsangebote');
  flow.records.forEach((r,i)=>{
   const row=document.createElement('li');row.className='bulkReviewRow';
   const cv=document.createElement('canvas');cv.width=160;cv.height=120;cv.setAttribute('aria-hidden','true');
@@ -264,11 +306,11 @@ function renderTask(){let cert=state.role==='cert',p=cert?flow.certPhase:flow.ma
  });
  root.append(list);list.scrollTop=reviewScroll;break;
  }
- case 'export':{title='Vertriebskanäle wählen';detail='10 geprüfte Angebote exportieren. Mehrfachauswahl möglich.';button='Export starten'+(flow.channels.size?' · '+flow.channels.size+' Kanäle':'');disabled=!flow.channels.size;const g=document.createElement('div');g.className='task-options';for(const channel of ['eBay','Shopify','JTL-Wawi CSV','Datei-Export']){const b=document.createElement('button');b.textContent=channel;b.setAttribute('aria-pressed',String(flow.channels.has(channel)));b.classList.toggle('selected',flow.channels.has(channel));b.onclick=()=>{if(state.paused)return;flow.channels.has(channel)?flow.channels.delete(channel):flow.channels.add(channel);b.classList.toggle('selected',flow.channels.has(channel));b.setAttribute('aria-pressed',String(flow.channels.has(channel)));$('act').disabled=!flow.channels.size;$('act').textContent='Export starten'+(flow.channels.size?' · '+flow.channels.size+' Kanäle':'');sound()};g.append(b)}root.append(g);break;}
+ case 'export':{title='Vertriebskanäle wählen';detail='Wo sollen die 10 Angebote erscheinen? Mehrere möglich.';button='Export starten'+(flow.channels.size?' · '+flow.channels.size+' Kanäle':'');disabled=!flow.channels.size;const g=document.createElement('div');g.className='task-options';for(const channel of ['eBay','Shopify','JTL-Wawi CSV','Datei-Export']){const b=document.createElement('button');b.textContent=channel;b.setAttribute('aria-pressed',String(flow.channels.has(channel)));b.classList.toggle('selected',flow.channels.has(channel));b.onclick=()=>{if(state.paused)return;flow.channels.has(channel)?flow.channels.delete(channel):flow.channels.add(channel);b.classList.toggle('selected',flow.channels.has(channel));b.setAttribute('aria-pressed',String(flow.channels.has(channel)));$('act').disabled=!flow.channels.size;$('act').textContent='Export starten'+(flow.channels.size?' · '+flow.channels.size+' Kanäle':'');sound()};g.append(b)}root.append(g);break;}
  }}else{switch(p){
  case 'pick':title=j.name;detail='Nimm den markierten Artikel von der Palette.';button='Artikel aufnehmen';break;
  case 'photo':title='Produktfotografie';detail=j.name+' · einzeln fotografieren';button='Foto aufnehmen';break;
- case 'identify':title='Artikel identifizieren';detail='Barcode am Karton: '+j.ean;button='EAN übernehmen';disabled=true;optionList([jobs[(state.manualItem+3)%10].ean,j.ean,jobs[(state.manualItem+6)%10].ean].sort(),j.ean);break;
+ case 'identify':title='Artikel identifizieren';detail='Artikelnummer (EAN) am Karton: '+j.ean;button='EAN übernehmen';disabled=true;optionList([jobs[(state.manualItem+3)%10].ean,j.ean,jobs[(state.manualItem+6)%10].ean].sort(),j.ean);break;
  case 'title':title='Titel schreiben';detail='Produktname + Zustand';button='Titel speichern';inputBox('titleInput',j.name+' · Neu');break;
  case 'category':title='Kategorie recherchieren';detail=j.name;button='Kategorie übernehmen';disabled=true;optionList([...new Set([j.category,'FAHRZEUG','MÖBEL'])].sort(),j.category);break;
  case 'description':title='Beschreibung schreiben';detail='Zustand und Produkt beschreiben.';button='Beschreibung speichern';inputBox('descInput','z. B. Neu, originalverpackt');break;
@@ -276,7 +318,7 @@ function renderTask(){let cert=state.role==='cert',p=cert?flow.certPhase:flow.ma
  case 'image':title='Produktbild bearbeiten';detail='Hauptbild für den Shop freistellen.';listingPreview(state.manualItem,'Produktfoto · Vorschau');button='Bild speichern';disabled=true;optionList([{label:'Weißer Hintergrund',value:'white'},{label:'Lagerregal',value:'rack'},{label:'Unbearbeitet',value:'raw'}],'white');break;
  case 'marketing':title='Werbematerial erstellen';detail='Passendes Motiv für das Produkt auswählen.';button='Motiv speichern';disabled=true;optionList([{label:j.name+' · Neu',value:'product'},{label:'Fremder Artikel',value:'other'},{label:'Leeres Motiv',value:'blank'}],'product');break;
  case 'compliance':title='Angaben kontrollieren';detail='Zustand, Kategorie und erforderliche Nachweise prüfen.';button='Prüfung speichern';disabled=true;optionList([{label:'Prüfung durchgeführt',value:'checked'},{label:'Ungeprüft veröffentlichen',value:'skip'}],'checked');break;
- case 'listing':title='Listing exportieren';detail='Alle Daten für '+j.name+' übertragen.';button='Artikel abschließen';disabled=true;optionList(['eBay','Shopify','JTL-Wawi CSV'],null,val=>flow.channel=val);break;
+ case 'listing':title='Verkaufsangebot veröffentlichen';detail='Wähle einen Verkaufskanal für '+j.name+'.';button='Artikel abschließen';disabled=true;optionList(['eBay','Shopify','JTL-Wawi CSV'],null,val=>flow.channel=val);break;
  }}
  $('phaseTitle').textContent=title;$('phaseText').textContent=detail;$('act').textContent=button;$('act').disabled=disabled||state.paused;
 }
@@ -301,7 +343,7 @@ function watchColleague(dt,time){
  play(walking?'walk':voicePlaying&&voiceWho==='Certoro'?'talk':'idle');if(mixer)mixer.update(dt);if(phoneModel)phoneModel.visible=false;
  manualTarget.set(4.7,0,4.1);manualPos.lerp(manualTarget,1-Math.exp(-dt*4));worker.g.position.copy(manualPos);worker.g.rotation.y=lerp(worker.g.rotation.y,Math.PI,1-Math.exp(-dt*5));
  worker.arms.forEach(([a,f],i)=>{a.rotation.x=-.72+Math.sin(time*8+i)*.10;a.rotation.z=(i?1:-1)*.12;f.rotation.x=-.65+Math.sin(time*11+i)*.16});worker.legs.forEach(([a,k])=>{a.rotation.x=0;k.rotation.x=0});worker.torso.rotation.x=.10;scanBeam.visible=false;
- if(t>=5.2&&!endingScene.said){endingScene.said=true;$('story').classList.remove('hidden');$('story').classList.add('bull');$('storyTag').textContent='10 / 10 LISTINGS FERTIG';$('speaker').textContent='Certoro';$('storyLine').textContent='Ich bin fertig. Wie weit bist du?';$('storyTask').replaceChildren();$('storyAct').textContent='Weiter';$('storyAct').disabled=false;$('storyAct').onclick=()=>{if(endingScene.observed){$('story').classList.add('hidden');$('chapter').classList.add('hidden');showResult()}else{endingScene.observed=true;$('story').classList.remove('bull');$('speaker').textContent='Lagerleiter';$('storyTag').textContent='NOCH MITTEN IN DER ARBEIT';$('storyLine').textContent='Ich bin noch dabei, die Artikel einzeln anzulegen …';$('storyAct').textContent='Ergebnis ansehen';say($('storyLine').textContent,'Lagerleiter')}};say($('storyLine').textContent,'Certoro')}
+ if(t>=5.2&&!endingScene.said){endingScene.said=true;$('story').classList.remove('hidden');$('story').classList.add('bull');$('storyTag').textContent='10 / 10 ANGEBOTE FERTIG';$('speaker').textContent='Certoro';$('storyLine').textContent='Ich bin fertig. Wie weit bist du?';$('storyTask').replaceChildren();$('storyAct').textContent='Weiter';$('storyAct').disabled=false;$('storyAct').onclick=()=>{if(endingScene.observed){$('story').classList.add('hidden');$('chapter').classList.add('hidden');showResult()}else{endingScene.observed=true;$('story').classList.remove('bull');$('speaker').textContent='Lagerleiter';$('storyTag').textContent='NOCH MITTEN IN DER ARBEIT';$('storyLine').textContent='Ich bin noch dabei, die Artikel einzeln anzulegen …';$('storyAct').textContent='Ergebnis ansehen';say($('storyLine').textContent,'Lagerleiter')}};say($('storyLine').textContent,'Certoro')}
 }
 function showResult(){stopVoice();$('story').classList.add('hidden');$('chapter').classList.add('hidden');$('viewfinder').classList.add('hidden');state.ending=true;state.phase='done';state.paused=false;sound('done');$('hud').classList.add('hidden');$('targetMarker').classList.add('hidden');$('panel').innerHTML='<div class="eyebrow">Auftrag abgeschlossen</div><div class="hero" style="font-size:clamp(43px,7vw,78px)">Weniger Aufwand.<span class="accent">Mehr Verkauf.</span></div><div class="resultgrid"><div class="card"><div class="label">Certoro*</div><div class="metric"><em>01:30</em></div></div><div class="card"><div class="label">Manuell*</div><div class="metric">30:00</div></div><div class="card"><div class="label">Zeitersparnis*</div><div class="metric"><em>95%</em></div></div></div><p class="subtitle" style="margin-bottom:8px">10 Produkte. Ein fertiger Verkaufsauftrag.</p><p class="small">Deine tatsächliche Spielzeit: '+fmt(state.elapsed)+'</p>'+(state.role==='cert'?'<div class="outputlist">'+addons.filter(a=>state.addons.has(a[0])).map(a=>'<span>✓ '+a[1]+'</span>').join('')+[...flow.channels].map(c=>'<span>✓ '+c+'</span>').join('')+'</div>':'')+'<button class="start" id="restart">NOCH EINMAL</button><p><a class="brandlink" href="https://certoro.de/" target="_blank" rel="noopener">Certoro entdecken ↗</a></p><p class="summary-note">*Simulierter Arbeitsaufwand, keine gemessene Produktleistung. Die Bearbeitung im Spiel ist beschleunigt.</p>';$('overlay').classList.remove('hidden');$('restart').onclick=()=>location.reload();$('pause').classList.add('hidden');$('view').classList.add('hidden')}
 function updateTarget(){let marker=$('targetMarker');if(state.phase!=='playing'||state.paused){marker.classList.add('hidden');return}let pos;if(state.role==='cert'){if(flow.certPhase==='approach'||flow.certPhase==='photo')pos=v(-3.25,1.15,-1.9);if(flow.certPhase==='sofa')pos=v(-4.8,1.0,3.25)}else if(flow.manualPhase==='pick'||flow.manualPhase==='photo'){let p=productsMeshes[1][state.manualItem];if(p)pos=p.g.getWorldPosition(v(0,0,0)).add(v(0,.85,0))}if(!pos){marker.classList.add('hidden');return}camera.updateMatrixWorld();pos.project(camera);if(pos.z>1||Math.abs(pos.x)>1||Math.abs(pos.y)>1){marker.classList.add('hidden');return}marker.style.left=(pos.x*.5+.5)*innerWidth+'px';marker.style.top=(-pos.y*.5+.5)*innerHeight+'px';marker.classList.remove('hidden')}
@@ -315,4 +357,5 @@ function updateActors(dt,time){if(state.phase==='outro'){watchColleague(dt,time)
  p.g.position.lerp(destination,1-Math.exp(-dt*4))});}
 function loop(){requestAnimationFrame(loop);let elapsedDelta=clock.getDelta(),dt=Math.min(elapsedDelta,.12),time=performance.now()/1000;tick(document.hidden?0:elapsedDelta);updateActors(state.paused?0:dt,time);if(!cinematicCamera(dt)&&autoCamera){let playing=state.phase==='playing'&&!overview,portrait=innerWidth/innerHeight<.8;let focus=playing?(state.role==='cert'?(state.autoStep>=1?-4.8:-3.15):3.55):0;let targetZ=playing?(state.role==='cert'&&state.autoStep>=1?3.9:state.role==='manual'&&state.manualStep>0?2.3:-.15):-.2;camTarget.x=lerp(camTarget.x,focus,.035);camTarget.z=lerp(camTarget.z,targetZ,.035);camTarget.y=lerp(camTarget.y,playing?(state.role==='cert'&&state.autoStep>=2?.18:1.0):.8,.03);yaw=lerp(yaw,.05,.025);pitch=lerp(pitch,playing?(portrait?.54:.39):(portrait?.76:.55),.025);dist=lerp(dist,playing?(portrait?9.8:10.5):(portrait?23:17.5),.025)}camera.position.set(camTarget.x+Math.sin(yaw)*Math.cos(pitch)*dist,camTarget.y+Math.sin(pitch)*dist,camTarget.z+Math.cos(yaw)*Math.cos(pitch)*dist);camera.lookAt(camTarget);if(time-lastUi>.15){lastUi=time;updateUI()}updateTarget();renderer.render(scene,camera)}
 try{init()}catch(e){console.error(e);$('loading').textContent='WebGL ist nicht verfügbar. Bitte einen aktuellen Browser verwenden.'}
+
 
