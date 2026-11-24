@@ -49,7 +49,7 @@ function makePallet(x,z,lane){const g=group(scene,x,0,z);for(let i=0;i<5;i++)box
 function makeRack(x,z){const g=group(scene,x,0,z);for(const xx of [-1.05,1.05])for(const zz of [-.43,.43])box(g,.085,3.25,.085,xx,1.625,zz,mat(0x454454,.5,.7));for(let lev=0;lev<3;lev++){const y=.25+lev*1.13;box(g,2.2,.09,1.0,0,y,0,0x43485b);box(g,2.2,.07,.1,0,y+.06,.5,P.purple);for(let j=0;j<3;j++){box(g,.60,.64,.76,-.69+j*.69,y+.37,0,mat([0x9b7750,0xb69c77,0x7b685a][(j+lev)%3]));box(g,.26,.16,.012,-.69+j*.69,y+.4,.39,0xddd9ca,false)}}}
 function makeDoor(x,lane){const g=group(scene,x,0,-6.9);box(g,4.35,.18,.5,0,3.95,0,mat(0x5a556b,.42,.7));for(let i of [-1,1]){box(g,.20,4.15,.55,i*2.17,2.07,0,mat(0x59556b,.45,.7));box(g,.08,3.95,.03,i*2.02,2,.28,P.purple)}box(g,4.1,3.8,.1,0,1.9,-.36,mat(0x08070e),false);const roll=group(g,0,0,0);for(let i=0;i<15;i++){box(roll,4.03,.245,.17,0,.13+i*.251,.07,mat(i%2===0?0x505467:0x45495b,.46,.62));box(roll,4.0,.018,.025,0,.25+i*.251,.18,0x777b8e,false)}doorGroups.push(roll);sign(g,lane?'TOR 02':'TOR 01',lane?'MANUELL':'CERTORO',2.6,.65,0,4.42,.33,lane?'#ffb46b':'#c6ff3d');const l=box(g,.75,.10,.14,0,3.85,.37,new T.MeshBasicMaterial({color:0xff544f}),false);laneLights.push(l)}
 function desk(){const g=group(scene,4.7,0,3.15);box(g,2.1,.14,1.05,0,1.02,0,mat(0x383344,.5));for(let x of [-.85,.85])for(let z of [-.4,.4])box(g,.08,1,.08,x,.5,z,0x514e61);box(g,1.04,.64,.10,0,1.47,-.30,0x16141e);box(g,1.1,.08,.34,0,1.10,-.27,0x22202b);screenCanvas=document.createElement('canvas');screenCanvas.width=512;screenCanvas.height=320;screenTexture=new T.CanvasTexture(screenCanvas);screenTexture.colorSpace=T.SRGBColorSpace;plane(g,.98,.57,0,1.47,-.241,screenTexture);box(g,.75,.04,.28,0,1.10,.27,0x17141e);for(let j=0;j<5;j++)box(g,.24,.025,.32,-.69,1.11+j*.024,.15,0xe8e6df);box(g,.27,.13,.18,.74,1.16,.05,0x252338);const chair=group(g,0,0,1.03);box(chair,.64,.13,.64,0,.46,0,0x30273b);box(chair,.62,.58,.13,0,.78,.30,0x30273b);cyl(chair,.07,.12,.38,0,.24,0,0x6b6673);for(let j=0;j<5;j++){let a=j*2*Math.PI/5;box(chair,.08,.065,.35,Math.sin(a)*.16,.07,Math.cos(a)*.16,0x55505f).rotation.y=a}}
-function sofa(){let g=group(scene,-4.8,0,3.25);box(g,2.65,.34,.90,0,.27,0,mat(0x2b1947,.68));for(let j=0;j<3;j++){box(g,.78,.22,.78,-.8+j*.8,.42,.03,mat(0x513080,.8));box(g,.78,.66,.22,-.8+j*.8,.75,-.43,mat(0x623b9b,.78));}for(let k of [-1,1])box(g,.24,.63,1.12,k*1.3,.53,0,mat(0x382252,.8));box(g,2.55,.025,1.65,0,.02,.4,mat(0x4a3a6b,.94));let t=group(scene,-3.1,0,4.3);cyl(t,.42,.42,.09,0,.64,0,0x4f3c69);cyl(t,.07,.10,.62,0,.31,0,0x6b5b89);coffeeCup=group(t,.02,.76,.04);cyl(coffeeCup,.075,.055,.15,0,0,0,0xf5f1e8);cyl(coffeeCup,.065,.065,.008,0,.078,0,0x573922);sign(scene,'CERTORO LOUNGE','KI ARBEITET. DU NICHT.',2.8,.7,-4.8,2.85,2.60)}
+function sofa(){let g=group(scene,-4.8,0,3.25);box(g,2.65,.34,.90,0,.27,0,mat(0x2b1947,.68));for(let j=0;j<3;j++){box(g,.78,.22,.78,-.8+j*.8,.42,.03,mat(0x513080,.8));box(g,.78,.66,.22,-.8+j*.8,.75,-.43,mat(0x623b9b,.78));}for(let k of [-1,1])box(g,.24,.63,1.12,k*1.3,.53,0,mat(0x382252,.8));box(g,2.55,.025,1.65,0,.02,.4,mat(0x4a3a6b,.94));let t=group(scene,-3.1,0,4.3);cyl(t,.42,.42,.09,0,.64,0,0x4f3c69);cyl(t,.07,.10,.62,0,.31,0,0x6b5b89);coffeeCup=group(t,.24,.76,-.20);cyl(coffeeCup,.075,.055,.15,0,0,0,0xf5f1e8);cyl(coffeeCup,.065,.065,.008,0,.078,0,0x573922);sign(scene,'CERTORO LOUNGE','KI ARBEITET. DU NICHT.',2.8,.7,-4.8,2.85,2.60)}
 function buildWorker(){const g=group(scene,3.1,0,2.25);const skin=mat(0xd99f73,.6),cloth=mat(0x344253,.8),vest=mat(0xe5a541,.65),shoe=mat(0x211c2b,.7);let torso=group(g,0,1.15,0);ell(torso,0,.25,0,.30,.40,.18,cloth);box(torso,.48,.48,.32,0,.27,0,vest);box(torso,.48,.065,.33,0,.40,0,0xf6db86);box(torso,.08,.46,.34,0,.25,0,cloth);box(torso,.16,.075,.015,.125,.36,.176,mat(0xf0e6d5,.5));box(torso,.15,.12,.015,-.145,.23,.176,cloth);ell(torso,0,.77,.015,.19,.23,.18,skin);ell(torso,0,.89,-.01,.20,.12,.18,0x42362e);const cap=ell(torso,0,.96,0,.21,.085,.20,0x45556b);box(torso,.29,.035,.19,0,.93,.15,0x45556b);for(let s of [-1,1])ell(torso,s*.069,.79,.16,.025,.021,.018,0x171822);ell(torso,0,.75,.185,.043,.035,.04,skin);let arms=[],legs=[];for(let s of [-1,1]){let arm=group(torso,s*.32,.52,0);ell(arm,0,-.15,0,.105,.21,.11,cloth);let fore=group(arm,0,-.31,0);ell(fore,0,-.15,0,.088,.18,.09,skin);ell(fore,0,-.30,.015,.09,.11,.07,skin);arms.push([arm,fore]);let leg=group(g,s*.14,1.15,0);ell(leg,0,-.25,0,.13,.29,.135,cloth);let shin=group(leg,0,-.51,0);ell(shin,0,-.22,0,.105,.25,.115,cloth);ell(shin,0,-.48,.07,.12,.095,.20,shoe);legs.push([leg,shin])}return {g,torso,arms,legs}}
 function warehouse(){scene.background=new T.Color(0x171326);scene.fog=new T.Fog(0x171326,25,55);const pmrem=new T.PMREMGenerator(renderer);scene.environment=pmrem.fromScene(new RoomEnvironment(),.04).texture;scene.environmentIntensity=.48;pmrem.dispose();const hem=new T.HemisphereLight(0xe7e3ff,0x4a3a54,1.2);scene.add(hem);const key=new T.DirectionalLight(0xfff2e0,2.35);key.position.set(-6,11,7);key.castShadow=true;key.shadow.mapSize.set(2048,2048);key.shadow.camera.left=-11;key.shadow.camera.right=11;key.shadow.camera.top=11;key.shadow.camera.bottom=-11;key.shadow.normalBias=.04;scene.add(key);const fill=new T.DirectionalLight(0xb8c3ff,.85);fill.position.set(7,6,-5);scene.add(fill);const floorTx=texture(512,512,(c,w,h)=>{c.fillStyle='#45454f';c.fillRect(0,0,w,h);let n=317;for(let i=0;i<12000;i++){n=(n*1664525+1013904223)>>>0;let x=n%w;n=(n*1664525+1013904223)>>>0;let y=n%h;c.fillStyle=i%2?'#ffffff0a':'#00000014';c.fillRect(x,y,2,2)}c.strokeStyle='#42414e';c.lineWidth=2;c.strokeRect(0,0,w,h)});floorTx.wrapS=floorTx.wrapT=T.RepeatWrapping;floorTx.repeat.set(8,7);box(scene,20,.20,16,0,-.12,-.3,new T.MeshStandardMaterial({map:floorTx,roughness:.57}),false);box(scene,20,5.4,.24,0,2.7,-7.35,0x292737);for(let x of [-9.8,-5.8,0,5.8,9.8]){box(scene,.22,5.4,.34,x,2.7,-7.13,mat(0x4a475a,.5,.6));if(Math.abs(x)>9)box(scene,.14,.22,14,x,5.75,-.35,0x545064)}for(let z of [-6.2]){box(scene,19.5,.2,.14,0,5.70,z,0x5b536a);for(let x of [-5,5]){box(scene,3.4,.06,.14,x,5.52,z,new T.MeshBasicMaterial({color:0xf0e6ff}),false)}}for(let x of [-9.75,9.75]){box(scene,.20,2.5,14,x,1.25,-.25,0x302d42);for(let z of [-5.3,-1.8,1.8])makeRack(x*.87,z)}for(let x of [-3.25,3.25]){for(let xx of [-2.25,2.25])box(scene,.065,.008,9.8,x+xx,.002,-1.6,x<0?P.purple:0xc38e4c,false);box(scene,4.45,.008,.06,x,.002,3.27,x<0?P.purple:0xc38e4c,false)}for(let i=0;i<18;i++)box(scene,.06,.008,.31,0,.004,-6.4+i*.59,0xa39cb0,false);makeDoor(-3.25,0);makeDoor(3.25,1);pallets=[makePallet(-3.25,-8.6,0),makePallet(3.25,-8.6,1)];sofa();desk();worker=buildWorker();const beamMat=new T.MeshBasicMaterial({color:P.lime,transparent:true,opacity:.18,depthWrite:false,side:T.DoubleSide});scanBeam=box(scene,2.4,.025,2.1,-3.25,.85,-1.25,beamMat,false);scanBeam.visible=false;sign(scene,'WAR E N E I N G A N G'.replace(/ /g,''),'WAREHOUSE / 10 ARTIKEL JE PALETTE',5.0,.78,0,4.62,-6.97,'#d6c9ed')}
 
@@ -75,7 +75,7 @@ function enhanceWarehouse(){
 function batchWarehouse(){scene.updateMatrixWorld(true);const protectedRoots=new Set([...doorGroups,...pallets,...laneLights,worker.g,scanBeam,coffeeCup]);const batches=new Map();scene.traverse(o=>{if(!o.isMesh||Array.isArray(o.material)||!o.material?.isMeshStandardMaterial||o.material.transparent||o.material.map)return;for(let p=o;p;p=p.parent)if(protectedRoots.has(p))return;const key=o.material.uuid+'-'+o.castShadow+'-'+o.receiveShadow;if(!batches.has(key))batches.set(key,[]);batches.get(key).push(o)});for(const list of batches.values()){if(list.length<3)continue;const geos=list.map(o=>o.geometry.clone().applyMatrix4(o.matrixWorld));const geo=mergeGeometries(geos,false);geos.forEach(g=>g.dispose());if(!geo)continue;const m=new T.Mesh(geo,list[0].material);m.castShadow=list[0].castShadow;m.receiveShadow=list[0].receiveShadow;scene.add(m);for(const o of list)o.removeFromParent()}}
 function updateScreen(){if(!screenCanvas)return;let c=screenCanvas.getContext('2d');c.fillStyle='#11101e';c.fillRect(0,0,512,320);c.fillStyle='#ffb46b';c.font='bold 28px Arial';c.fillText('ARTIKELANLAGE',22,42);c.fillStyle='#dad1e4';c.font='19px Arial';let i=Math.min(9,Math.floor(state.manualTime/180));c.fillText('SKU '+(1001+i)+' · '+products[i][0],22,82);c.fillStyle='#827497';for(let j=0;j<5;j++){c.fillRect(24,110+j*30,110,10);c.fillStyle='#322b46';c.fillRect(154,104+j*30,330,23);c.fillStyle='#827497'}c.fillStyle='#ffb46b';c.fillRect(22,278,468*clamp((state.manualTime%180)/180,0,1),9);screenTexture.needsUpdate=true}
 // Dedicated, geometry-aware seated pose; model forward is +Z.
-function makeSofaSitClip(T,rig,model){
+function makeSofaSitClip(T,rig,model,hipHeight=.71){
  const V=(x,y,z)=>new T.Vector3(x,y,z), bones=[];
  rig.traverse(b=>{if(b.isBone)bones.push(b)});
  const B=n=>rig.getObjectByName(n);
@@ -85,13 +85,14 @@ function makeSofaSitClip(T,rig,model){
  const worldPos=n=>B(n).getWorldPosition(V(0,0,0));
  const originalHip=worldPos('ThighL').y;
  const originalAnkle=worldPos('FootL').y;
- const hipHeight=.71;
+
  const root=B('Root');
  // Root has the rig's uniform scale; convert model-space lowering to bone-local units.
  root.position.y+=(hipHeight-originalHip)/rig.scale.y;
  model.updateMatrixWorld(true);
  function orient(b,q){const parentQ=b.parent.getWorldQuaternion(new T.Quaternion());b.quaternion.copy(parentQ.invert().multiply(q));model.updateMatrixWorld(true)}
  function aim(n,child,dir){const b=B(n),from=worldPos(child).sub(worldPos(n)).normalize();const delta=new T.Quaternion().setFromUnitVectors(from,dir.clone().normalize());orient(b,delta.multiply(b.getWorldQuaternion(new T.Quaternion())))}
+ if(hipHeight!==.71)orient(B('Spine'),new T.Quaternion().setFromAxisAngle(V(1,0,0),.78).multiply(worldQ.get('Spine')));
  for(const side of ['L','R']){
   const sg=side==='L'?1:-1;
   const thigh='Thigh'+side,shin='Shin'+side,foot='Foot'+side;
@@ -118,7 +119,7 @@ function makeSofaSitClip(T,rig,model){
  }
  for(const a of rest){a.b.position.copy(a.p);a.b.quaternion.copy(a.q);a.b.scale.copy(a.s)}
  model.updateMatrixWorld(true);
- return new T.AnimationClip('SofaSit',2,tracks)
+ return new T.AnimationClip(hipHeight===.71?'SofaSit':'CoffeeBend',2,tracks)
 }
 
 
@@ -156,7 +157,7 @@ function animateWorkerFace(time){
  for(let i=0;i<2;i++){const [thigh,shin]=worker.legs[i];worker.feet[i].rotation.x=-.75*(thigh.rotation.x+shin.rotation.x);}
 }
 
-function init(){renderer=new T.WebGLRenderer({canvas:$('world'),antialias:true,alpha:false,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,2.5,Math.sqrt(3200000/(innerWidth*innerHeight))));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=.97;scene=new T.Scene();camera=new T.PerspectiveCamera(43,1,.1,100);warehouse();batchWarehouse();makeTraining();enhanceWarehouse();const workerReady=loadWorkerModel();resize();window.addEventListener('resize',resize);bindInput();updateScreen();new GLTFLoader().load(MODEL,gltf=>{const rig=gltf.scene.getObjectByName('CERTORO_RIG');if(!rig)throw Error('Rig fehlt');model=group(scene);model.add(rig);rig.updateMatrixWorld(true);let bounds=new T.Box3().setFromObject(rig);let size=bounds.getSize(v(0,0,0));let scale=2.5/size.y;rig.scale.setScalar(scale);rig.position.y=-bounds.min.y*scale;model.position.copy(certPos);model.rotation.y=0;model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;if(o.material?.name==='Transparent cyan visor'){o.material.transparent=true;o.material.opacity=.28;o.material.depthWrite=false;if('transmission'in o.material)o.material.transmission=0}}});mixer=new T.AnimationMixer(rig);let clip=gltf.animations.find(x=>x.name==='CERTORO_RIG')||gltf.animations[0];if(clip){for(const [name,index]of Object.entries({idle:0,walk:1,sit:9,talk:13,wave:17,point:18,celebrate:22})){const sub=T.AnimationUtils.subclip(clip,name,index*48,index*48+47,24);actions[name]=mixer.clipAction(sub);actions[name].setLoop(T.LoopRepeat,Infinity)}}actions.sit=mixer.clipAction(makeSofaSitClip(T,rig,model));actions.sit.setLoop(T.LoopRepeat,Infinity);play('idle');phoneModel=group(model);box(phoneModel,.17,.30,.035,0,0,0,0x14111f);box(phoneModel,.145,.264,.005,0,0,.021,new T.MeshBasicMaterial({color:P.lime}),false);phoneModel.position.set(.34,1.35,.30);phoneModel.visible=false;workerReady.then(ok=>{$('loading').classList.add('hidden');$('start').disabled=false;$('loadText').textContent=ok?'Zwei 3D-Figuren · Touch & Desktop':'3D-Figur · Touch & Desktop';});},p=>{$('loading').textContent='3D-Modell wird geladen … '+(p.total?Math.round(p.loaded/p.total*100)+'%':'')},e=>{console.error(e);$('loading').textContent='3D-Modell konnte nicht geladen werden. Bitte Seite neu laden.'});requestAnimationFrame(loop)}
+function init(){renderer=new T.WebGLRenderer({canvas:$('world'),antialias:true,alpha:false,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,2.5,Math.sqrt(3200000/(innerWidth*innerHeight))));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=.97;scene=new T.Scene();camera=new T.PerspectiveCamera(43,1,.1,100);warehouse();batchWarehouse();makeTraining();enhanceWarehouse();const workerReady=loadWorkerModel();resize();window.addEventListener('resize',resize);bindInput();updateScreen();new GLTFLoader().load(MODEL,gltf=>{const rig=gltf.scene.getObjectByName('CERTORO_RIG');if(!rig)throw Error('Rig fehlt');model=group(scene);model.add(rig);rig.updateMatrixWorld(true);let bounds=new T.Box3().setFromObject(rig);let size=bounds.getSize(v(0,0,0));let scale=2.5/size.y;rig.scale.setScalar(scale);rig.position.y=-bounds.min.y*scale;model.position.copy(certPos);model.rotation.y=0;model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;if(o.material?.name==='Transparent cyan visor'){o.material.transparent=true;o.material.opacity=.28;o.material.depthWrite=false;if('transmission'in o.material)o.material.transmission=0}}});mixer=new T.AnimationMixer(rig);let clip=gltf.animations.find(x=>x.name==='CERTORO_RIG')||gltf.animations[0];if(clip){for(const [name,index]of Object.entries({idle:0,walk:1,sit:9,talk:13,wave:17,point:18,celebrate:22})){const sub=T.AnimationUtils.subclip(clip,name,index*48,index*48+47,24);actions[name]=mixer.clipAction(sub);actions[name].setLoop(T.LoopRepeat,Infinity)}}actions.sit=mixer.clipAction(makeSofaSitClip(T,rig,model));actions.sit.setLoop(T.LoopRepeat,Infinity);actions.coffeeBend=mixer.clipAction(makeSofaSitClip(T,rig,model,.74));actions.coffeeBend.setLoop(T.LoopRepeat,Infinity);play('idle');phoneModel=group(model);box(phoneModel,.17,.30,.035,0,0,0,0x14111f);box(phoneModel,.145,.264,.005,0,0,.021,new T.MeshBasicMaterial({color:P.lime}),false);phoneModel.position.set(.34,1.35,.30);phoneModel.visible=false;workerReady.then(ok=>{$('loading').classList.add('hidden');$('start').disabled=false;$('loadText').textContent=ok?'Zwei 3D-Figuren · Touch & Desktop':'3D-Figur · Touch & Desktop';});},p=>{$('loading').textContent='3D-Modell wird geladen … '+(p.total?Math.round(p.loaded/p.total*100)+'%':'')},e=>{console.error(e);$('loading').textContent='3D-Modell konnte nicht geladen werden. Bitte Seite neu laden.'});requestAnimationFrame(loop)}
 function resize(){let w=innerWidth,h=innerHeight;renderer.setPixelRatio(Math.min(devicePixelRatio,2.5,Math.sqrt(3200000/(w*h))));renderer.setSize(w,h,false);camera.aspect=w/h;camera.fov=w/h<.9?58:43;camera.updateProjectionMatrix()}
 function play(name,fade=.20){if(!mixer||currentAction===name)return;let a=actions[name]||actions.idle;if(!a)return;if(currentAction&&actions[currentAction])actions[currentAction].fadeOut(fade);a.paused=false;a.reset().fadeIn(fade).play();currentAction=name}
 const intro={step:0,choice:false,done:false,transition:0,model:null,desk:null,cam:null,speech:true,lastLine:'',entered:0};
@@ -437,7 +438,7 @@ function updateTarget(){let marker=$('targetMarker');if(state.phase!=='playing'|
 const LOUNGE_ROUTE=[
  {kind:'walk',x:-2.20,z:1.65},
  {kind:'walk',x:-2.20,z:4.34},
- {kind:'pick',x:-2.20,z:4.34,yaw:-Math.PI/2,duration:1.05},
+ {kind:'pick',x:-2.20,z:4.34,yaw:-Math.PI/2,duration:1.35},
  {kind:'walk',x:-2.20,z:5.35},
  {kind:'walk',x:-4.80,z:5.35},
  {kind:'walk',x:-4.80,z:4.17},
@@ -445,7 +446,7 @@ const LOUNGE_ROUTE=[
  {kind:'seat',x:-4.80,z:3.40,yaw:0,duration:.78}
 ];
 const lounge={active:false,index:0,time:0,held:false,seated:false,from:null,reach:0,side:null};
-const COFFEE_HOME=[-3.08,.76,4.34];
+const COFFEE_HOME=[-2.86,.76,4.10];
 function resetLounge(){
  Object.assign(lounge,{active:false,index:0,time:0,held:false,seated:false,from:null,reach:0,side:null});
  if(coffeeCup){scene.attach(coffeeCup);coffeeCup.position.set(...COFFEE_HOME);coffeeCup.rotation.set(0,0,0)}
@@ -473,8 +474,9 @@ function advanceLounge(dt){
   const t=clamp(lounge.time/step.duration,0,1);
   model.rotation.y=angleTo(model.rotation.y,step.yaw,dt);
   if(step.kind==='pick'){
-   lounge.reach=t<.53?clamp(t/.53,0,1):1-clamp((t-.53)/.47,0,1);
-   if(t>=.53&&!lounge.held){lounge.held=true;sound('scan')}
+   pose='coffeeBend';fade=.32;
+   lounge.reach=t<.60?clamp(t/.60,0,1):1-clamp((t-.60)/.40,0,1);
+   if(t>=.60&&!lounge.held){lounge.held=true;sound('scan')}
   }else if(step.kind==='seat'){
    if(!lounge.from)lounge.from=certPos.clone();
    const u=t*t*(3-2*t);certPos.copy(lounge.from).lerp(target,u);
@@ -528,7 +530,7 @@ function updateCoffee(){
  const shoulder=upper.getWorldPosition(v(0,0,0));
  const forward=v(0,0,1).applyAxisAngle(v(0,1,0),model.rotation.y);
  const carry=shoulder.clone().addScaledVector(forward,.32).add(v(0,-.38,0));
- const home=v(...COFFEE_HOME);home.y+=.025;
+ const home=v(...COFFEE_HOME).addScaledVector(forward,-.055);home.y-=.035;
  const picking=lounge.active&&LOUNGE_ROUTE[lounge.index]?.kind==='pick';
  const target=picking?(lounge.held?carry.clone().lerp(home,lounge.reach):home):carry;
  aimCoffeeArm(side,target,lounge.held?1:lounge.reach);
