@@ -160,9 +160,9 @@ function resize(){let w=innerWidth,h=innerHeight;renderer.setPixelRatio(Math.min
 function play(name){if(!mixer||currentAction===name)return;let a=actions[name]||actions.idle;if(!a)return;if(currentAction&&actions[currentAction])actions[currentAction].fadeOut(.20);a.paused=false;a.reset().fadeIn(.20).play();currentAction=name}
 const intro={step:0,choice:false,done:false,transition:0,model:null,desk:null,cam:null,speech:true,lastLine:'',entered:0};
 let trainerProps,trainingKey,stageGlows=[],deliveryFX=[],resultBoard;
-const INTRO_RATE=1.12;
+const INTRO_RATE=1;
 const script=[
- {name:'Lagerleiter',tag:'ERSTER ARBEITSTAG',line:'Diese Produkte sollen online verkauft werden. Ich zeige dir, wie.',cam:'two',seconds:5.721,visual:'Dein Auftrag: Produkte online zum Verkauf anbieten.'},
+ {name:'Lagerleiter',tag:'ERSTER ARBEITSTAG',line:'Willkommen, Certoro! Ich zeige dir, wie wir hier Artikel anlegen.',cam:'two',seconds:6,visual:'Dein erster Arbeitstag: Lerne, wie aus einem Produkt ein Online-Verkaufsangebot wird.'},
  {name:'Lagerleiter',tag:'SCHRITT 1 VON 3',line:'Zuerst fotografieren wir jedes Produkt einzeln.',cam:'product',seconds:3.396,visual:'01 · PRODUKTFOTO AUFNEHMEN'},
  {name:'Lagerleiter',tag:'SCHRITT 2 VON 3',line:'Dann suchen wir die Artikelnummer und die Produktdaten.',cam:'desk',seconds:4.049,visual:'02 · ARTIKELNUMMER UND DATEN RECHERCHIEREN'},
  {name:'Lagerleiter',tag:'SCHRITT 3 VON 3',line:'Jetzt schreiben wir Titel und Beschreibung.',cam:'desk',seconds:3.318,visual:'03 · VERKAUFSANGEBOT ERSTELLEN'},
@@ -170,7 +170,7 @@ const script=[
  {name:'Certoro',tag:'EIN ANDERER WEG',line:'Aber das geht doch viel einfacher. Gib mir eine ganze Palette!',cam:'hero',seconds:3.083,visual:''},
  {name:'Lagerleiter',tag:'DIE HERAUSFORDERUNG',line:'Jeder bekommt zehn Produkte. Wer hat zuerst alle Angebote fertig?',cam:'delivery',seconds:5.068,visual:'10 PRODUKTE · 2 MITARBEITER · 1 AUFGABE'}
 ];
-const VOICE_URLS = ["https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_153449_f6d346d5-9d79-4c85-b0da-feaae1d72102.mp3","https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_114630_cf56d928-e09f-48c2-8cb3-94b37dcc6c17.mp3","https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_153448_7f26eb8e-b7f6-49c3-8154-b22a1f67e9b9.mp3","https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_153447_f51e9091-2ea5-43fe-b7a7-4180b413d2a2.mp3","https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_114530_9afbe869-78a2-4253-a359-d417fcaa39a9.mp3","https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_114632_19c64e89-5efb-4e71-91f2-96bedc51e1a2.mp3","https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_153447_fcb07435-130d-4d31-a456-c82424b442f8.mp3","https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_114629_b3a43d45-e688-414b-bb69-7f0161378012.mp3","https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_114635_488826b5-9988-48e1-90c2-5a4bfd7f671b.mp3"];
+const VOICE_URLS = ["https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_114631_31d44b8c-e7f5-4fd9-9291-03ecda6ee943.mp3","https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_114630_cf56d928-e09f-48c2-8cb3-94b37dcc6c17.mp3","https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_153448_7f26eb8e-b7f6-49c3-8154-b22a1f67e9b9.mp3","https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_153447_f51e9091-2ea5-43fe-b7a7-4180b413d2a2.mp3","https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_114530_9afbe869-78a2-4253-a359-d417fcaa39a9.mp3","https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_114632_19c64e89-5efb-4e71-91f2-96bedc51e1a2.mp3","https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_153447_fcb07435-130d-4d31-a456-c82424b442f8.mp3","https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_114629_b3a43d45-e688-414b-bb69-7f0161378012.mp3","https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261124_114635_488826b5-9988-48e1-90c2-5a4bfd7f671b.mp3"];
 const VOICE_LINES=[...script.map(s=>s.line),'Ich bin fertig. Wie weit bist du?','Ich bin noch dabei, die Artikel einzeln anzulegen …'];
 let voiceSource=null, voicePlaying=false, voiceWho='', voiceTicket=0, voiceAudio=null, voiceLine=-1;
 const voiceBytes=VOICE_URLS.map(url=>fetch(url,{cache:'force-cache'}).then(r=>{if(!r.ok)throw Error('Audio HTTP '+r.status);return r.arrayBuffer()}).catch(()=>null));
@@ -193,22 +193,65 @@ async function say(line,who){
  }
 }
 function replayVoice(){if(voiceLine<0)return;if(state.phase==='intro')intro.elapsed=0;if(state.muted){state.muted=false;$('sound').textContent='Ton an'}say(VOICE_LINES[voiceLine],voiceWho)}
+function introChoice(options,correct,success){
+ const list=document.createElement('div');list.className='story-options introChoices';
+ for(const [label,value] of options){
+  const btn=document.createElement('button');btn.type='button';btn.textContent=label;
+  btn.onclick=()=>{
+   if(state.phase!=='intro'||intro.completed)return;
+   for(const el of list.children)el.classList.remove('wrong','selected');
+   if(value!==correct){btn.classList.add('wrong');$('introFeedback').textContent='Noch nicht ganz. Versuch es erneut.';sound();return}
+   btn.classList.add('selected');for(const el of list.children)el.disabled=true;
+   completeIntroTask(success);
+  };list.append(btn);
+ }
+ $('storyTask').append(list);
+}
+function completeIntroTask(message){
+ if(state.phase!=='intro'||intro.completed||intro.step<1||intro.step>3)return;
+ intro.completed=true;intro.feedbackTime=0;
+ if(intro.step===1){capture();$('viewfinder').classList.add('hidden')}
+ else sound('scan');
+ $('storyAct').disabled=true;$('introFeedback').textContent=message;
+}
 function storyStep(){
- const q=script[intro.step];if(!q)return;intro.elapsed=0;intro.shutter=false;
+ const q=script[intro.step];if(!q)return;intro.elapsed=0;intro.completed=false;intro.feedbackTime=0;
  $('viewfinder').classList.toggle('hidden',intro.step!==1);
- $('story').classList.remove('hidden');$('story').classList.add('autoIntro');$('storyTag').textContent=q.tag;
- $('speaker').textContent=q.name;$('storyLine').textContent=q.line;
- $('storyAct').textContent='Einführung überspringen';$('storyAct').disabled=false;$('storyTask').replaceChildren();
- $('story').classList.toggle('bull',q.name==='Certoro');$('chapter').textContent='DEIN ZIEL · 10 PRODUKTE ONLINE ANBIETEN';
- if(q.visual){const el=document.createElement('div');el.className='introVisual';el.textContent=q.visual;$('storyTask').append(el)}
- if(intro.step===2){const el=document.createElement('div');el.className='introSample';el.textContent='Artikelnummer: 426010000100 · Standmixer';$('storyTask').append(el)}
- if(intro.step===3){const el=document.createElement('div');el.className='introSample';el.textContent='Standmixer · Neuware · Originalverpackt';$('storyTask').append(el)}
- if(intro.step===6)sound('gate');
+ $('story').classList.remove('hidden','autoIntro');$('story').classList.add('interactiveIntro');
+ $('storyTag').textContent=intro.step===0?'DEIN ERSTER ARBEITSTAG':q.tag;
+ $('speaker').textContent=q.name==='Certoro'?'Certoro · neuer Mitarbeiter':'Lagerleiter · dein Ausbilder';
+ $('storyLine').textContent=q.line;$('storyTask').replaceChildren();
+ $('story').classList.toggle('bull',q.name==='Certoro');
+ $('chapter').textContent=intro.step<=3?'EINARBEITUNG · DU BIST CERTORO':intro.step===6?'DIE HERAUSFORDERUNG':'CERTORO HAT EINE IDEE';
+ $('storyAct').classList.remove('hidden');$('storyAct').disabled=false;$('storyAct').onclick=()=>{};
+ const note=(t)=>{const el=document.createElement('div');el.className='introVisual';el.textContent=t;$('storyTask').append(el)};
+ const feedback=document.createElement('div');feedback.id='introFeedback';feedback.setAttribute('role','status');
+ if(intro.step===0){
+  note('Du bist Certoro, neu im Lager. Der Lagerleiter zeigt dir die herkömmliche Artikelanlage. Dein Ziel: Produkte online verkaufen.');
+  $('storyAct').textContent='Einarbeitung starten';$('storyAct').onclick=advanceStory;
+ }else if(intro.step===1){
+  note('Deine Aufgabe: Fotografiere den Standmixer auf dem Tisch.');
+  $('storyAct').textContent='Foto aufnehmen';$('storyAct').onclick=()=>completeIntroTask('Foto gespeichert · 1 von 3');
+ }else if(intro.step===2){
+  note('Auf dem Karton steht: 426010000100. Welche Artikelnummer gehört zum Standmixer?');
+  introChoice([['426010000103','103'],['426010000100','100'],['426010000109','109']],'100','Artikel gefunden · 2 von 3');
+  $('storyAct').classList.add('hidden');$('storyAct').disabled=true;
+ }else if(intro.step===3){
+  note('Der Standmixer ist neu und originalverpackt. Wähle das passende Verkaufsangebot.');
+  introChoice([['Kopfhörer · gebraucht','wrong1'],['Standmixer · Neuware · Originalverpackt','correct'],['Standmixer · defekt','wrong2']],'correct','Verkaufsangebot vorbereitet · 3 von 3');
+  $('storyAct').classList.add('hidden');$('storyAct').disabled=true;
+ }else{
+  $('storyAct').classList.add('hidden');$('storyAct').disabled=true;
+  if(intro.step===6){note('10 Produkte pro Mitarbeiter. Gleicher Auftrag, unterschiedliche Arbeitsweise.');sound('gate')}
+ }
+ $('storyTask').append(feedback);
  say(q.line,q.name);autoCamera=true;overview=false;
 }
 function finishIntro(){
  if(state.phase!=='intro')return;stopVoice();$('viewfinder').classList.add('hidden');intro.done=true;
- $('story').classList.add('hidden');$('story').classList.remove('autoIntro');$('chapter').textContent='02 / WARENEINGANG';
+ $('story').classList.add('hidden');$('story').classList.remove('autoIntro','interactiveIntro');
+ $('storyAct').classList.remove('hidden');$('storyAct').disabled=false;
+ $('chapter').textContent='02 / WARENEINGANG';
  if(state.gate>=1){choose();return}
  state.phase='arrival';sound('gate');toast('ZWEI PALETTEN · GLEICHE WARE');
 }
@@ -219,17 +262,22 @@ function advanceStory(){
 }
 function tickIntro(dt){
  const q=script[intro.step];intro.elapsed+=dt;
- if(intro.step===1&&!intro.shutter&&intro.elapsed>=1.35){intro.shutter=true;capture()}
+ // The first four steps never advance without the player's action.
+ if(intro.step===0)return;
+ if(intro.step<=3){
+  if(intro.completed){intro.feedbackTime+=dt;if(intro.feedbackTime>=.65)advanceStory()}
+  return;
+ }
+ // Certoro's interruption and the challenge run like a short cutscene.
  if(intro.step===6)advanceGate(dt);
- const duration=Math.max(1.55,q.seconds/INTRO_RATE+.20);
- // Audio may start late on slow connections: allow it to finish, with a finite fallback.
+ const duration=Math.max(1.55,q.seconds/INTRO_RATE+.25);
  if(intro.elapsed>=duration&&(!voicePlaying||intro.elapsed>=duration+2))advanceStory();
 }
 function start(){
  if(!model||state.phase!=='menu')return;
  state.phase='intro';intro.step=0;intro.done=false;state.gate=0;
  $('overlay').classList.add('hidden');$('top').classList.add('cinematic');$('chapter').classList.remove('hidden');$('race').classList.add('hidden');
- $('storyAct').onclick=finishIntro;storyStep();sound();
+ $('skipIntro').onclick=finishIntro;storyStep();sound();
 }
 function makeTraining(){const g=group(scene,0,0,.55);intro.desk=g;
  const dark=mat(0x24232c,.45,.22),silver=mat(0x77818c,.37,.75),wood=mat(0x554c45,.65);
@@ -245,15 +293,15 @@ function makeTraining(){const g=group(scene,0,0,.55);intro.desk=g;
  const pkg=group(g,.67,1.13,-.12);let tx=texture(512,512,(c,w,h)=>{c.fillStyle='#e8e5db';c.fillRect(0,0,w,h);c.fillStyle='#293044';c.fillRect(0,0,w,100);c.fillStyle='#fff';c.font='900 52px Arial';c.fillText('MIX / 1200',24,66);c.fillStyle='#6d28d9';c.fillRect(24,130,w-48,10);c.fillStyle='#222';c.font='bold 33px Arial';c.fillText('STANDMIXER',24,190);c.font='24px Arial';c.fillText('1,5 L · 1.200 W',24,226);c.fillStyle='#7a8494';c.fillRect(205,260,105,120);c.fillStyle='#333';for(let k=0;k<50;k++)if(k%3!==1)c.fillRect(26+k*4,410,2,50);c.font='20px Arial';c.fillText('426010000100',28,490)});
  box(pkg,.46,.64,.43,0,.32,0,[ivory,ivory,ivory,ivory,new T.MeshStandardMaterial({map:tx,roughness:.65}),ivory]);
  let reader=group(g,-.79,1.16,.04);box(reader,.12,.085,.17,0,.055,0,dark);box(reader,.085,.04,.13,0,.12,.02,dark).rotation.x=-.45;box(reader,.07,.013,.018,0,.16,.09,new T.MeshBasicMaterial({color:0xff314b}),false);
- const label=texture(512,128,(c,w,h)=>{c.fillStyle='#1b0f32';c.fillRect(0,0,w,h);c.fillStyle='#c6ff3d';c.font='bold 46px Arial';c.fillText('WORKSTATION 01',18,78)});plane(g,1.25,.30,0,.89,.47,label);
+ const photoCam=group(g,-.68,1.20,.26);box(photoCam,.24,.15,.12,0,0,0,dark);cyl(photoCam,.059,.059,.12,0,0,.09,chrome,24).rotation.x=Math.PI/2;cyl(photoCam,.047,.047,.012,0,0,.155,rubber,24).rotation.x=Math.PI/2;box(photoCam,.07,.035,.06,.06,.085,0,dark);const label=texture(512,128,(c,w,h)=>{c.fillStyle='#1b0f32';c.fillRect(0,0,w,h);c.fillStyle='#c6ff3d';c.font='bold 46px Arial';c.fillText('WORKSTATION 01',18,78)});plane(g,1.25,.30,0,.89,.47,label);
  g.visible=false;
 }
 function cinematicActors(dt,time){
  if(!['intro','arrival','choose'].includes(state.phase)||!model)return false;let active=state.phase==='intro'&&intro.step!==6;intro.desk.visible=active;
  let cp='idle',cert=v(-1.62,0,1.10),man=v(1.34,0,1.07);if(!active){cert=v(-3.25,0,2.25);man=v(3.25,0,2.25)}
- let a=active?script[intro.step]:null;if(a?.name==='Certoro'&&voicePlaying&&voiceWho==='Certoro')cp='talk';else if(active&&intro.step===1)cp='point';
+ let a=active?script[intro.step]:null;if(a?.name==='Certoro'&&voicePlaying&&voiceWho==='Certoro')cp='talk';else if(active&&intro.step===1&&intro.completed)cp='point';
  certPos.lerp(cert,1-Math.exp(-dt*5));manualPos.lerp(man,1-Math.exp(-dt*5));model.position.copy(certPos);worker.g.position.copy(manualPos);model.rotation.y=lerp(model.rotation.y,active?.60:0,1-Math.exp(-dt*5));worker.g.rotation.y=lerp(worker.g.rotation.y,active?-.45:0,1-Math.exp(-dt*5));play(cp);
- if(phoneModel)phoneModel.visible=active&&intro.step===1;if(mixer)mixer.update(dt);
+ if(phoneModel)phoneModel.visible=false;if(mixer)mixer.update(dt);
  let gest=active&&a?.name==='Lagerleiter'&&voicePlaying?Math.sin(time*4)*.17:0;worker.arms.forEach(([arm,f],i)=>{const demo=active&&intro.step>=1&&intro.step<=3;arm.rotation.x=demo?(intro.step===1?-1.05:-.65)+gest:(i===0?-.38-gest:-.12);arm.rotation.z=i===0?.14:-.14;f.rotation.x=demo?(intro.step===1?-.80:-.65+Math.sin(time*9+i)*.12):(i===0?-.62-gest:0)});worker.legs.forEach(([a,k])=>{a.rotation.x=0;k.rotation.x=0});scanBeam.visible=false;return true
 }
 function cinematicCamera(dt){let portrait=innerWidth/innerHeight<.85;let target,angle,elev,distance;
@@ -277,18 +325,18 @@ function msg(t){toast(t);sound()}
 function capture(){ $('flash').style.opacity='.75';setTimeout(()=>$('flash').style.opacity='0',120);sound('scan') }
 function choose(){
  state.phase='choose';$('chapter').classList.add('hidden');$('race').classList.add('hidden');
- $('panel').innerHTML='<div class="eyebrow">DEINE HERAUSFORDERUNG</div><div class="hero" style="font-size:clamp(35px,6.2vw,65px)">10 Produkte.<span class="accent">1 Aufgabe.</span></div><p class="subtitle">Wer bringt seine Produkte zuerst online in den Verkauf?<br>Wähle deinen Mitarbeiter.</p><div class="roles"><button class="role cert" id="chooseCert"><div class="label">MIT KI</div><div class="role-title">CERTORO</div><div class="desc">Arbeite mit Smartphone und KI.</div><div class="choose">Certoro spielen →</div></button><button class="role man" id="chooseManual"><div class="label">OHNE KI</div><div class="role-title">LAGERLEITER</div><div class="desc">Arbeite mit Kamera und Computer.</div><div class="choose">Lagerleiter spielen →</div></button></div>';
+ $('panel').innerHTML='<div class="eyebrow">DEINE HERAUSFORDERUNG</div><div class="hero" style="font-size:clamp(35px,6.2vw,65px)">10 Produkte.<span class="accent">1 Aufgabe.</span></div><p class="subtitle">Du kennst jetzt die herkömmliche Arbeit. Schlägt der neue Mitarbeiter seinen Ausbilder?<br>Wähle, wen du spielen möchtest.</p><div class="roles"><button class="role cert" id="chooseCert"><div class="label">NEUER MITARBEITER</div><div class="role-title">CERTORO</div><div class="desc">Arbeite mit Smartphone und KI.</div><div class="choose">Certoro spielen →</div></button><button class="role man" id="chooseManual"><div class="label">ERFAHRENER AUSBILDER</div><div class="role-title">LAGERLEITER</div><div class="desc">Arbeite mit Kamera und Computer.</div><div class="choose">Lagerleiter spielen →</div></button></div>';
  $('overlay').classList.remove('hidden');$('chooseCert').onclick=()=>select('cert');$('chooseManual').onclick=()=>select('manual');
 }
 function select(role){$('top').classList.remove('cinematic');$('chapter').classList.add('hidden');state.role=role;state.phase='playing';state.elapsed=0;state.autoTime=0;state.manualTime=0;state.autoStep=0;state.manualItem=0;state.manualStep=0;state.autoRun=false;state.manualRun=false;state.addons.clear();flow.certPhase='approach';flow.manualPhase='pick';flow.selected=-1;flow.checked.clear();flow.review=-1;flow.channel=null;flow.channels.clear();flow.records=[];flow.manualDraft={};flow.simCert=0;flow.simManual=0;flow.feedback='';$('overlay').classList.add('hidden');$('race').classList.remove('hidden');$('hud').classList.remove('hidden');$('pause').classList.remove('hidden');$('view').classList.remove('hidden');$('certRace').classList.toggle('active',role==='cert');$('manualRace').classList.toggle('active',role==='manual');autoCamera=true;overview=false;refresh();sound()}
 function setCert(p){flow.certPhase=p;flow.feedback='';flow.correct=false;refresh()}
 function setManual(p){flow.manualPhase=p;flow.feedback='';flow.correct=false;refresh()}
 function itemPick(i){if(state.role!=='manual'||flow.manualPhase!=='pick')return;if(i!==state.manualItem){msg('Nimm Artikel '+(state.manualItem+1)+' zuerst.');return}flow.selected=i;state.manualRun=true;state.manualStep=0;setManual('photo');msg(jobs[i].name+' ausgewählt')}
-function worldTap(e){if(state.phase!=='playing'||state.paused)return;const r=$('world').getBoundingClientRect();pointer.set((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1);ray.setFromCamera(pointer,camera);const lane=state.role==='cert'?0:1;
+function worldTap(e){if(state.phase==='intro'&&intro.step===1&&!intro.completed){const r=$('world').getBoundingClientRect();pointer.set((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1);ray.setFromCamera(pointer,camera);if(intro.model&&ray.intersectObject(intro.model,true).length)completeIntroTask('Foto gespeichert · 1 von 3');return}if(state.phase!=='playing'||state.paused)return;const r=$('world').getBoundingClientRect();pointer.set((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1);ray.setFromCamera(pointer,camera);const lane=state.role==='cert'?0:1;
 const hits=ray.intersectObjects(productsMeshes[lane].map(p=>p.g),true);if(hits.length){let o=hits[0].object;while(o&&!productsMeshes[lane].some(p=>p.g===o))o=o.parent;let i=productsMeshes[lane].findIndex(p=>p.g===o);if(state.role==='cert'&&['approach','photo'].includes(flow.certPhase))act();else if(state.role==='manual'&&flow.manualPhase==='photo'&&i===flow.selected)act();else if(i>=0)itemPick(i);return}
 if(state.role==='cert'&&flow.certPhase==='sofa'){const hit=ray.ray.intersectPlane(new T.Plane(v(0,1,0),0),v(0,0,0));if(hit&&hit.x<-3&&hit.z>2){act();return}}
 }
-function bindInput(){const canvas=$('world');let startPt=null;canvas.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY};startPt={...drag};canvas.setPointerCapture(e.pointerId)});canvas.addEventListener('pointermove',e=>{if(!drag||!startPt)return;if(Math.hypot(e.clientX-startPt.x,e.clientY-startPt.y)<10)return;autoCamera=false;yaw-=(e.clientX-drag.x)*.005;pitch=clamp(pitch+(e.clientY-drag.y)*.004,.28,1.05);drag={x:e.clientX,y:e.clientY}});canvas.addEventListener('pointerup',e=>{if(startPt&&Math.hypot(e.clientX-startPt.x,e.clientY-startPt.y)<10)worldTap(e);drag=null;startPt=null});canvas.addEventListener('pointercancel',()=>{drag=null;startPt=null});canvas.addEventListener('wheel',e=>{autoCamera=false;dist=clamp(dist+e.deltaY*.012,7,25);e.preventDefault()},{passive:false});document.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA'].includes(document.activeElement?.tagName))return;if(e.code==='Space'&&!e.repeat){e.preventDefault();if(state.phase==='intro')advanceStory();else if(state.phase==='outro'&&!$('story').classList.contains('hidden'))$('storyAct').click();else if(state.phase==='playing'&&!$('act').disabled&&!$('act').classList.contains('hidden'))$('act').click();else if(state.phase==='menu'&&!$('start').disabled)$('start').click()}if(e.key==='Escape'&&state.phase==='playing')togglePause();if(e.key.toLowerCase()==='c')$('view').click();if(e.key==='ArrowLeft'||e.key==='ArrowRight'){autoCamera=false;yaw+=e.key==='ArrowLeft'?.1:-.1}});$('sound').onclick=()=>{state.muted=!state.muted;if(state.muted)stopVoice();else if(!$('story').classList.contains('hidden')&&voiceLine>=0)replayVoice();$('sound').textContent=state.muted?'Ton aus':'Ton an';if(!state.muted)sound()};$('pause').onclick=togglePause;$('view').onclick=()=>{overview=!overview;autoCamera=true;$('view').textContent=overview?'Fokus':'Übersicht'};$('start').onclick=start;$('act').onclick=act;$('replayVoice').onclick=replayVoice}
+function bindInput(){const canvas=$('world');let startPt=null;canvas.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY};startPt={...drag};canvas.setPointerCapture(e.pointerId)});canvas.addEventListener('pointermove',e=>{if(!drag||!startPt)return;if(Math.hypot(e.clientX-startPt.x,e.clientY-startPt.y)<10)return;autoCamera=false;yaw-=(e.clientX-drag.x)*.005;pitch=clamp(pitch+(e.clientY-drag.y)*.004,.28,1.05);drag={x:e.clientX,y:e.clientY}});canvas.addEventListener('pointerup',e=>{if(startPt&&Math.hypot(e.clientX-startPt.x,e.clientY-startPt.y)<10)worldTap(e);drag=null;startPt=null});canvas.addEventListener('pointercancel',()=>{drag=null;startPt=null});canvas.addEventListener('wheel',e=>{autoCamera=false;dist=clamp(dist+e.deltaY*.012,7,25);e.preventDefault()},{passive:false});document.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA'].includes(document.activeElement?.tagName))return;if(e.code==='Space'&&!e.repeat){if(state.phase==='intro'&&document.activeElement?.tagName==='BUTTON')return;e.preventDefault();if(state.phase==='intro'){if(!$('storyAct').disabled&&!$('storyAct').classList.contains('hidden'))$('storyAct').click()}else if(state.phase==='outro'&&!$('story').classList.contains('hidden'))$('storyAct').click();else if(state.phase==='playing'&&!$('act').disabled&&!$('act').classList.contains('hidden'))$('act').click();else if(state.phase==='menu'&&!$('start').disabled)$('start').click()}if(e.key==='Escape'&&state.phase==='playing')togglePause();if(e.key.toLowerCase()==='c')$('view').click();if(e.key==='ArrowLeft'||e.key==='ArrowRight'){autoCamera=false;yaw+=e.key==='ArrowLeft'?.1:-.1}});$('sound').onclick=()=>{state.muted=!state.muted;if(state.muted)stopVoice();else if(!$('story').classList.contains('hidden')&&voiceLine>=0)replayVoice();$('sound').textContent=state.muted?'Ton aus':'Ton an';if(!state.muted)sound()};$('pause').onclick=togglePause;$('view').onclick=()=>{overview=!overview;autoCamera=true;$('view').textContent=overview?'Fokus':'Übersicht'};$('start').onclick=start;$('act').onclick=act;$('replayVoice').onclick=replayVoice}
 function act(){if(state.paused||state.ending||state.phase!=='playing')return;sound();
  if(state.role==='cert'){switch(flow.certPhase){
  case 'approach':state.autoRun=true;setCert('photo');break;
