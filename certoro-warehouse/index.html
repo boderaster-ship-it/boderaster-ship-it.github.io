@@ -74,6 +74,38 @@
 #story.interactiveIntro #storyLine{margin-bottom:3px}
 #story.interactiveIntro{padding:10px 12px}
 .role .label{font-size:10px;letter-spacing:.06em}
+
+/* V12: restrained premium brand system, compact glass HUD and result page */
+:root{--navy:#181229;--bg:#100c1b;--muted:#c5bed6}
+#top{padding:8px 12px;background:linear-gradient(180deg,#100c1bdc,transparent)}
+.iconbtn{border-radius:8px;background:#1d182bcf;border:1px solid #a99abc38;box-shadow:0 2px 8px #0003}
+.racecard{background:#191526b8;border-radius:9px;border-color:#d8c6ff24;padding:5px 9px}
+.racecard.active{border-color:#c6ff3d65;box-shadow:none}.racecard .track{height:3px}
+#actionCard,#story{border:1px solid #b0a4ce40;background:linear-gradient(145deg,#201832f2,#151022f2);box-shadow:0 12px 34px #0005;border-radius:14px}
+#phaseTitle{font-size:clamp(15px,2.3vw,19px);letter-spacing:-.35px}.task-options button{background:#ffffff09;border-color:#c6b4ec32;border-radius:7px;min-height:34px}.task-options button:hover{background:#ffffff17}.task-options button.selected{background:#c6ff3d18;border-color:#c6ff3d;color:#e3ff9c}
+#actionCard .action{box-shadow:none;border-radius:8px;padding:9px 11px}.role{background:linear-gradient(160deg,#2f2448e8,#151124f2);border-radius:15px}
+#overlay{background:radial-gradient(ellipse at 50% 30%,#100c1b50,#100c1be8 80%)}
+#overlay .hero{letter-spacing:-.063em}
+#overlay.resultMode{background:linear-gradient(180deg,#100c1bd4,#100c1bf5);align-items:safe center;padding:12px 15px max(14px,env(safe-area-inset-bottom));overflow-y:auto}
+.resultMode .panel{max-width:620px;padding:0;margin:auto}
+.resultShell{display:grid;gap:10px;text-align:center}
+.resultHero{font-size:clamp(29px,6.2vw,54px);line-height:1.02;letter-spacing:-.055em;font-weight:900}
+.resultHero span{display:block;color:var(--lime)}
+.resultMain{background:linear-gradient(140deg,#30234d,#171222);border:1px solid #ad8eea48;border-radius:15px;padding:10px 17px 12px}
+.resultMainNumber{font-size:clamp(46px,11vw,76px);line-height:.95;font-weight:900;letter-spacing:-.07em;color:var(--lime)}
+.resultMainNumber span{font-size:.55em;letter-spacing:-.04em}.resultMainLabel{font-size:11px;color:#d5cae6;margin-top:3px}
+.resultCompare{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.resultCompare>div{display:flex;align-items:center;justify-content:space-between;gap:4px;padding:6px 9px;border:1px solid #ffffff1d;border-radius:7px;background:#ffffff08;font-size:12px;color:#c9bedc}.resultCompare strong{font-size:17px;color:#fff;letter-spacing:-.04em}.resultCompare>div:first-child strong{color:var(--lime)}
+.compareTrack{height:4px;background:#ffffff25;border-radius:5px;margin-top:9px;overflow:hidden}.compareTrack i{display:block;width:5%;height:100%;background:var(--lime);border-radius:5px}
+.resultMeta{font-size:11px;color:#c9bfd9}.resultMeta b{color:#fff}.resultMeta span{margin:0 4px}
+.resultDetails{display:grid;gap:9px;text-align:left;border-top:1px solid #ffffff1d;padding-top:5px}
+.resultDetails h3{font-size:10px;font-weight:750;text-transform:uppercase;letter-spacing:1.1px;color:#a99cbd;margin:0 0 5px}
+.resultChips{display:flex;flex-wrap:wrap;gap:5px}.resultChip{font-size:10px;color:#e2ddec;background:#ffffff08;border:1px solid #ffffff1c;border-radius:6px;padding:4px 7px;line-height:1.25}.resultChip i{font-style:normal;color:var(--lime);margin-right:4px}
+.resultCTA,.resultReplay{display:block;width:100%;border-radius:9px;text-align:center;font-weight:850;font-size:13px;padding:12px 15px;text-decoration:none}
+.resultCTA{background:var(--lime);color:#171222}.resultReplay{border:1px solid #ffffff30;background:#ffffff06;color:#f2edf9;padding:9px 12px}
+.resultShell .summary-note{font-size:9px;line-height:1.4;margin:0 auto;color:#b6acc8}
+@media(min-width:800px){.resultShell{gap:14px}.resultMain{padding:15px 24px}.resultDetails{grid-template-columns:1.3fr 1fr}.resultChip{font-size:11px}}
+@media(max-height:620px){.resultShell{gap:7px}.resultMainNumber{font-size:42px}.resultHero{font-size:28px}.resultMain{padding:7px 12px}.resultCompare{margin-top:5px}.resultCTA{padding:9px}.resultReplay{padding:7px}}
 </style></head><body>
 <canvas id="world" tabindex="0" aria-label="Interaktives 3D-Lagerhaus"></canvas><div id="vignette"></div><div class="flash" id="flash"></div>
 <header id="top"><div class="wordmark">cer<span>toro</span></div><span class="tag">WAREHOUSE CHALLENGE</span><div class="spacer"></div><div class="timebox"><div class="label">Spielzeit</div><div class="timer" id="timer">00:00</div></div><div class="tools"><button class="iconbtn" id="sound" aria-label="Ton umschalten">Ton an</button><button class="iconbtn hidden" id="view">Übersicht</button><button class="iconbtn hidden" id="pause">Pause</button></div></header>
@@ -81,7 +113,8 @@
 <div id="toast" role="status"></div><div id="chapter" class="hidden"></div><div id="viewfinder" class="hidden"><i class="vf-corner"></i><i class="vf-corner"></i><i class="vf-corner"></i><i class="vf-corner"></i><span class="vf-label" id="vfLabel">KAMERA</span></div><section id="story" class="hidden"><div class="storytop"><div id="storyTag"></div><button id="skipIntro" type="button">Einweisung überspringen</button><button id="replayVoice" type="button" aria-label="Dialog erneut abspielen">Dialog erneut anhören</button></div><span id="speaker"></span><p id="storyLine"></p><div id="storyTask"></div><button id="storyAct" class="action">Weiter</button></section>
 <main id="hud" class="hidden"><section id="actionCard" aria-live="polite"><div class="taskline"><span id="phaseLabel" class="label"></span><span id="taskCount"></span></div><div id="phaseTitle" class="head"></div><div id="phaseText" class="small"></div><div id="taskContent"></div><button id="act" class="action">Weiter</button></section></main><div id="targetMarker" class="hidden" aria-hidden="true">+</div><div id="hint">Ziehen: Kamera drehen · Scrollen: Zoom · C: Fokus/Übersicht · Leertaste: Aktion</div>
 <div id="overlay"><div class="panel" id="panel"><div class="eyebrow">Certoro präsentiert</div><div class="hero">Warehouse<span class="accent">Challenge.</span></div><p class="subtitle">Dein erster Tag im Lager.<br>Lerne den Job – und fordere deinen Ausbilder heraus.</p><button class="start" id="start" disabled>START</button><div class="footnote" id="loadText">3D-Lager wird geladen …</div></div></div><div id="loading">3D-Modell wird geladen …</div>
-<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"}}</script><script type="module" src="./game.js?v=11.1"></script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"}}</script><script type="module" src="./game.js?v=12"></script>
 </body></html>
+
 
 
