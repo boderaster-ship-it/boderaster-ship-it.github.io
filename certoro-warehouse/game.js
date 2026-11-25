@@ -217,19 +217,60 @@ function prepareTripoPose(rig){
  const mesh=rig.getObjectByName('HighDetailCertoro'),geo=mesh.geometry,src=geo.attributes.position;
  const open=new Float32Array(src.count*3),round=new Float32Array(src.count*3),spread=new Float32Array(src.count*3);
  const sm=(a,b,x)=>{let t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)};
+ // Rigid shoes: no pelvis influence, no opposite-foot influence, and a soft ankle transition.
+ const ji=geo.attributes.skinIndex,wi=geo.attributes.skinWeight;
+ const boneIndex=n=>mesh.skeleton.bones.indexOf(bones[n].b);
+ let repaired=0;
  for(let i=0;i<src.count;i++){
-  const x=src.getX(i),y=src.getY(i),z=src.getZ(i);
-  // Stretch the textured lip seam, protect visor/nose/cheeks; lower muzzle follows jaw.
-  const front=sm(.17,.28,z),width=1-sm(.12,.25,Math.abs(x)),lower=sm(2.91,2.98,y)*(1-sm(3.047,3.069,y)),upper=sm(3.042,3.055,y)*(1-sm(3.065,3.098,y));
+  const x=src.getX(i),y=src.getY(i),z=src.getZ(i),side=x>=0?'L':'R';
+  if(y<.66){
+   const ankleBlend=sm(.27,.46,y);
+   ji.setXYZW(i,boneIndex('Foot'+side),boneIndex('Shin'+side),0,0);
+   wi.setXYZW(i,1-ankleBlend,ankleBlend,0,0);repaired++;
+  }else if(y<.90&&Math.abs(x)>.12){
+   const j=[ji.getX(i),ji.getY(i),ji.getZ(i),ji.getW(i)],w=[wi.getX(i),wi.getY(i),wi.getZ(i),wi.getW(i)];
+   const shin=boneIndex('Shin'+side),thigh=boneIndex('Thigh'+side);
+   let a=0,b=0;for(let k=0;k<4;k++){if(j[k]===shin)a+=w[k];if(j[k]===thigh)b+=w[k]}
+   if(a+b>.001){ji.setXYZW(i,shin,thigh,0,0);wi.setXYZW(i,a/(a+b),b/(a+b),0,0);repaired++}
+  }
+  const front=sm(.18,.28,z),width=1-sm(.13,.24,Math.abs(x));
+  const seam=3.043+.020*Math.pow(Math.min(1,Math.abs(x)/.15),2);
+  const lower=sm(2.88,2.975,y)*(1-sm(seam-.012,seam+.018,y));
+  const upper=sm(seam-.008,seam+.014,y)*(1-sm(3.075,3.112,y));
   const k=front*width;
-  open[i*3+1]=k*(-.092*lower+.016*upper);open[i*3+2]=-.022*k*lower;
-  const lip=k*sm(2.99,3.025,y)*(1-sm(3.07,3.11,y));
-  round[i*3]=-x*.32*lip;round[i*3+2]=.032*lip;round[i*3+1]=-.018*lip*lower;
-  spread[i*3]=x*.23*lip;spread[i*3+1]=.012*lip*(Math.abs(x)/.18);
+  open[i*3+1]=k*(-.058*lower+.006*upper);open[i*3+2]=-.012*k*lower;
+  const lip=k*sm(2.975,3.018,y)*(1-sm(3.073,3.115,y));
+  round[i*3]=-x*.28*lip;round[i*3+2]=.026*lip;
+  spread[i*3]=x*.18*lip;
  }
+ ji.needsUpdate=true;wi.needsUpdate=true;
  geo.morphTargetsRelative=true;geo.morphAttributes.position=[open,round,spread].map(a=>new T.BufferAttribute(a,3));mesh.updateMorphTargets();mesh.frustumCulled=false;
+ // The generated asset has a sealed muzzle. Shade an animated recessed aperture on the
+ // original textured surface, independently of the lower-jaw deformation.
+ const mouth={value:0},mouthRound={value:0},mouthSpread={value:0};
+ const material=mesh.material.clone();mesh.material=material;
+ material.onBeforeCompile=shader=>{
+  shader.uniforms.certMouth=mouth;shader.uniforms.certRound=mouthRound;shader.uniforms.certSpread=mouthSpread;
+  shader.vertexShader='varying vec3 certRest;\n'+shader.vertexShader;
+  shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\ncertRest=position;');
+  shader.fragmentShader='varying vec3 certRest;\nuniform float certMouth,certRound,certSpread;\n'+shader.fragmentShader;
+  shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`
+    float mouthWidth=.138*(1.0-.24*certRound+.16*certSpread);
+    float mx=certRest.x/max(mouthWidth,.01);
+    float seamY=3.043+.020*min(1.0,mx*mx);
+    float aperture=max(.0001,certMouth*.035);
+    float my=(certRest.y-seamY+aperture*.43)/aperture;
+    float dist=mx*mx+my*my;
+    float mask=(1.0-smoothstep(.79,1.0,dist))*smoothstep(.235,.28,certRest.z)*smoothstep(.015,.09,certMouth);
+    float inner=clamp(1.0-dist,0.0,1.0);
+    vec3 cavity=mix(vec3(.065,.016,.012),vec3(.009,.003,.003),inner);
+    outgoingLight=mix(outgoingLight,cavity,mask);
+    #include <opaque_fragment>`);
+ };
+ material.customProgramCacheKey=()=> 'certoro-mouth-v15';
+ material.needsUpdate=true;
  const hip=bones.ThighL.wp.y,ankle=bones.FootL.wp.y;
- tripoMotion={rig,bones,mesh,hip,ankle,last:model.position.clone(),distance:0,gait:0,bend:0,seat:0,face:[0,0,0],time:0};
+ tripoMotion={rig,bones,mesh,hip,ankle,last:model.position.clone(),distance:0,gait:0,bend:0,seat:0,face:[0,0,0],mouth,mouthRound,mouthSpread,repaired,time:0};
 }
 function motionSmooth(a,b,x){const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)}
 function animateTripoFace(dt){
@@ -238,8 +279,10 @@ function animateTripoFace(dt){
   const frames=SPEECH_FRAMES[voiceLine],t=voiceAudio?voiceAudio.currentTime:ac?Math.max(0,(ac.currentTime-voiceStartedAt)*voicePlaybackRate):0;
   if(frames){const p=t/.02,k=Math.floor(p),f=p-k;for(let j=0;j<3;j++)target[j]=lerp(frames[k*3+j]||0,frames[(k+1)*3+j]||0,f)/100}
  }
- const f=1-Math.exp(-Math.max(0,dt)*24);
+ target[0]=Math.min(1,target[0]*1.35);
+ const f=1-Math.exp(-Math.max(0,dt)*30);
  for(let j=0;j<3;j++){m.face[j]=lerp(m.face[j],target[j],f);m.mesh.morphTargetInfluences[j]=m.face[j]}
+ m.mouth.value=m.face[0];m.mouthRound.value=m.face[1];m.mouthSpread.value=m.face[2];
 }
 function advanceCertoroPose(dt){
  if(mixer)mixer.update(dt);const m=tripoMotion;if(!m)return;
