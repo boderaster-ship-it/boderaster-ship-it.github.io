@@ -3,26 +3,12 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 const $=id=>document.getElementById(id), clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), lerp=(a,b,t)=>a+(b-a)*t;
-const MODEL='https://d2ol7oe51mr4n9.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/3d0ea44a-a13a-4e99-b068-4cb4b0ec4bc1.glb';
-const CERTORO_VARIANTS={
- tripo:{label:'Tripo H3.1 · Detail',url:'https://d2ol7oe51mr4n9.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/a569ba67-6a7f-4329-bb63-e7b9b39b25f2.glb'},
- hunyuan:{label:'Hunyuan V3 · Detail',url:'https://d2ol7oe51mr4n9.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/4f488796-4ecb-4c1a-9a3b-5a8d09b2108f.glb'},
- classic:{label:'Klassisch · Original',url:MODEL}
-};
-const requestedVariant=new URLSearchParams(location.search).get('character');
-let activeVariant=Object.hasOwn(CERTORO_VARIANTS,requestedVariant)?requestedVariant:'tripo';
+let activeVariant='tripo';
 function loadCertoro(onLoad,onProgress,onError){
- const picker=$('characterSelect');picker.value=activeVariant;
- picker.onchange=()=>{const u=new URL(location.href);u.searchParams.set('character',picker.value);location.replace(u.href)};
- const load=key=>new GLTFLoader().load(CERTORO_VARIANTS[key].url,gltf=>{
-  const r=gltf.scene.getObjectByName('CERTORO_RIG');
-  if(!r||!gltf.animations.length||!['Root','ThighL','ShinL','FootL','UpperArmL','ForearmL','HandL','Finger1L','Spine'].every(n=>r.getObjectByName(n)))return fail(key,Error('Unvollständiges Charakter-Rig'));
-  activeVariant=key;picker.value=key;onLoad(gltf);
- },onProgress,e=>fail(key,e));
- const fail=(key,e)=>{console.warn('Certoro-Modell konnte nicht geladen werden',key,e);if(key!=='classic'){activeVariant='classic';picker.value='classic';$('loading').textContent='Originalfigur wird geladen …';load('classic')}else onError(e)};
- load(activeVariant);
+ new GLTFLoader().load('https://d2ol7oe51mr4n9.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/a569ba67-6a7f-4329-bb63-e7b9b39b25f2.glb',gltf=>{
+  const rig=gltf.scene.getObjectByName('CERTORO_RIG');if(!rig||!gltf.animations.length||!rig.getObjectByName('HighDetailCertoro')){onError(Error('Tripo-Rig fehlt'));return}onLoad(gltf);
+ },onProgress,onError)
 }
-
 const P={purple:0x6d28d9,pink:0xff2e93,lime:0xc6ff3d,dark:0x1b0f32};
 const products=[['Standmixer','KÜCHENGERÄT','#6d28d9'],['Kopfhörer','AUDIO','#ff2e93'],['Akkuschrauber','WERKZEUG','#f6b34a'],['Wasserkocher','HAUSHALT','#438cb8'],['Kaffeemaschine','KÜCHE','#6e5042'],['LED-Leuchte','BELEUCHTUNG','#c6ff3d'],['Lautsprecher','AUDIO','#4a3a6b'],['Pflegeset','PFLEGE','#ea8b9b'],['Toaster','KÜCHE','#699f91'],['Maus & Tastatur','ELEKTRONIK','#5d7bb8']];
 const addons=[['price','Marktpreise'],['photo','Foto-Editor'],['compliance','Compliance / WEEE'],['social','Social-Media-Posts'],['video','Produktvideos'],['print','Flyer, Plakate & Katalog'],['banner','eBay-Kopfbanner']];
@@ -218,8 +204,89 @@ function animateWorkerFace(time){
  for(let i=0;i<2;i++){const [thigh,shin]=worker.legs[i];worker.feet[i].rotation.x=-.75*(thigh.rotation.x+shin.rotation.x);}
 }
 
-async function init(){renderer=new T.WebGLRenderer({canvas:$('world'),antialias:true,alpha:false,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,2.5,Math.sqrt(3200000/(innerWidth*innerHeight))));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;scene=new T.Scene();camera=new T.PerspectiveCamera(43,1,.1,100);$('loading').textContent='Lagerhalle wird geladen …';const [kitReady]=await Promise.all([loadEnvironmentKit(),loadProductAtlas()]);warehouse();batchWarehouse();makeTraining();enhanceWarehouse();const workerReady=loadWorkerModel();resize();window.addEventListener('resize',resize);bindInput();updateScreen();loadCertoro(gltf=>{const rig=gltf.scene.getObjectByName('CERTORO_RIG');if(!rig)throw Error('Rig fehlt');model=group(scene);model.add(rig);rig.updateMatrixWorld(true);let bounds=new T.Box3().setFromObject(rig);let size=bounds.getSize(v(0,0,0));let scale=2.5/size.y;rig.scale.setScalar(scale);rig.position.y=-bounds.min.y*scale;model.position.copy(certPos);model.rotation.y=0;model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;if(o.material?.name==='Transparent cyan visor'){o.material.transparent=true;o.material.opacity=.28;o.material.depthWrite=false;if('transmission'in o.material)o.material.transmission=0}}});mixer=new T.AnimationMixer(rig);let clip=gltf.animations.find(x=>x.name==='CERTORO_RIG')||gltf.animations[0];if(clip){for(const [name,index]of Object.entries({idle:0,walk:1,sit:9,talk:13,wave:17,point:18,celebrate:22})){const sub=T.AnimationUtils.subclip(clip,name,index*48,index*48+47,24);actions[name]=mixer.clipAction(sub);actions[name].setLoop(T.LoopRepeat,Infinity)}}actions.sit=mixer.clipAction(makeSofaSitClip(T,rig,model));actions.sit.setLoop(T.LoopRepeat,Infinity);actions.coffeeBend=mixer.clipAction(makeSofaSitClip(T,rig,model,.74));actions.coffeeBend.setLoop(T.LoopRepeat,Infinity);play('idle');phoneModel=group(model);box(phoneModel,.17,.30,.035,0,0,0,0x14111f);const phoneTx=texture(256,512,(c,w,h)=>{c.fillStyle='#1b0f32';c.fillRect(0,0,w,h);c.fillStyle='#c6ff3d';c.font='900 35px Arial';c.fillText('certoro',20,58);c.fillStyle='#fff';c.font='bold 19px Arial';c.fillText('Artikel erfassen',20,110);c.strokeStyle='#c6ff3d';c.lineWidth=3;c.strokeRect(25,146,206,198);for(let j=0;j<6;j++){c.fillStyle=j%2?'#e0d8c9':'#9184bc';c.fillRect(42+(j%3)*60,175+Math.floor(j/3)*72,48,58)}c.fillStyle='#c6ff3d';c.beginPath();c.arc(128,420,29,0,Math.PI*2);c.fill()});box(phoneModel,.145,.264,.005,0,0,.021,new T.MeshBasicMaterial({map:phoneTx}),false);phoneModel.position.set(.34,1.35,.30);phoneModel.visible=false;workerReady.then(ok=>{$('loading').classList.add('hidden');$('start').disabled=false;$('loadText').textContent=CERTORO_VARIANTS[activeVariant].label+' · Touch & Desktop';});},p=>{$('loading').textContent='3D-Modell wird geladen … '+(p.total?Math.round(p.loaded/p.total*100)+'%':'')},e=>{console.error(e);$('loading').textContent='3D-Modell konnte nicht geladen werden. Bitte Seite neu laden.'});requestAnimationFrame(loop)}
+async function init(){renderer=new T.WebGLRenderer({canvas:$('world'),antialias:true,alpha:false,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,2.5,Math.sqrt(3200000/(innerWidth*innerHeight))));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;scene=new T.Scene();camera=new T.PerspectiveCamera(43,1,.1,100);$('loading').textContent='Lagerhalle wird geladen …';const [kitReady]=await Promise.all([loadEnvironmentKit(),loadProductAtlas()]);warehouse();batchWarehouse();makeTraining();enhanceWarehouse();const workerReady=loadWorkerModel();resize();window.addEventListener('resize',resize);bindInput();updateScreen();loadCertoro(gltf=>{const rig=gltf.scene.getObjectByName('CERTORO_RIG');if(!rig)throw Error('Rig fehlt');model=group(scene);model.add(rig);rig.updateMatrixWorld(true);let bounds=new T.Box3().setFromObject(rig);let size=bounds.getSize(v(0,0,0));let scale=2.5/size.y;rig.scale.setScalar(scale);rig.position.y=-bounds.min.y*scale;model.position.copy(certPos);model.rotation.y=0;model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;if(o.material?.name==='Transparent cyan visor'){o.material.transparent=true;o.material.opacity=.28;o.material.depthWrite=false;if('transmission'in o.material)o.material.transmission=0}}});mixer=new T.AnimationMixer(rig);let clip=gltf.animations.find(x=>x.name==='CERTORO_RIG')||gltf.animations[0];if(clip){for(const [name,index]of Object.entries({idle:0,walk:1,sit:9,talk:13,wave:17,point:18,celebrate:22})){const sub=T.AnimationUtils.subclip(clip,name,index*48,index*48+47,24);actions[name]=mixer.clipAction(sub);actions[name].setLoop(T.LoopRepeat,Infinity)}}actions.sit=mixer.clipAction(makeSofaSitClip(T,rig,model));actions.sit.setLoop(T.LoopRepeat,Infinity);actions.coffeeBend=mixer.clipAction(makeSofaSitClip(T,rig,model,.74));actions.coffeeBend.setLoop(T.LoopRepeat,Infinity);prepareTripoPose(rig);play('idle');phoneModel=group(model);box(phoneModel,.17,.30,.035,0,0,0,0x14111f);const phoneTx=texture(256,512,(c,w,h)=>{c.fillStyle='#1b0f32';c.fillRect(0,0,w,h);c.fillStyle='#c6ff3d';c.font='900 35px Arial';c.fillText('certoro',20,58);c.fillStyle='#fff';c.font='bold 19px Arial';c.fillText('Artikel erfassen',20,110);c.strokeStyle='#c6ff3d';c.lineWidth=3;c.strokeRect(25,146,206,198);for(let j=0;j<6;j++){c.fillStyle=j%2?'#e0d8c9':'#9184bc';c.fillRect(42+(j%3)*60,175+Math.floor(j/3)*72,48,58)}c.fillStyle='#c6ff3d';c.beginPath();c.arc(128,420,29,0,Math.PI*2);c.fill()});box(phoneModel,.145,.264,.005,0,0,.021,new T.MeshBasicMaterial({map:phoneTx}),false);phoneModel.position.set(.34,1.35,.30);phoneModel.visible=false;workerReady.then(ok=>{$('loading').classList.add('hidden');$('start').disabled=false;$('loadText').textContent='Certoro HD · Touch & Desktop';});},p=>{$('loading').textContent='3D-Modell wird geladen … '+(p.total?Math.round(p.loaded/p.total*100)+'%':'')},e=>{console.error(e);$('loading').textContent='3D-Modell konnte nicht geladen werden. Bitte Seite neu laden.'});requestAnimationFrame(loop)}
 function resize(){let w=innerWidth,h=innerHeight;renderer.setPixelRatio(Math.min(devicePixelRatio,2.5,Math.sqrt(3200000/(w*h))));renderer.setSize(w,h,false);camera.aspect=w/h;camera.fov=w/h<.9?58:43;camera.updateProjectionMatrix()}
+// V14: distance-driven two-bone foot placement and audio-timed facial shapes.
+let tripoMotion=null, voiceStartedAt=0, voicePlaybackRate=1;
+const SPEECH_FRAMES={"4":[0,0,0,0,0,0,0,0,0,17,1,26,10,5,11,5,3,6,1,1,1,3,2,3,11,5,11,24,12,25,46,12,12,100,6,25,37,2,9,1,1,2,1,1,2,5,3,5,4,2,4,1,0,1,0,0,0,28,2,44,40,3,64,33,9,9,16,4,4,8,4,8,6,3,6,0,0,0,0,0,0,100,6,25,100,6,25,46,12,12,46,12,12,36,9,9,26,7,7,27,2,43,22,1,34,13,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"5":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,33,2,52,46,3,73,36,2,58,18,5,5,19,5,5,40,10,10,43,11,11,26,7,7,70,4,18,82,5,20,11,6,12,3,1,3,2,1,2,1,0,1,0,0,0,1,0,2,41,11,11,46,12,12,23,12,24,12,6,13,16,8,17,46,12,12,57,85,3,44,66,2,7,3,7,3,1,3,1,1,2,1,0,1,4,0,6,27,2,43,41,11,11,43,11,11,37,10,10,90,5,23,90,5,22,40,3,64,46,3,73,46,3,73,45,12,12,45,12,12,39,10,10,17,8,17,14,7,15,5,3,6,5,0,1,3,0,1,4,0,1,75,5,19,24,12,25,20,10,21,11,5,11,8,0,12,6,0,9,13,1,20,29,7,7,34,9,9,31,8,8,27,7,7,23,6,6,20,3,3,7,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,6,8,8,12,7,7,11,3,3,4,1,1,2,0,0,0,24,2,38,34,2,54,42,11,11,45,12,12,39,10,10,36,9,9,42,3,67,46,12,12,45,3,71,30,2,48,28,2,44,100,6,25,46,12,12,46,12,12,24,12,25,35,2,56,29,2,46,12,1,19,1,1,1,5,5,7,79,5,20,56,3,14,28,2,7,0,0,0,0,0,0,18,5,5,31,2,50,46,3,73,46,3,73,39,3,62,22,11,23,24,12,25,24,12,25,24,12,25,20,10,21,8,4,9,10,1,16,8,0,12,30,2,48,46,3,73,43,3,68,60,9,7,45,7,6,17,2,2,17,3,2,8,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"7":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,23,11,24,24,12,25,22,11,23,11,6,11,7,3,7,7,4,8,3,1,3,0,0,0,0,0,0,46,3,73,46,12,12,46,12,12,46,12,12,44,11,11,16,8,17,6,3,7,8,1,13,7,0,11,5,0,8,26,2,41,46,12,12,46,12,12,46,12,12,24,12,25,24,12,25,24,12,25,24,12,25,26,2,42,7,0,12,0,0,0,0,0,0,0,0,0,14,4,4,18,5,5,16,4,4,9,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,12,0,19,29,1,22,33,1,28,42,1,29,2,46,35,2,56,42,3,66,34,2,55,23,34,1,37,2,9,93,6,23,46,3,73,46,3,73,46,3,73,21,11,22,14,7,14,6,3,6,1,0,1,0,0,0,0,0,0,0,0,0,5,2,5,7,4,8,6,3,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,12,18,1,22,33,1,25,37,1,26,39,1,25,37,1,21,31,1,15,22,1,19,3,2,20,3,3,15,2,2,4,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]};
+function prepareTripoPose(rig){
+ const bones={};rig.traverse(b=>{if(b.isBone)bones[b.name]={b,p:b.position.clone(),q:b.quaternion.clone(),s:b.scale.clone()}});
+ model.updateMatrixWorld(true);
+ const mq=model.getWorldQuaternion(new T.Quaternion()).invert();
+ for(const o of Object.values(bones)){o.wq=mq.clone().multiply(o.b.getWorldQuaternion(new T.Quaternion()));o.wp=model.worldToLocal(o.b.getWorldPosition(v(0,0,0)))}
+ const mesh=rig.getObjectByName('HighDetailCertoro'),geo=mesh.geometry,src=geo.attributes.position;
+ const open=new Float32Array(src.count*3),round=new Float32Array(src.count*3),spread=new Float32Array(src.count*3);
+ const sm=(a,b,x)=>{let t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)};
+ for(let i=0;i<src.count;i++){
+  const x=src.getX(i),y=src.getY(i),z=src.getZ(i);
+  // Stretch the textured lip seam, protect visor/nose/cheeks; lower muzzle follows jaw.
+  const front=sm(.17,.28,z),width=1-sm(.12,.25,Math.abs(x)),lower=sm(2.91,2.98,y)*(1-sm(3.047,3.069,y)),upper=sm(3.042,3.055,y)*(1-sm(3.065,3.098,y));
+  const k=front*width;
+  open[i*3+1]=k*(-.092*lower+.016*upper);open[i*3+2]=-.022*k*lower;
+  const lip=k*sm(2.99,3.025,y)*(1-sm(3.07,3.11,y));
+  round[i*3]=-x*.32*lip;round[i*3+2]=.032*lip;round[i*3+1]=-.018*lip*lower;
+  spread[i*3]=x*.23*lip;spread[i*3+1]=.012*lip*(Math.abs(x)/.18);
+ }
+ geo.morphTargetsRelative=true;geo.morphAttributes.position=[open,round,spread].map(a=>new T.BufferAttribute(a,3));mesh.updateMorphTargets();mesh.frustumCulled=false;
+ const hip=bones.ThighL.wp.y,ankle=bones.FootL.wp.y;
+ tripoMotion={rig,bones,mesh,hip,ankle,last:model.position.clone(),distance:0,gait:0,bend:0,seat:0,face:[0,0,0],time:0};
+}
+function motionSmooth(a,b,x){const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)}
+function animateTripoFace(dt){
+ const m=tripoMotion;if(!m)return;let target=[0,0,0];
+ if(voicePlaying&&voiceWho==='Certoro'&&!state.muted){
+  const frames=SPEECH_FRAMES[voiceLine],t=voiceAudio?voiceAudio.currentTime:ac?Math.max(0,(ac.currentTime-voiceStartedAt)*voicePlaybackRate):0;
+  if(frames){const p=t/.02,k=Math.floor(p),f=p-k;for(let j=0;j<3;j++)target[j]=lerp(frames[k*3+j]||0,frames[(k+1)*3+j]||0,f)/100}
+ }
+ const f=1-Math.exp(-Math.max(0,dt)*24);
+ for(let j=0;j<3;j++){m.face[j]=lerp(m.face[j],target[j],f);m.mesh.morphTargetInfluences[j]=m.face[j]}
+}
+function advanceCertoroPose(dt){
+ if(mixer)mixer.update(dt);const m=tripoMotion;if(!m)return;
+ const B=n=>m.bones[n].b, R=n=>m.bones[n],W=n=>B(n).getWorldPosition(v(0,0,0));
+ const moved=model.position.distanceTo(m.last);m.last.copy(model.position);m.distance+=Math.min(moved,.4);m.time+=dt;
+ const walking=currentAction==='walk'||(currentAction==='point'&&moved>.014);
+ const stride=1.40;
+ const targetGait=walking?clamp(moved/Math.max(dt,.001)/.6,0,1):0;
+ const pick=lounge.active&&LOUNGE_ROUTE[lounge.index]?.kind==='pick';
+ const pickT=pick?clamp(lounge.time/LOUNGE_ROUTE[lounge.index].duration,0,1):0;
+ const bendTarget=pick?motionSmooth(0,.43,pickT)*(1-motionSmooth(.66,1,pickT)):0;
+ const seatTarget=currentAction==='sit'&&(lounge.active||lounge.seated)?1:0;
+ m.gait=lerp(m.gait,targetGait,1-Math.exp(-dt*10));m.bend=lerp(m.bend,bendTarget,1-Math.exp(-dt*19));m.seat=lerp(m.seat,seatTarget,1-Math.exp(-dt*9));
+ // Preserve legacy gestures for non-locomotion states, but reset the retargeted leg and root poses.
+ const gesture=!walking&&!pick&&m.seat<.03&&['point','talk','wave','celebrate'].includes(currentAction);
+ const qsave={};if(gesture)for(const n of ['Head','UpperArmL','ForearmL','HandL','UpperArmR','ForearmR','HandR'])qsave[n]=B(n).quaternion.clone();
+ for(const o of Object.values(m.bones)){o.b.position.copy(o.p);o.b.quaternion.copy(o.q);o.b.scale.copy(o.s)}
+ const phase=m.distance/stride, gait=m.gait*(1-m.bend)*(1-m.seat);
+ const hipY=lerp(m.hip-.135*gait-.025*gait*Math.cos(phase*4*Math.PI)-.36*m.bend,.65,m.seat);
+ const back=-.105*m.bend-.025*m.seat, sway=.022*gait*Math.sin(phase*2*Math.PI);
+ B('Root').position.copy(R('Root').p).add(v(sway,hipY-m.hip,back).multiplyScalar(1/m.rig.scale.y));
+ model.updateMatrixWorld(true);
+ const mq=model.getWorldQuaternion(new T.Quaternion()),axisX=v(1,0,0);
+ function orient(n,q){const b=B(n);b.quaternion.copy(b.parent.getWorldQuaternion(new T.Quaternion()).invert().multiply(q));b.updateWorldMatrix(true,true)}
+ function restQ(n,rx=0){return mq.clone().multiply(new T.Quaternion().setFromAxisAngle(axisX,rx)).multiply(R(n).wq)}
+ function aim(n,child,p){const a=W(n),d=W(child).sub(a).normalize(),to=p.clone().sub(a).normalize();if(to.lengthSq()<.1)return;orient(n,new T.Quaternion().setFromUnitVectors(d,to).multiply(B(n).getWorldQuaternion(new T.Quaternion())))}
+ // Hip hinge instead of the former simulated crouch. Counter-rotate neck for gaze.
+ orient('Spine',restQ('Spine',.88*m.bend+.11*m.seat));orient('Chest',restQ('Chest',.83*m.bend+.075*m.seat));orient('Head',restQ('Head',.42*m.bend-.02*m.seat));
+ for(const [side,sg] of [['L',1],['R',-1]]){
+  const th='Thigh'+side,sh='Shin'+side,fo='Foot'+side,u='UpperArm'+side,f='Forearm'+side,h='Hand'+side;
+  const p=((phase+(side==='R'?.5:0))%1+1)%1,stance=.60;
+  let z=0,lift=0;
+  if(p<stance)z=stride*(.5-p/stance)*stance;else{const t=(p-stance)/(1-stance);z=stride*stance*(motionSmooth(0,1,t)-.5);lift=.14*Math.sin(Math.PI*t)}
+  const foot=R(fo).wp.clone();foot.z+=gait*z;foot.y+=gait*lift;foot.z=lerp(foot.z,.49,m.seat);foot.x+=sg*.025*m.seat;foot.z+=.07*m.bend;
+  let target=model.localToWorld(foot),hip=W(th),l1=W(sh).distanceTo(hip),l2=W(fo).distanceTo(W(sh)),dir=target.clone().sub(hip);
+  let d=clamp(dir.length(),Math.abs(l1-l2)+.001,l1+l2-.002);dir.normalize();
+  let pole=v(sg*.06,0,1).applyQuaternion(mq);pole.addScaledVector(dir,-pole.dot(dir)).normalize();
+  const along=(l1*l1-l2*l2+d*d)/(2*d),knee=hip.clone().addScaledVector(dir,along).addScaledVector(pole,Math.sqrt(Math.max(0,l1*l1-along*along)));
+  target=hip.clone().addScaledVector(dir,d);
+  aim(th,sh,knee);aim(sh,fo,target);orient(fo,restQ(fo,gait*lift*.85));
+  const swing=sg*.38*gait*Math.cos(phase*2*Math.PI),restSwing=.035*Math.sin(m.time*2.2);
+  orient(u,restQ(u,swing+restSwing+.12*m.seat));orient(f,restQ(f,swing-.18*gait-.52*m.seat));orient(h,restQ(h,swing-.18*gait-.52*m.seat));
+ }
+ if(gesture){for(const [n,q] of Object.entries(qsave))B(n).quaternion.copy(q)}
+ model.updateMatrixWorld(true);animateTripoFace(dt);
+}
+
 function play(name,fade=.20){if(!mixer||currentAction===name)return;let a=actions[name]||actions.idle;if(!a)return;if(currentAction&&actions[currentAction])actions[currentAction].fadeOut(fade);a.paused=false;a.reset().fadeIn(fade).play();currentAction=name}
 const intro={step:0,choice:false,done:false,transition:0,model:null,desk:null,cam:null,speech:true,lastLine:'',entered:0};
 let trainerProps,trainingKey,stageGlows=[],deliveryFX=[],resultBoard;
@@ -249,7 +316,7 @@ async function say(line,who){
   let buf=voiceDecoded.get(i);
   if(!buf){let bytes=await voiceBytes[i];if(!bytes)throw Error('No audio');buf=await ac.decodeAudioData(bytes.slice(0));voiceDecoded.set(i,buf)}
   if(ticket!==voiceTicket||state.muted)return;
-  const src=ac.createBufferSource(),gain=ac.createGain();gain.gain.value=.92;src.buffer=buf;src.playbackRate.value=state.phase==='intro'?INTRO_RATE:1;src.connect(gain);gain.connect(ac.destination);voiceSource=src;voicePlaying=true;src.onended=()=>{if(ticket===voiceTicket){voicePlaying=false;voiceSource=null}};src.start();
+  const src=ac.createBufferSource(),gain=ac.createGain();gain.gain.value=.92;src.buffer=buf;src.playbackRate.value=state.phase==='intro'?INTRO_RATE:1;src.connect(gain);gain.connect(ac.destination);voiceSource=src;voiceStartedAt=ac.currentTime;voicePlaybackRate=src.playbackRate.value;voicePlaying=true;src.onended=()=>{if(ticket===voiceTicket){voicePlaying=false;voiceSource=null}};src.start();
  }catch(e){
   if(ticket!==voiceTicket||state.muted)return;
   try{const audio=new Audio(VOICE_URLS[i]);audio.playbackRate=state.phase==='intro'?INTRO_RATE:1;voiceAudio=audio;audio.onended=()=>{if(ticket===voiceTicket){voicePlaying=false;voiceAudio=null}};await audio.play();if(ticket===voiceTicket)voicePlaying=true;else audio.pause()}catch(e){if(ticket===voiceTicket)voicePlaying=false}
@@ -364,7 +431,7 @@ function cinematicActors(dt,time){
  let cp='idle',cert=v(-1.62,0,1.10),man=v(1.34,0,1.07);if(!active){cert=v(-3.25,0,2.25);man=v(3.25,0,2.25)}
  let a=active?script[intro.step]:null;if(a?.name==='Certoro'&&voicePlaying&&voiceWho==='Certoro')cp='talk';else if(active&&intro.step===1&&intro.completed)cp='point';
  certPos.lerp(cert,1-Math.exp(-dt*5));manualPos.lerp(man,1-Math.exp(-dt*5));model.position.copy(certPos);worker.g.position.copy(manualPos);model.rotation.y=lerp(model.rotation.y,active?.60:0,1-Math.exp(-dt*5));worker.g.rotation.y=lerp(worker.g.rotation.y,active?-.45:0,1-Math.exp(-dt*5));play(cp);
- if(phoneModel)phoneModel.visible=false;if(mixer)mixer.update(dt);
+ if(phoneModel)phoneModel.visible=false;advanceCertoroPose(dt);
  let gest=active&&a?.name==='Lagerleiter'&&voicePlaying?Math.sin(time*4)*.17:0;worker.arms.forEach(([arm,f],i)=>{const demo=active&&intro.step>=1&&intro.step<=3;arm.rotation.x=demo?(intro.step===1?-1.05:-.65)+gest:(i===0?-.38-gest:-.12);arm.rotation.z=i===0?.14:-.14;f.rotation.x=demo?(intro.step===1?-.80:-.65+Math.sin(time*9+i)*.12):(i===0?-.62-gest:0)});worker.legs.forEach(([a,k])=>{a.rotation.x=0;k.rotation.x=0});scanBeam.visible=false;return true
 }
 function cinematicCamera(dt){let portrait=innerWidth/innerHeight<.85;let target,angle,elev,distance;
@@ -487,7 +554,7 @@ function watchColleague(dt,time){
  const delta=certTarget.clone().sub(certPos),walking=delta.length()>.32;
  certPos.lerp(certTarget,1-Math.exp(-dt*2.3));model.position.copy(certPos);
  model.rotation.y=angleTo(model.rotation.y,walking?Math.atan2(delta.x,delta.z):Math.PI/2,dt);
- play(walking?'walk':voicePlaying&&voiceWho==='Certoro'?'talk':'idle');if(mixer)mixer.update(dt);updateCoffee();if(phoneModel)phoneModel.visible=false;
+ play(walking?'walk':voicePlaying&&voiceWho==='Certoro'?'talk':'idle');advanceCertoroPose(dt);updateCoffee(dt);if(phoneModel)phoneModel.visible=false;
  manualTarget.set(4.7,0,4.1);manualPos.lerp(manualTarget,1-Math.exp(-dt*4));worker.g.position.copy(manualPos);worker.g.rotation.y=lerp(worker.g.rotation.y,Math.PI,1-Math.exp(-dt*5));
  worker.arms.forEach(([a,f],i)=>{a.rotation.x=-.72+Math.sin(time*8+i)*.10;a.rotation.z=(i?1:-1)*.12;f.rotation.x=-.65+Math.sin(time*11+i)*.16});worker.legs.forEach(([a,k])=>{a.rotation.x=0;k.rotation.x=0});worker.torso.rotation.x=.10;scanBeam.visible=false;
  if(t>=5.8&&!endingScene.said){endingScene.said=true;$('story').classList.remove('hidden');$('story').classList.add('bull');$('storyTag').textContent='10 / 10 ANGEBOTE FERTIG';$('speaker').textContent='Certoro';$('storyLine').textContent='Ich bin fertig. Wie weit bist du?';$('storyTask').replaceChildren();$('storyAct').textContent='Weiter';$('storyAct').disabled=false;$('storyAct').onclick=()=>{if(endingScene.observed){$('story').classList.add('hidden');$('chapter').classList.add('hidden');showResult()}else{endingScene.observed=true;$('story').classList.remove('bull');$('speaker').textContent='Lagerleiter';$('storyTag').textContent='NOCH MITTEN IN DER ARBEIT';$('storyLine').textContent='Ich bin noch dabei, die Artikel einzeln anzulegen …';$('storyAct').textContent='Ergebnis ansehen';say($('storyLine').textContent,'Lagerleiter')}};say($('storyLine').textContent,'Certoro')}
@@ -508,7 +575,7 @@ function updateTarget(){let marker=$('targetMarker');if(state.phase!=='playing'|
 const LOUNGE_ROUTE=[
  {kind:'walk',x:-2.20,z:1.65},
  {kind:'walk',x:-2.20,z:4.34},
- {kind:'pick',x:-2.20,z:4.34,yaw:-Math.PI/2,duration:1.35},
+ {kind:'pick',x:-2.20,z:4.34,yaw:-Math.PI/2,duration:1.85},
  {kind:'walk',x:-2.20,z:5.35},
  {kind:'walk',x:-4.80,z:5.35},
  {kind:'walk',x:-4.80,z:4.17},
@@ -536,7 +603,7 @@ function advanceLounge(dt){
  let done=false,pose='idle',fade=.18;
  if(step.kind==='walk'){
   const d=target.clone().sub(certPos),len=d.length();
-  if(len>.001){model.rotation.y=angleTo(model.rotation.y,Math.atan2(d.x,d.z),dt);certPos.addScaledVector(d,Math.min(1,dt*2.65/len))}
+  if(len>.001){model.rotation.y=angleTo(model.rotation.y,Math.atan2(d.x,d.z),dt);certPos.addScaledVector(d,Math.min(1,dt*1.75/len))}
   done=certPos.distanceTo(target)<.015;if(done)certPos.copy(target);
   pose='walk';
  }else{
@@ -545,8 +612,8 @@ function advanceLounge(dt){
   model.rotation.y=angleTo(model.rotation.y,step.yaw,dt);
   if(step.kind==='pick'){
    pose='coffeeBend';fade=.32;
-   lounge.reach=t<.60?clamp(t/.60,0,1):1-clamp((t-.60)/.40,0,1);
-   if(t>=.60&&!lounge.held){lounge.held=true;sound('scan')}
+   lounge.reach=t<.60?motionSmooth(.12,.60,t):1-motionSmooth(.60,.95,t);
+   if(t>=.60&&!lounge.held){lounge.held=true;lounge.grabBlend=0;sound('scan')}
   }else if(step.kind==='seat'){
    if(!lounge.from)lounge.from=certPos.clone();
    const u=t*t*(3-2*t);certPos.copy(lounge.from).lerp(target,u);
@@ -584,7 +651,7 @@ function aimCoffeeArm(side,target,weight){
  }
  aim(upper,fore,elbow);aim(fore,hand,end);
 }
-function updateCoffee(){
+function updateCoffee(dt=.016){
  if(!model||!coffeeCup)return;
  if(!lounge.held&&lounge.reach<=0)return;
  model.updateMatrixWorld(true);
@@ -606,7 +673,8 @@ function updateCoffee(){
  aimCoffeeArm(side,target,lounge.held?1:lounge.reach);
  if(lounge.held){
   const p=hand.getWorldPosition(v(0,0,0));
-  coffeeCup.position.copy(p.addScaledVector(forward,.055));coffeeCup.position.y+=.035;
+  const cupTarget=p.addScaledVector(forward,.055);cupTarget.y+=.035;
+  if(picking){lounge.grabBlend=clamp((lounge.grabBlend||0)+dt/.13,0,1);coffeeCup.position.copy(v(...COFFEE_HOME)).lerp(cupTarget,motionSmooth(0,1,lounge.grabBlend))}else coffeeCup.position.copy(cupTarget);
   coffeeCup.rotation.set(0,model.rotation.y,0);
  }
 }
@@ -625,11 +693,11 @@ function updateActors(dt,time){if(state.phase==='outro'){watchColleague(dt,time)
     else{lounge.seated=false;certTarget.set(3.35,0,5.35);if(certPos.x>3.30)certTarget.set(3.35,0,4.50);cp='idle'}
    }
   }
-  const delta=certTarget.clone().sub(certPos),d=delta.length();certPos.lerp(certTarget,1-Math.exp(-dt*2.7));
-  if(model){model.position.copy(certPos);const angle=d>.25?Math.atan2(delta.x,delta.z):(state.role==='manual'&&auto>=3?Math.PI/2:0);model.rotation.y=angleTo(model.rotation.y,angle,dt);if(d>.35&&cp!=='point'&&cp!=='sit')cp='walk';play(cp)}
+  const delta=certTarget.clone().sub(certPos),d=delta.length();certPos.lerp(certTarget,Math.min(1,dt*1.75/Math.max(.001,d)));
+  if(model){model.position.copy(certPos);const angle=d>.25?Math.atan2(delta.x,delta.z):(state.role==='manual'&&auto>=3?Math.PI/2:0);model.rotation.y=angleTo(model.rotation.y,angle,dt);if(d>.15&&cp!=='sit')cp='walk';play(cp)}
  }
  if(phoneModel)phoneModel.visible=state.phase==='playing'&&auto===0&&run;
- if(mixer)mixer.update(state.paused?0:dt);updateCoffee();
+ advanceCertoroPose(state.paused?0:dt);updateCoffee(state.paused?0:dt);
  scanBeam.visible=state.phase==='playing'&&auto===0&&run;scanBeam.position.y=.28+((time*1.2)%1)*.95;scanBeam.material.opacity=.11+.10*Math.sin(time*4)**2;
  if(state.phase==='playing'||state.phase==='done'){let k=state.manualStep;manualTarget.set(k<1?3.25:4.7,0,k<1?.15:4.10);manualPose=state.manualRun?(k<1?'photo':'work'):'idle'}else{manualTarget.set(3.1,0,2.25);manualPose='idle'}let md=manualPos.distanceTo(manualTarget);manualPos.lerp(manualTarget,1-Math.exp(-dt*2.7));worker.g.position.copy(manualPos);worker.g.rotation.y=lerp(worker.g.rotation.y,manualPose==='photo'?Math.PI:manualPose==='work'?Math.PI:0,1-Math.exp(-dt*5));let t=time*5;worker.arms.forEach(([a,f],i)=>{a.rotation.x=md>.2?Math.sin(t)*(i?1:-1)*.45:manualPose==='work'?-0.65:manualPose==='photo'?-1.03:0;a.rotation.z=(i?1:-1)*.12;f.rotation.x=manualPose==='work'?-.65+Math.sin(t*2+i)*.12:manualPose==='photo'?-.80:0});worker.legs.forEach(([a,k],i)=>{a.rotation.x=md>.2?Math.sin(t)*(i?-1:1)*.38:0;k.rotation.x=md>.2?Math.max(0,-Math.sin(t)*(i?-1:1))*.5:0});worker.torso.rotation.x=manualPose==='work'?.10:0;let acount=state.autoTime<15?0:Math.min(10,Math.floor((state.autoTime-15)/7.5+1e-7)),mcount=state.manualItem;for(let lane=0;lane<2;lane++)productsMeshes[lane].forEach((p,i)=>{let done=i<(lane?mcount:acount);p.marker.material.opacity=done?.8:(state.phase==='playing'&&state.role==='manual'&&lane===1&&i===state.manualItem?.25:0);p.mesh.scale.y=1;
  let destination=p.base.clone();
