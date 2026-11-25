@@ -20,7 +20,39 @@ let coffeeCup=null;
 let manualPose='idle',certPose='idle', certPos=new T.Vector3(-3.1,0,2.25),manualPos=new T.Vector3(3.1,0,2.25),certTarget=certPos.clone(),manualTarget=manualPos.clone();
 let yaw=0.10,pitch=.54,dist=18,drag=null,camTarget=new T.Vector3(0,.8,-.2),autoCamera=true,overview=false,toastTimer=0,ac;
 const v=(x,y,z)=>new T.Vector3(x,y,z);
-function sound(kind='tick'){if(state.muted)return;try{ac??=new (window.AudioContext||window.webkitAudioContext)();if(ac.state==='suspended')ac.resume();let o=ac.createOscillator(),g=ac.createGain(),t=ac.currentTime;o.type=kind==='scan'?'sine':'triangle';o.frequency.setValueAtTime(kind==='done'?660:kind==='scan'?1000:kind==='gate'?110:480,t);o.frequency.exponentialRampToValueAtTime(kind==='done'?990:kind==='scan'?1600:240,t+.12);g.gain.setValueAtTime(.065,t);g.gain.exponentialRampToValueAtTime(.001,t+.22);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+.23)}catch{}}
+// Quiet, short foley sounds instead of tonal arcade beeps. Original dialogue is untouched.
+let foleyBuffers={},ambientSource=null,ambientGain=null,lastFoley=0;
+function foleyBuffer(kind){
+ if(foleyBuffers[kind])return foleyBuffers[kind];
+ const dur={tick:.075,scan:.14,gate:.65,done:.48,confirm:.16}[kind]||.10;
+ const n=Math.ceil(ac.sampleRate*dur),b=ac.createBuffer(1,n,ac.sampleRate),a=b.getChannelData(0);let low=0,low2=0,seed=12345;
+ for(let i=0;i<n;i++){seed=(Math.imul(seed,1664525)+1013904223)>>>0;const t=i/ac.sampleRate,x=seed/2147483648-1;low+=.075*(x-low);low2+=.008*(x-low2);const soft=low-low2;
+  if(kind==='scan'){a[i]=(soft*.9+x*.14)*(Math.exp(-t*65)+.45*Math.exp(-Math.max(0,t-.047)*85)*(t>.047))}
+  else if(kind==='gate'){a[i]=low2*Math.sin(Math.PI*t/dur)**2}
+  else if(kind==='done'){a[i]=soft*Math.sin(Math.PI*t/dur)**2*.75}
+  else{a[i]=(soft*.7+low2*.5)*Math.exp(-t*(kind==='confirm'?22:52))}
+  a[i]*=Math.min(1,t/.002)*Math.min(1,(dur-t)/.01);
+ }
+ return foleyBuffers[kind]=b;
+}
+function sound(kind='tick'){
+ if(state.muted)return;
+ try{ac??=new (window.AudioContext||window.webkitAudioContext)();if(ac.state==='suspended')ac.resume();
+ const now=ac.currentTime;if(kind==='tick'&&now-lastFoley<.12)return;lastFoley=now;
+ const src=ac.createBufferSource(),g=ac.createGain();src.buffer=foleyBuffer(kind);g.gain.value={tick:.12,scan:.23,gate:.19,done:.16,confirm:.16}[kind]||.12;src.connect(g).connect(ac.destination);src.start();
+ }catch{}
+}
+function updateAmbience(){
+ if(!ac||ac.state!=='running')return;
+ try{
+ if(!ambientSource&&!state.muted&&state.phase!=='menu'){
+  const n=ac.sampleRate*4,b=ac.createBuffer(1,n,ac.sampleRate),a=b.getChannelData(0);let f=0,seed=6138;
+  for(let i=0;i<n;i++){seed=(Math.imul(seed,1664525)+1013904223)>>>0;f+=.003*(seed/2147483648-1-f);a[i]=f*Math.min(1,i/4000,(n-i)/4000)}
+  ambientSource=ac.createBufferSource();ambientSource.buffer=b;ambientSource.loop=true;ambientGain=ac.createGain();ambientGain.gain.value=0;ambientSource.connect(ambientGain).connect(ac.destination);ambientSource.start();
+ }
+ if(ambientGain){const target=state.muted||state.paused||state.phase==='done'||state.phase==='menu'?0:voicePlaying?.017:.06;ambientGain.gain.setTargetAtTime(target,ac.currentTime,.12)}
+ }catch{}
+}
 function toast(s){$('toast').textContent=s;$('toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('visible'),1900)}
 const mats={};
 function mat(color,rough=.7,metal=0){const k=[color,rough,metal].join();return mats[k]??=new T.MeshStandardMaterial({color,roughness:rough,metalness:metal})}
@@ -331,7 +363,7 @@ function animateWorkerFace(time,dt=.016){
  for(let i=0;i<2;i++){const [thigh,shin]=worker.legs[i];worker.feet[i].rotation.x=-.75*(thigh.rotation.x+shin.rotation.x);}
 }
 
-async function init(){renderer=new T.WebGLRenderer({canvas:$('world'),antialias:true,alpha:false,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,2.5,Math.sqrt(3200000/(innerWidth*innerHeight))));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;scene=new T.Scene();camera=new T.PerspectiveCamera(43,1,.1,100);$('loading').textContent='Lagerhalle wird geladen …';const [kitReady]=await Promise.all([loadEnvironmentKit(),loadProductAtlas()]);warehouse();batchWarehouse();makeTraining();enhanceWarehouse();const workerReady=loadWorkerModel();resize();window.addEventListener('resize',resize);bindInput();updateScreen();loadCertoro(gltf=>{const rig=gltf.scene.getObjectByName('CERTORO_RIG');if(!rig)throw Error('Rig fehlt');model=group(scene);model.add(rig);rig.updateMatrixWorld(true);let bounds=new T.Box3().setFromObject(rig);let size=bounds.getSize(v(0,0,0));let scale=2.5/size.y;rig.scale.setScalar(scale);rig.position.y=-bounds.min.y*scale;model.position.copy(certPos);model.rotation.y=0;model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;if(o.material?.name==='Transparent cyan visor'){o.material.transparent=true;o.material.opacity=.28;o.material.depthWrite=false;if('transmission'in o.material)o.material.transmission=0}}});mixer=new T.AnimationMixer(rig);let clip=gltf.animations.find(x=>x.name==='CERTORO_RIG')||gltf.animations[0];if(clip){for(const [name,index]of Object.entries({idle:0,walk:1,sit:9,talk:13,wave:17,point:18,celebrate:22})){const sub=T.AnimationUtils.subclip(clip,name,index*48,index*48+47,24);actions[name]=mixer.clipAction(sub);actions[name].setLoop(T.LoopRepeat,Infinity)}}actions.sit=mixer.clipAction(makeSofaSitClip(T,rig,model));actions.sit.setLoop(T.LoopRepeat,Infinity);actions.coffeeBend=mixer.clipAction(makeSofaSitClip(T,rig,model,.74));actions.coffeeBend.setLoop(T.LoopRepeat,Infinity);prepareTripoPose(rig);play('idle');phoneModel=group(model);box(phoneModel,.17,.30,.035,0,0,0,0x14111f);buildPhotoScreen();phoneModel.position.set(.34,1.35,.30);phoneModel.visible=false;workerReady.then(ok=>{$('loading').classList.add('hidden');$('start').disabled=false;$('loadText').textContent='Certoro HD · Touch & Desktop';});},p=>{$('loading').textContent='3D-Modell wird geladen … '+(p.total?Math.round(p.loaded/p.total*100)+'%':'')},e=>{console.error(e);$('loading').textContent='3D-Modell konnte nicht geladen werden. Bitte Seite neu laden.'});requestAnimationFrame(loop)}
+async function init(){renderer=new T.WebGLRenderer({canvas:$('world'),antialias:true,alpha:false,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,2.5,Math.sqrt(3200000/(innerWidth*innerHeight))));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;scene=new T.Scene();camera=new T.PerspectiveCamera(43,1,.1,100);$('loading').textContent='Lagerhalle wird geladen …';const [kitReady]=await Promise.all([loadEnvironmentKit(),loadProductAtlas()]);warehouse();batchWarehouse();makeTraining();enhanceWarehouse();const workerReady=loadWorkerModel();resize();window.addEventListener('resize',resize);bindInput();updateScreen();loadCertoro(gltf=>{const rig=gltf.scene.getObjectByName('CERTORO_RIG');if(!rig)throw Error('Rig fehlt');model=group(scene);model.add(rig);rig.updateMatrixWorld(true);let bounds=new T.Box3().setFromObject(rig);let size=bounds.getSize(v(0,0,0));let scale=2.5/size.y;rig.scale.setScalar(scale);rig.position.y=-bounds.min.y*scale;model.position.copy(certPos);model.rotation.y=0;model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;if(o.material?.name==='Transparent cyan visor'){o.material.transparent=true;o.material.opacity=.28;o.material.depthWrite=false;if('transmission'in o.material)o.material.transmission=0}}});mixer=new T.AnimationMixer(rig);let clip=gltf.animations.find(x=>x.name==='CERTORO_RIG')||gltf.animations[0];if(clip){for(const [name,index]of Object.entries({idle:0,walk:1,sit:9,talk:13,wave:17,point:18,celebrate:22})){const sub=T.AnimationUtils.subclip(clip,name,index*48,index*48+47,24);actions[name]=mixer.clipAction(sub);actions[name].setLoop(T.LoopRepeat,Infinity)}}actions.sit=mixer.clipAction(makeSofaSitClip(T,rig,model));actions.sit.setLoop(T.LoopRepeat,Infinity);actions.coffeeBend=mixer.clipAction(makeSofaSitClip(T,rig,model,.74));actions.coffeeBend.setLoop(T.LoopRepeat,Infinity);prepareTripoPose(rig);play('idle');phoneModel=group(model);box(phoneModel,.17,.30,.035,0,0,0,0x14111f);box(phoneModel,.065,.073,.008,-.045,.098,-.021,0x292733);for(const y of [.078,.113]){const lens=cyl(phoneModel,.014,.014,.006,-.045,y,-.027,0x0b0d16,24);lens.rotation.x=Math.PI/2}buildPhotoScreen();phoneModel.position.set(.34,1.35,.30);phoneModel.visible=false;workerReady.then(ok=>{$('loading').classList.add('hidden');$('start').disabled=false;$('loadText').textContent='Certoro HD · Touch & Desktop';});},p=>{$('loading').textContent='3D-Modell wird geladen … '+(p.total?Math.round(p.loaded/p.total*100)+'%':'')},e=>{console.error(e);$('loading').textContent='3D-Modell konnte nicht geladen werden. Bitte Seite neu laden.'});requestAnimationFrame(loop)}
 function resize(){let w=innerWidth,h=innerHeight;renderer.setPixelRatio(Math.min(devicePixelRatio,2.5,Math.sqrt(3200000/(w*h))));renderer.setSize(w,h,false);camera.aspect=w/h;camera.fov=w/h<.9?58:43;camera.updateProjectionMatrix()}
 // V14: distance-driven two-bone foot placement and audio-timed facial shapes.
 let tripoMotion=null, voiceStartedAt=0, voicePlaybackRate=1;
@@ -607,8 +639,15 @@ function cinematicActors(dt,time){
 }
 function cinematicCamera(dt){let portrait=innerWidth/innerHeight<.85;let target,angle,elev,distance;
  if(photoShot.active&&!photoShot.returning&&photoShot.t>.04){
-  target=phoneModel.getWorldPosition(v(0,0,0));angle=.68;elev=.04;distance=portrait?.51:.61;
-  const ease=1-Math.exp(-dt*8);camTarget.lerp(target,ease);yaw=lerp(yaw,angle,ease);pitch=lerp(pitch,elev,ease);dist=lerp(dist,distance,ease);return true;
+  const phone=phoneModel.getWorldPosition(v(0,0,0)),normal=v(0,0,1).applyQuaternion(phoneModel.getWorldQuaternion(new T.Quaternion()));
+  const blend=motionSmooth(.72,1.45,photoShot.t);
+  const side=photoAim().sub(model.position);side.y=0;side.normalize();
+  const poseTarget=model.position.clone().add(v(0,1.12,0)).addScaledVector(side,.45);
+  target=poseTarget.lerp(phone,blend);
+  const screenAngle=Math.atan2(normal.x,normal.z),sideAngle=screenAngle-1.18;
+  angle=sideAngle+Math.atan2(Math.sin(screenAngle-sideAngle),Math.cos(screenAngle-sideAngle))*blend;
+  elev=lerp(.14,Math.asin(clamp(normal.y,-1,1)),blend);distance=lerp(portrait?4.4:3.8,portrait?.55:.65,blend);
+  const ease=1-Math.exp(-dt*8);camTarget.lerp(target,ease);yaw=angleTo(yaw,angle,dt*.66);pitch=lerp(pitch,elev,ease);dist=lerp(dist,distance,ease);return true;
  }
  if(photoShot.active&&photoShot.returning){target=v(-3.25,1.0,.10);angle=.05;elev=portrait?.54:.39;distance=portrait?9.8:10.5;const ease=1-Math.exp(-dt*6);camTarget.lerp(target,ease);yaw=lerp(yaw,angle,ease);pitch=lerp(pitch,elev,ease);dist=lerp(dist,distance,ease);return true;}
  if(state.phase==='intro'){let q=script[intro.step];const shot=q.cam;
@@ -658,12 +697,12 @@ function buildPhotoScreen(){
  phoneScreen=new T.Mesh(new T.PlaneGeometry(.145,.264),new T.MeshBasicMaterial({map:phoneTexture,toneMapped:false}));phoneScreen.position.z=.0238;phoneModel.add(phoneScreen);
  drawPhoneScreen(false);
 }
-function renderPalletPhoto(){
+function renderPalletPhoto(saved=false){
  if(!photoRT){photoRT=new T.WebGLRenderTarget(768,576,{depthBuffer:true});photoRT.texture.colorSpace=T.SRGBColorSpace;}
  scene.updateMatrixWorld(true);
  const center=pallets[0].getWorldPosition(v(0,0,0));
- const shotCamera=new T.PerspectiveCamera(49,4/3,.05,35);
- shotCamera.position.copy(center).add(v(0,2.0,2.6));shotCamera.lookAt(center.clone().add(v(0,.50,0)));
+ const shotCamera=new T.PerspectiveCamera(92,4/3,.035,35);
+ const origin=phoneModel.getWorldPosition(v(0,0,0));shotCamera.position.copy(origin);shotCamera.lookAt(photoAim());
  const prev=renderer.getRenderTarget(),old=phoneModel.visible,beam=scanBeam.visible,person=model.visible;
  // Capture just as the phone camera sees the articles, without player or scan overlay obscuring them.
  phoneModel.visible=false;scanBeam.visible=false;model.visible=false;
@@ -672,28 +711,49 @@ function renderPalletPhoto(){
   for(let y=0;y<576;y++)data.data.set(bytes.subarray((575-y)*768*4,(576-y)*768*4),y*768*4);
   c.putImageData(data,0,0);
  }finally{renderer.setRenderTarget(prev);phoneModel.visible=old;scanBeam.visible=beam;model.visible=person}
- drawPhoneScreen(false);
+ drawPhoneScreen(saved);
 }
 function startPhotoShot(){
  if(photoShot.active)return;
- Object.assign(photoShot,{active:true,t:0,captured:false,returning:false});autoCamera=true;overview=false;
+ Object.assign(photoShot,{active:true,t:0,captured:false,returning:false,preview:false});autoCamera=true;overview=false;
  $('hud').classList.add('hidden');$('viewfinder').classList.add('hidden');$('targetMarker').classList.add('hidden');$('chapter').textContent='PRODUKTFOTO · CERTORO APP';$('chapter').classList.remove('hidden');
- renderPalletPhoto();drawPhoneScreen(false);
+ photoImage=null;drawPhoneScreen(false);
+}
+function photoAim(){
+ const center=pallets[0].getWorldPosition(v(0,0,0));
+ return center.add(v(0,.48,0));
 }
 function updatePhotoShot(dt){
  if(!photoShot.active||!model)return;
  const arrived=certPos.distanceTo(v(-3.25,0,.10))<.18;
  if(!arrived&&photoShot.t<.2)return;
  photoShot.t+=dt;
- // Place the phone by the actual hand using the same two-bone IK as the coffee pickup.
  if(!photoShot.returning){
-  const goal=model.position.clone().add(v(.56,1.39,-.26));
-  aimCoffeeArm('R',goal.clone().add(v(-.045,-.06,0)),Math.min(1,photoShot.t*6));
-  phoneModel.position.copy(model.worldToLocal(goal));phoneModel.rotation.set(0,.68-model.rotation.y,0);phoneModel.visible=true;
+  const target=photoAim(),dir=target.clone().sub(model.position);dir.y=0;dir.normalize();
+  model.rotation.y=Math.atan2(dir.x,dir.z);scanBeam.visible=false;model.updateMatrixWorld(true);
+  const up=v(0,1,0),right=v(dir.z,0,-dir.x);
+  const head=model.getObjectByName('Head');
+  if(head){const q=new T.Quaternion().setFromAxisAngle(right,.19).multiply(head.getWorldQuaternion(new T.Quaternion()));head.quaternion.copy(head.parent.getWorldQuaternion(new T.Quaternion()).invert().multiply(q));model.updateMatrixWorld(true)}
+  // Right hand raises the phone, with its rear camera pointing at the pallet.
+  const lift=motionSmooth(0,.65,photoShot.t);
+  const shoulder=model.getObjectByName('UpperArmR').getWorldPosition(v(0,0,0));
+  const goal=shoulder.clone().addScaledVector(dir,.43*lift).addScaledVector(right,-.065).add(v(0,lerp(-.51,-.09,lift),0));
+  aimCoffeeArm('R',goal,1);
+  const hand=model.getObjectByName('HandR');model.updateMatrixWorld(true);
+  const grip=hand.getWorldPosition(v(0,0,0));
+  const center=grip.clone().addScaledVector(right,.056).add(v(0,.105,0)).addScaledVector(dir,.02);
+  phoneModel.position.copy(model.worldToLocal(center.clone()));model.updateMatrixWorld(true);
+  const back=center.clone().sub(target).normalize();
+  const q=new T.Quaternion().setFromRotationMatrix(new T.Matrix4().lookAt(center.clone().add(back),center,up));
+  phoneModel.quaternion.copy(model.getWorldQuaternion(new T.Quaternion()).invert().multiply(q));
+  // Turn palm toward the edge of the phone. Keep the phone anchored to the wrist even if IK clamps.
+  model.updateMatrixWorld(true);
+  phoneModel.visible=true;
+  if(photoShot.t>=.85&&!photoShot.preview){photoShot.preview=true;renderPalletPhoto(false)}
+  if(photoShot.t>=1.85&&!photoShot.captured){photoShot.captured=true;renderPalletPhoto(true);capture();}
  }
- if(photoShot.t>=1.10&&!photoShot.captured){photoShot.captured=true;drawPhoneScreen(true);capture();}
- if(photoShot.t>=2.95&&!photoShot.returning){photoShot.returning=true;phoneModel.visible=false;state.autoRun=false;flow.simCert=9;state.autoTime=9;state.autoStep=1;setCert('sofa');}
- if(photoShot.t>=3.55){photoShot.active=false;phoneModel.rotation.set(0,0,0);phoneModel.position.set(.34,1.35,.30);$('chapter').classList.add('hidden');$('hud').classList.remove('hidden');refresh();msg('10 Fotos im Pool')}
+ if(photoShot.t>=3.55&&!photoShot.returning){photoShot.returning=true;phoneModel.visible=false;state.autoRun=false;flow.simCert=9;state.autoTime=9;state.autoStep=1;setCert('sofa');}
+ if(photoShot.t>=4.25){photoShot.active=false;phoneModel.rotation.set(0,0,0);phoneModel.position.set(.34,1.35,.30);$('chapter').classList.add('hidden');$('hud').classList.remove('hidden');refresh();msg('10 Fotos im Pool')}
 }
 
 function capture(){ $('flash').style.opacity='.75';setTimeout(()=>$('flash').style.opacity='0',120);sound('scan') }
@@ -710,14 +770,14 @@ function worldTap(e){if(photoShot.active)return;if(state.phase==='intro'&&intro.
 const hits=ray.intersectObjects(productsMeshes[lane].map(p=>p.g),true);if(hits.length){let o=hits[0].object;while(o&&!productsMeshes[lane].some(p=>p.g===o))o=o.parent;let i=productsMeshes[lane].findIndex(p=>p.g===o);if(state.role==='cert'&&['approach','photo'].includes(flow.certPhase))act();else if(state.role==='manual'&&flow.manualPhase==='photo'&&i===flow.selected)act();else if(i>=0)itemPick(i);return}
 if(state.role==='cert'&&flow.certPhase==='sofa'){const hit=ray.ray.intersectPlane(new T.Plane(v(0,1,0),0),v(0,0,0));if(hit&&hit.x<-3&&hit.z>2){act();return}}
 }
-function bindInput(){const canvas=$('world');let startPt=null;canvas.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY};startPt={...drag};canvas.setPointerCapture(e.pointerId)});canvas.addEventListener('pointermove',e=>{if(!drag||!startPt)return;if(Math.hypot(e.clientX-startPt.x,e.clientY-startPt.y)<10)return;autoCamera=false;yaw-=(e.clientX-drag.x)*.005;pitch=clamp(pitch+(e.clientY-drag.y)*.004,.28,1.05);drag={x:e.clientX,y:e.clientY}});canvas.addEventListener('pointerup',e=>{if(startPt&&Math.hypot(e.clientX-startPt.x,e.clientY-startPt.y)<10)worldTap(e);drag=null;startPt=null});canvas.addEventListener('pointercancel',()=>{drag=null;startPt=null});canvas.addEventListener('wheel',e=>{autoCamera=false;dist=clamp(dist+e.deltaY*.012,7,25);e.preventDefault()},{passive:false});document.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA'].includes(document.activeElement?.tagName))return;if(e.code==='Space'&&!e.repeat){if(state.phase==='intro'&&document.activeElement?.tagName==='BUTTON')return;e.preventDefault();if(state.phase==='intro'){if(!$('storyAct').disabled&&!$('storyAct').classList.contains('hidden'))$('storyAct').click()}else if(state.phase==='outro'&&!$('story').classList.contains('hidden'))$('storyAct').click();else if(state.phase==='playing'&&!$('act').disabled&&!$('act').classList.contains('hidden'))$('act').click();else if(state.phase==='menu'&&!$('start').disabled)$('start').click()}if(e.key==='Escape'&&state.phase==='playing')togglePause();if(e.key.toLowerCase()==='c')$('view').click();if(e.key==='ArrowLeft'||e.key==='ArrowRight'){autoCamera=false;yaw+=e.key==='ArrowLeft'?.1:-.1}});$('sound').onclick=()=>{state.muted=!state.muted;if(state.muted)stopVoice();else if(!$('story').classList.contains('hidden')&&voiceLine>=0)replayVoice();$('sound').textContent=state.muted?'Ton aus':'Ton an';if(!state.muted)sound()};$('pause').onclick=togglePause;$('view').onclick=()=>{overview=!overview;autoCamera=true;$('view').textContent=overview?'Fokus':'Übersicht'};$('start').onclick=start;$('act').onclick=act;$('replayVoice').onclick=replayVoice}
+function bindInput(){const canvas=$('world');let startPt=null;canvas.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY};startPt={...drag};canvas.setPointerCapture(e.pointerId)});canvas.addEventListener('pointermove',e=>{if(!drag||!startPt)return;if(Math.hypot(e.clientX-startPt.x,e.clientY-startPt.y)<10)return;autoCamera=false;yaw-=(e.clientX-drag.x)*.005;pitch=clamp(pitch+(e.clientY-drag.y)*.004,.28,1.05);drag={x:e.clientX,y:e.clientY}});canvas.addEventListener('pointerup',e=>{if(startPt&&Math.hypot(e.clientX-startPt.x,e.clientY-startPt.y)<10)worldTap(e);drag=null;startPt=null});canvas.addEventListener('pointercancel',()=>{drag=null;startPt=null});canvas.addEventListener('wheel',e=>{autoCamera=false;dist=clamp(dist+e.deltaY*.012,7,25);e.preventDefault()},{passive:false});document.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA'].includes(document.activeElement?.tagName))return;if(e.code==='Space'&&!e.repeat){if(state.phase==='intro'&&document.activeElement?.tagName==='BUTTON')return;e.preventDefault();if(state.phase==='intro'){if(!$('storyAct').disabled&&!$('storyAct').classList.contains('hidden'))$('storyAct').click()}else if(state.phase==='outro'&&!$('story').classList.contains('hidden'))$('storyAct').click();else if(state.phase==='playing'&&!$('act').disabled&&!$('act').classList.contains('hidden'))$('act').click();else if(state.phase==='menu'&&!$('start').disabled)$('start').click()}if(e.key==='Escape'&&state.phase==='playing')togglePause();if(e.key.toLowerCase()==='c')$('view').click();if(e.key==='ArrowLeft'||e.key==='ArrowRight'){autoCamera=false;yaw+=e.key==='ArrowLeft'?.1:-.1}});$('sound').onclick=()=>{state.muted=!state.muted;if(state.muted){stopVoice();if(ambientGain)ambientGain.gain.setValueAtTime(0,ac.currentTime);}else if(!$('story').classList.contains('hidden')&&voiceLine>=0)replayVoice();$('sound').textContent=state.muted?'Ton aus':'Ton an';if(!state.muted)sound()};$('pause').onclick=togglePause;$('view').onclick=()=>{overview=!overview;autoCamera=true;$('view').textContent=overview?'Fokus':'Übersicht'};$('start').onclick=start;$('act').onclick=act;$('replayVoice').onclick=replayVoice}
 function act(){if(state.paused||state.ending||photoShot.active||state.phase!=='playing')return;sound();
  if(state.role==='cert'){switch(flow.certPhase){
  case 'approach':state.autoRun=true;setCert('photo');break;
  case 'photo':startPhotoShot();break;
  case 'sofa':state.autoRun=true;state.autoStep=2;state.autoTime=15;flow.simCert=15;beginLounge();setCert('loungeTravel');break;
- case 'addons':state.autoTime=90;flow.simCert=55;state.autoRun=false;flow.records=jobs.map(j=>({...j}));setCert('review');break;
- case 'review':if(!flow.records.length||flow.records.length!==jobs.length)return;flow.checked=new Set(flow.records.map((_,i)=>i));flow.review=-1;state.autoTime=80;flow.simCert=80;setCert('export');break;
+ case 'addons':reviewItem=0;reviewTab='listing';reviewMedia='scene';state.autoTime=90;flow.simCert=55;state.autoRun=false;flow.records=jobs.map(j=>({...j}));setCert('review');break;
+ case 'review':stopReviewVideo();if(!flow.records.length||flow.records.length!==jobs.length)return;flow.checked=new Set(flow.records.map((_,i)=>i));flow.review=-1;state.autoTime=80;flow.simCert=80;setCert('export');break;
  case 'export':if(!flow.channels.size)return;flow.records.forEach(r=>r.channels=[...flow.channels]);flow.simCert=90;state.autoTime=90;state.autoStep=3;finish();break;
  }}else{const j=jobs[state.manualItem];if(!j)return;switch(flow.manualPhase){
  case 'pick':itemPick(state.manualItem);break;
@@ -741,6 +801,69 @@ function tick(dt){if(state.phase==='intro'){tickIntro(dt);return}if(state.phase=
 }
 function optionList(values,correct,cb){const root=$('taskContent');let el=document.createElement('div');el.className='task-options';values.forEach(x=>{let b=document.createElement('button');b.textContent=x.label||x.value||x;b.onclick=()=>{if(state.paused)return;let value=x.value??x;let ok=correct===null||value===correct;[...el.children].forEach(b=>b.classList.remove('selected','wrong','ok'));b.classList.add(ok?'selected':'wrong');flow.correct=ok;if(ok){if(cb)cb(value);$('act').disabled=false;sound()}else{$('act').disabled=true;msg('Noch nicht richtig. Versuch es erneut.')}};el.append(b)});root.append(el)}
 function inputBox(id,placeholder){let el=document.createElement('input');el.id=id;el.className='taskinput';el.placeholder=placeholder;el.autocomplete='off';el.setAttribute('aria-label',placeholder);$('taskContent').append(el)}
+// Product outputs are game previews, not real market data or live publications.
+let reviewItem=0,reviewTab='listing',reviewMedia='scene',reviewVideoTimer=null;
+const reviewRenders=new Map(),money=x=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(x);
+function previewProduct(i,style='scene',angle=.58){
+ const key=[i,style,angle].join('|');if(reviewRenders.has(key))return reviewRenders.get(key);
+ const proto=environmentKit.get('PRODUCT_'+String(i).padStart(2,'0'));
+ const c=document.createElement('canvas');c.width=640;c.height=480;
+ if(!proto){const ctx=c.getContext('2d');ctx.fillStyle='#e8e6ed';ctx.fillRect(0,0,640,480);productArt(ctx,640,480,i);return c.toDataURL('image/jpeg',.88)}
+ const st=new T.Scene(),kitchen=[0,3,4,8].includes(i),workshop=i===2,beauty=i===7,office=[1,6,9].includes(i);const colors=kitchen?[0xe5d9ca,0xa28a71,0xeee4d8]:workshop?[0x414b55,0x6a6f75,0x4a525c]:beauty?[0xe1cdd1,0xc5a1aa,0xf3e1e4]:office?[0x667386,0x7e756e,0x8b9caf]:[0x777584,0x958f9c,0xbcb7cb];st.background=new T.Color(style==='white'?0xf1f2f4:colors[0]);st.add(new T.HemisphereLight(0xffffff,0x6d6479,2.1));
+ const l=new T.DirectionalLight(0xfff2de,3.0);l.position.set(3,5,4);l.castShadow=true;l.shadow.mapSize.set(1024,1024);l.shadow.camera.left=-3;l.shadow.camera.right=3;l.shadow.camera.top=3;l.shadow.camera.bottom=-3;l.shadow.bias=-.0005;st.add(l);const fill=new T.DirectionalLight(0xc0d9ff,1.45);fill.position.set(-3,2,-2);st.add(fill);
+ const obj=proto.clone(true);const bb=new T.Box3().setFromObject(obj),sz=bb.getSize(v(0,0,0)),cc=bb.getCenter(v(0,0,0)),sc=1.25/Math.max(sz.x,sz.y,sz.z);obj.scale.setScalar(sc);obj.position.set(-cc.x*sc,-bb.min.y*sc,-cc.z*sc);st.add(obj);
+ const floor=new T.Mesh(new T.PlaneGeometry(20,20),new T.MeshStandardMaterial({color:style==='white'?0xf2f2f4:colors[1],roughness:.83}));floor.rotation.x=-Math.PI/2;floor.position.y=-.012;floor.receiveShadow=true;st.add(floor);
+ if(style!=='white'){
+  const prop=(w,h,d,x,y,z,col,rough=.75)=>{const o=new T.Mesh(new T.BoxGeometry(w,h,d),new T.MeshStandardMaterial({color:col,roughness:rough}));o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;st.add(o);return o};
+  const roundProp=(r,h,x,y,z,col)=>{const o=new T.Mesh(new T.CylinderGeometry(r,r,h,32),new T.MeshStandardMaterial({color:col,roughness:.75}));o.position.set(x,y,z);o.castShadow=true;st.add(o);return o};
+  // Sparse category-specific set dressing, kept behind the product.
+  if(kitchen){prop(5,2.1,.08,0,1,-1.65,colors[2]);for(let k=0;k<6;k++)prop(5,.009,.012,0,k*.33,-1.597,0xc2b4a3);for(let k=-5;k<6;k++)prop(.009,2.1,.012,k*.43,1,-1.596,0xc2b4a3);prop(.40,.69,.055,-1.03,.34,-.95,0x9b7852);roundProp(.105,.27,.94,.135,-.95,0xf4eee4)}
+  else if(workshop){prop(4,2,.06,0,.98,-1.55,0x414b55);for(let k=-5;k<6;k++)for(let j=0;j<5;j++)roundProp(.012,.012,k*.29,.23+j*.28,-1.506,0x222b35).rotation.x=Math.PI/2;prop(.57,.18,.32,-.96,.09,-.85,0x29313b)}
+  else if(beauty){prop(4,2,.055,0,1,-1.65,colors[2]);roundProp(.19,.075,-.96,.037,-.65,0xefe3d5);roundProp(.12,.27,.97,.135,-.75,0xf5eee6)}
+  else if(office){prop(4,2,.055,0,1,-1.65,colors[2]);prop(.65,.05,.43,-1.0,.025,-.72,0x333a43);prop(.66,.43,.04,-1.0,.40,-.93,0x373c48);prop(.19,.08,.27,.96,.04,-.69,0xdddce4)}
+  else{prop(4,2,.06,0,1,-1.65,colors[2]);roundProp(.20,.24,-1,.12,-.85,0xd4d3da)}
+ }
+ const cam=new T.PerspectiveCamera(34,4/3,.05,20);cam.position.set(Math.sin(angle)*3.5,.95,Math.cos(angle)*3.5);cam.lookAt(0,Math.max(.25,sz.y*sc*.46),0);
+ const rt=new T.WebGLRenderTarget(640,480);rt.texture.colorSpace=T.SRGBColorSpace;const prev=renderer.getRenderTarget();
+ try{renderer.setRenderTarget(rt);renderer.render(st,cam);const bytes=new Uint8Array(640*480*4);renderer.readRenderTargetPixels(rt,0,0,640,480,bytes);const ctx=c.getContext('2d'),data=ctx.createImageData(640,480);for(let y=0;y<480;y++)data.data.set(bytes.subarray((479-y)*2560,(480-y)*2560),y*2560);ctx.putImageData(data,0,0)}
+ finally{renderer.setRenderTarget(prev);rt.dispose();st.traverse(o=>{if(o.isMesh&&!proto.getObjectById(o.id)&&o.parent===st&&o!==obj){o.geometry.dispose();o.material.dispose()}})}
+ const url=c.toDataURL('image/jpeg',.88);reviewRenders.set(key,url);return url;
+}
+function stopReviewVideo(){if(reviewVideoTimer){clearInterval(reviewVideoTimer);reviewVideoTimer=null}}
+function renderReview(root){
+ stopReviewVideo();const i=Math.min(reviewItem,flow.records.length-1),r=flow.records[i];if(!r)return;
+ const chosen=state.addons,media=chosen.has('photo')||chosen.has('social')||chosen.has('video')||chosen.has('print')||chosen.has('banner');
+ const tabs=[['listing','Listing'],...(chosen.has('price')?[['price','Marktpreise']]:[]),...(media?[['media','Medien']]:[]),...(chosen.has('compliance')?[['compliance','Compliance']]:[])];
+ if(!tabs.some(t=>t[0]===reviewTab))reviewTab='listing';
+ const el=document.createElement('section');el.className='reviewWorkspace';root.append(el);
+ const nav=document.createElement('div');nav.className='reviewNav';el.append(nav);
+ function btn(parent,label,cb,cls=''){const b=document.createElement('button');b.type='button';b.className=cls;b.textContent=label;b.onclick=()=>{if(!state.paused)cb()};parent.append(b);return b}
+ const switchTo=n=>{reviewItem=(n+flow.records.length)%flow.records.length;renderTask()};
+ btn(nav,'‹',()=>switchTo(i-1),'reviewArrow');const select=document.createElement('select');select.setAttribute('aria-label','Artikel auswählen');flow.records.forEach((j,k)=>{const o=document.createElement('option');o.value=k;o.textContent=(k+1)+' / '+flow.records.length+' · '+j.name;select.append(o)});select.value=i;select.onchange=()=>switchTo(+select.value);nav.append(select);btn(nav,'›',()=>switchTo(i+1),'reviewArrow');
+ const tabbar=document.createElement('div');tabbar.className='reviewTabs';el.append(tabbar);
+ for(const [k,label] of tabs)btn(tabbar,label,()=>{reviewTab=k;renderTask()},reviewTab===k?'selected':'');
+ const body=document.createElement('div');body.className='reviewBody';el.append(body);
+ const image=(style='scene',angle=.58)=>'<img class="reviewImage" alt="'+r.name+' – 3D-Produktvorschau" src="'+previewProduct(i,style,angle)+'">';
+ if(reviewTab==='listing'){body.innerHTML='<div class="reviewListing">'+image(chosen.has('photo')?'white':'scene')+'<div><span class="reviewEyebrow">VERKAUFSANGEBOT</span><strong>'+r.title+'</strong><span>'+r.category+' · SKU '+r.sku+'</span><span>EAN '+r.ean+'</span><b class="reviewMoney">'+money(r.price)+'</b><span>'+r.description+'</span></div></div>'}
+ if(reviewTab==='price'){const a=[['Preisempfehlung',r.price],['Marktangebot A',r.price+5],['Marktangebot B',r.price+10]],max=r.price+10;body.innerHTML='<div class="reviewPrice"><div class="reviewEyebrow">SIMULIERTER MARKTVERGLEICH</div>'+a.map(([n,p],k)=>'<div class="reviewPriceRow"><span>'+n+'</span><b>'+money(p)+'</b><div class="reviewBar"><i style="width:'+p/max*100+'%;background:'+(k?'#716788':'#c6ff3d')+'"></i></div></div>').join('')+'<small>Beispielpreise im Spiel, keine Live-Marktdaten.</small></div>'}
+ if(reviewTab==='compliance'){const isElec=[0,1,2,3,4,5,6,8,9].includes(i);body.innerHTML='<div class="reviewCompliance"><div class="reviewEyebrow">SIMULIERTE COMPLIANCE-PRÜFUNG</div><strong>✓ EAN und Kategorie erfasst</strong><strong>✓ Zustand dokumentiert</strong><span>'+(isElec?'Elektrogerät: WEEE-/Herstellerangaben zur Prüfung vorgemerkt.':'Pflegeprodukt: Kennzeichnung und Produktangaben zur Prüfung vorgemerkt.')+'</span><small>Keine tatsächliche rechtliche Freigabe.</small></div>'}
+ if(reviewTab==='media'){
+  const options=[...(chosen.has('photo')?[['scene','Lifestyle'],['white','Freisteller']]:[]),...(chosen.has('social')?[['social','Social Post']]:[]),...(chosen.has('video')?[['video','Produktvideo']]:[]),...(chosen.has('print')?[['flyer','Flyer'],['poster','Plakat'],['catalog','Katalog']]:[]),...(chosen.has('banner')?[['banner','eBay-Banner']]:[])];
+  if(!options.some(x=>x[0]===reviewMedia))reviewMedia=options[0][0];
+  const bar=document.createElement('div');bar.className='reviewMediaTabs';body.append(bar);for(const [k,n] of options)btn(bar,n,()=>{reviewMedia=k;renderTask()},k===reviewMedia?'selected':'');
+  const stage=document.createElement('div');stage.className='reviewStage '+reviewMedia;body.append(stage);
+  if(['scene','white'].includes(reviewMedia)){stage.innerHTML=image(reviewMedia)}
+  else if(reviewMedia==='video'){
+   stage.innerHTML=image('scene')+'<button class="reviewPlay" type="button">▶ 3D-Vorschau</button><small>Animierte Produktvorschau · Demo</small>';
+   const play=stage.querySelector('button'),img=stage.querySelector('img');play.onclick=()=>{if(reviewVideoTimer){stopReviewVideo();play.textContent='▶ 3D-Vorschau';return}let f=0;play.textContent='Ⅱ';reviewVideoTimer=setInterval(()=>{if(!stage.isConnected){stopReviewVideo();return}img.src=previewProduct(i,'scene',(f++%12)*Math.PI/6)},220)};
+  }else{
+   const captions={social:'NEU ENTDECKEN',flyer:'JETZT ENTDECKEN',poster:'DEIN NÄCHSTES UPGRADE',catalog:'SORTIMENT / NEUWARE',banner:'UNSER ANGEBOT'};
+   stage.innerHTML='<div class="reviewCreative">'+image('scene')+'<div><span>certoro.</span><small>'+captions[reviewMedia]+'</small><strong>'+r.name+'</strong><b>'+money(r.price)+'</b><em>Marketing-Vorschau</em></div></div>';
+  }
+ }
+ const tags=document.createElement('div');tags.className='reviewOutputs';tags.textContent=chosen.size?'Enthalten: '+addons.filter(([k])=>chosen.has(k)).map(([,n])=>n).join(' · '):'Standardangebot · Produktdaten und Bild';el.append(tags);
+}
+
 function renderTask(){let cert=state.role==='cert',p=cert?flow.certPhase:flow.manualPhase,j=jobs[Math.min(9,state.manualItem)],title='',detail='',button='Weiter',disabled=false;const root=$('taskContent');const reviewScroll=root.querySelector('.bulkReviewList')?.scrollTop||0;root.replaceChildren();$('act').classList.toggle('manual',!cert);$('act').classList.remove('hidden');$('phaseLabel').textContent=cert?'CERTORO APP':'ARTIKEL '+(state.manualItem+1)+' / 10';$('taskCount').textContent=cert?({approach:'1/6',photo:'2/6',sofa:'3/6',loungeTravel:'3/6',addons:'4/6',review:'5/6',export:'6/6'}[p]):({pick:'1/11',photo:'2/11',identify:'3/11',title:'4/11',category:'5/11',description:'6/11',price:'7/11',image:'8/11',marketing:'9/11',compliance:'10/11',listing:'11/11'}[p]);
  if(cert){switch(p){
  case 'approach':title='Deine 10 Produkte';detail='Tippe auf die Palette oder den Button.';button='Zur Palette gehen';break;
@@ -749,20 +872,7 @@ function renderTask(){let cert=state.role==='cert',p=cert?flow.certPhase:flow.ma
  case 'loungeTravel':title='Zeit für einen Kaffee';detail='Certoro holt seinen Kaffee und setzt sich aufs Sofa.';button='Unterwegs …';disabled=true;break;
  case 'addons':title='Was soll Certoro erledigen?';detail='Wähle zusätzliche Funktionen aus.';button='Auftrag ausführen';let g=document.createElement('div');g.className='task-options';for(let [k,n] of addons){let b=document.createElement('button');b.textContent=n;b.classList.toggle('selected',state.addons.has(k));b.onclick=()=>{if(state.paused)return;state.addons.has(k)?state.addons.delete(k):state.addons.add(k);b.classList.toggle('selected',state.addons.has(k));sound()};g.append(b)}root.append(g);break;
  case 'review':{
- title=flow.records.length+' fertige Verkaufsangebote';detail='Scrolle durch die Artikel und bestätige alle gemeinsam.';button='Alle geprüft – fertig';disabled=flow.records.length!==jobs.length;
- const list=document.createElement('ol');list.className='bulkReviewList';list.tabIndex=0;list.setAttribute('aria-label','Alle erstellten Verkaufsangebote');
- flow.records.forEach((r,i)=>{
-  const row=document.createElement('li');row.className='bulkReviewRow';
-  const cv=document.createElement('canvas');cv.width=160;cv.height=120;cv.setAttribute('aria-hidden','true');
-  const ctx=cv.getContext('2d');ctx.fillStyle='#efeff2';ctx.fillRect(0,0,160,120);productArt(ctx,160,120,i);
-  const info=document.createElement('div');info.className='bulkReviewInfo';
-  const name=document.createElement('strong');name.textContent=r.title;
-  const meta=document.createElement('span');meta.textContent=r.category+' · EAN '+r.ean;
-  info.append(name,meta);
-  const price=document.createElement('span');price.className='bulkReviewPrice';price.textContent=new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR',maximumFractionDigits:2}).format(r.price);
-  row.append(cv,info,price);list.append(row);
- });
- root.append(list);list.scrollTop=reviewScroll;break;
+ title=flow.records.length+' fertige Verkaufsangebote';detail='Artikel wechseln und die gewählten Ergebnisse ansehen.';button='Alle geprüft – fertig';disabled=flow.records.length!==jobs.length;renderReview(root);break;
  }
  case 'export':{title='Vertriebskanäle wählen';detail='Wo sollen die 10 Angebote erscheinen? Mehrere möglich.';button='Export starten'+(flow.channels.size?' · '+flow.channels.size+' Kanäle':'');disabled=!flow.channels.size;const g=document.createElement('div');g.className='task-options';for(const channel of ['eBay','Shopify','JTL-Wawi CSV','Datei-Export']){const b=document.createElement('button');b.textContent=channel;b.setAttribute('aria-pressed',String(flow.channels.has(channel)));b.classList.toggle('selected',flow.channels.has(channel));b.onclick=()=>{if(state.paused)return;flow.channels.has(channel)?flow.channels.delete(channel):flow.channels.add(channel);b.classList.toggle('selected',flow.channels.has(channel));b.setAttribute('aria-pressed',String(flow.channels.has(channel)));$('act').disabled=!flow.channels.size;$('act').textContent='Export starten'+(flow.channels.size?' · '+flow.channels.size+' Kanäle':'');sound()};g.append(b)}root.append(g);break;}
  }}else{switch(p){
@@ -953,7 +1063,7 @@ function updateActors(dt,time){if(state.phase==='outro'){watchColleague(dt,time)
   else destination=pallets[1].worldToLocal(v(3.25,1.0,-.42));
  }
  p.g.position.lerp(destination,1-Math.exp(-dt*4))});}
-function loop(){requestAnimationFrame(loop);let elapsedDelta=clock.getDelta(),dt=Math.min(elapsedDelta,.12),time=performance.now()/1000;tick(document.hidden?0:elapsedDelta);updateActors(state.paused?0:dt,time);updatePhotoShot(state.paused?0:dt);animateWorkerFace(time,dt);if(!cinematicCamera(dt)&&autoCamera){let playing=state.phase==='playing'&&!overview,portrait=innerWidth/innerHeight<.8;let focus=playing?(state.role==='cert'?(lounge.active?certPos.x:state.autoStep>=1?-4.8:-3.15):3.55):0;let targetZ=playing?(state.role==='cert'&&lounge.active?certPos.z:state.role==='cert'&&state.autoStep>=1?3.9:state.role==='manual'&&state.manualStep>0?2.3:-.15):-.2;camTarget.x=lerp(camTarget.x,focus,.035);camTarget.z=lerp(camTarget.z,targetZ,.035);camTarget.y=lerp(camTarget.y,playing?(state.role==='cert'&&state.autoStep>=2?(lounge.active?.55:.18):1.0):.8,.03);yaw=lerp(yaw,.05,.025);pitch=lerp(pitch,playing?(portrait?.54:.39):(portrait?.76:.55),.025);dist=lerp(dist,playing?(portrait?9.8:10.5):(portrait?23:17.5),.025)}camera.position.set(camTarget.x+Math.sin(yaw)*Math.cos(pitch)*dist,camTarget.y+Math.sin(pitch)*dist,camTarget.z+Math.cos(yaw)*Math.cos(pitch)*dist);camera.lookAt(camTarget);if(time-lastUi>.15){lastUi=time;updateUI()}updateTarget();renderer.render(scene,camera)}
+function loop(){requestAnimationFrame(loop);let elapsedDelta=clock.getDelta(),dt=Math.min(elapsedDelta,.12),time=performance.now()/1000;tick(document.hidden?0:elapsedDelta);updateActors(state.paused?0:dt,time);updatePhotoShot(state.paused?0:dt);animateWorkerFace(time,dt);updateAmbience();if(!cinematicCamera(dt)&&autoCamera){let playing=state.phase==='playing'&&!overview,portrait=innerWidth/innerHeight<.8;let focus=playing?(state.role==='cert'?(lounge.active?certPos.x:state.autoStep>=1?-4.8:-3.15):3.55):0;let targetZ=playing?(state.role==='cert'&&lounge.active?certPos.z:state.role==='cert'&&state.autoStep>=1?3.9:state.role==='manual'&&state.manualStep>0?2.3:-.15):-.2;camTarget.x=lerp(camTarget.x,focus,.035);camTarget.z=lerp(camTarget.z,targetZ,.035);camTarget.y=lerp(camTarget.y,playing?(state.role==='cert'&&state.autoStep>=2?(lounge.active?.55:.18):1.0):.8,.03);yaw=lerp(yaw,.05,.025);pitch=lerp(pitch,playing?(portrait?.54:.39):(portrait?.76:.55),.025);dist=lerp(dist,playing?(portrait?9.8:10.5):(portrait?23:17.5),.025)}camera.position.set(camTarget.x+Math.sin(yaw)*Math.cos(pitch)*dist,camTarget.y+Math.sin(pitch)*dist,camTarget.z+Math.cos(yaw)*Math.cos(pitch)*dist);camera.lookAt(camTarget);if(time-lastUi>.15){lastUi=time;updateUI()}updateTarget();renderer.render(scene,camera)}
 try{init()}catch(e){console.error(e);$('loading').textContent='WebGL ist nicht verfügbar. Bitte einen aktuellen Browser verwenden.'}
 
 
