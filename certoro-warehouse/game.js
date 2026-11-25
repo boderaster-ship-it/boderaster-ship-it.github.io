@@ -171,7 +171,7 @@ function makeSofaSitClip(T,rig,model,hipHeight=.71){
 
 
 const WORKER_MODEL='https://d2ol7oe51mr4n9.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/31d7543c-59e0-4663-a915-4f46b0ee6b8e.glb';
-function loadWorkerModel(){
+function loadLegacyWorkerModel(){
  return new Promise(resolve=>{
   new GLTFLoader().load(WORKER_MODEL,gltf=>{
    try{
@@ -194,10 +194,69 @@ function loadWorkerModel(){
   },undefined,e=>{console.warn('Lagerleiter-Modell konnte nicht geladen werden:',e);resolve(false)});
  });
 }
+const MESHY_WORKER_MODEL='https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261125_201209_db50a227-7169-4452-8f8d-3dc03b6b8a94.glb';
+// Meshy returned two disconnected characters with a single incorrectly shared skeleton.
+// Keep only the negative-X character and fit an independent skeleton to its actual proportions.
+function buildMeshyWorker(gltf){
+ let source;gltf.scene.traverse(o=>{if(o.isSkinnedMesh&&!source)source=o});
+ if(!source)throw Error('Meshy: keine Geometrie');
+ const src=source.geometry,pp=src.attributes.position;
+ if(!src.index||pp.count<1000)throw Error('Meshy: Geometrie unvollständig');
+ const used=new Map(),ids=[],tri=[],ii=src.index;
+ for(let i=0;i<ii.count;i+=3){
+  const a=[ii.getX(i),ii.getX(i+1),ii.getX(i+2)];
+  if(a.some(j=>pp.getX(j)>=-.03))continue;
+  for(const j of a){if(!used.has(j)){used.set(j,ids.length);ids.push(j)}tri.push(used.get(j))}
+ }
+ if(ids.length<5000||ids.length>pp.count*.7)throw Error('Meshy: Figur nicht eindeutig separierbar');
+ const geo=new T.BufferGeometry(),scale=2.16/1.7732842,centerX=-.275,centerZ=-.04;
+ for(const [name,attr] of Object.entries(src.attributes)){
+  if(name==='skinIndex'||name==='skinWeight'||name==='tangent')continue;
+  const ar=new Float32Array(ids.length*attr.itemSize);
+  for(let i=0;i<ids.length;i++){let j=ids[i];for(let k=0;k<attr.itemSize;k++)ar[i*attr.itemSize+k]=attr.array[j*attr.itemSize+k];if(name==='position'){ar[i*3]=(pp.getX(j)-centerX)*scale;ar[i*3+1]=(pp.getY(j)-.0000208)*scale;ar[i*3+2]=(pp.getZ(j)-centerZ)*scale}}
+  geo.setAttribute(name,new T.BufferAttribute(ar,attr.itemSize,attr.normalized));
+ }
+ geo.setIndex(tri);geo.computeVertexNormals();geo.computeBoundingBox();
+ const rig=new T.Group();rig.name='MESHY_WORKER_RIG';const bones=[],names={};
+ const bone=(name,p,parent)=>{const b=new T.Bone();b.name=name;b.position.set(...p).multiplyScalar(scale);if(parent){b.position.sub(parent.userData.rest);parent.add(b)}else rig.add(b);b.userData.rest=v(...p).multiplyScalar(scale);names[name]=bones.length;bones.push(b);return b};
+ const pelvis=bone('WorkerPelvis',[0,.86,0]),torso=bone('WorkerTorso',[0,1.05,0],pelvis),head=bone('WorkerHead',[0,1.50,.035],torso),jaw=bone('WorkerJaw',[0,1.615,.09],head);
+ const arms=[],legs=[],feet=[];
+ for(const [side,sg] of [['L',1],['R',-1]]){
+  const a=bone('WorkerUpperArm'+side,[sg*.19,1.40,-.025],torso),f=bone('WorkerForearm'+side,[sg*.225,1.13,-.065],a);
+  const th=bone('WorkerThigh'+side,[sg*.105,.86,-.025],pelvis),sh=bone('WorkerShin'+side,[sg*.12,.49,-.045],th),ft=bone('WorkerFoot'+side,[sg*.125,.10,-.045],sh);
+  arms.push([a,f]);legs.push([th,sh]);feet.push(ft);
+ }
+ const ind=new Uint16Array(ids.length*4),weights=new Float32Array(ids.length*4);
+ const sm=(a,b,x)=>{let t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)};
+ for(let i=0;i<ids.length;i++){
+  const j=ids[i],x=pp.getX(j)-centerX,y=pp.getY(j),z=pp.getZ(j)-centerZ,side=x>=0?'L':'R',w={};
+  const put=(n,k)=>{w[n]=(w[n]||0)+Math.max(0,k)};
+  const arm=sm(.145,.205,Math.abs(x))*sm(.91,1.06,y)*(1-sm(1.43,1.50,y));
+  const leg=(1-sm(.78,.99,y))*(1-arm),body=1-arm-leg;
+  const foot=1-sm(.10,.23,y),shin=1-sm(.42,.59,y);
+  put('WorkerFoot'+side,leg*foot);put('WorkerShin'+side,leg*(1-foot)*shin);put('WorkerThigh'+side,leg*(1-foot)*(1-shin));
+  const fore=1-sm(1.08,1.24,y);
+  put('WorkerUpperArm'+side,arm*(1-fore));put('WorkerForearm'+side,arm*fore);
+  const h=sm(1.46,1.56,y),pel=1-sm(.87,1.10,y);
+  const jawm=h*(1-sm(1.605,1.64,y))*sm(1.53,1.56,y)*sm(.075,.125,z)*(1-sm(.045,.085,Math.abs(x)));
+  put('WorkerJaw',body*jawm);put('WorkerHead',body*(h-jawm));put('WorkerPelvis',body*(1-h)*pel);put('WorkerTorso',body*(1-h)*(1-pel));
+  const top=Object.entries(w).sort((a,b)=>b[1]-a[1]).slice(0,4),sum=top.reduce((n,p)=>n+p[1],0)||1;
+  top.forEach(([n,k],r)=>{ind[i*4+r]=names[n];weights[i*4+r]=k/sum});
+ }
+ geo.setAttribute('skinIndex',new T.Uint16BufferAttribute(ind,4));geo.setAttribute('skinWeight',new T.Float32BufferAttribute(weights,4));
+ const mesh=new T.SkinnedMesh(geo,source.material);mesh.name='MeshySingleSupervisor';mesh.castShadow=true;mesh.receiveShadow=true;mesh.frustumCulled=false;rig.add(mesh);rig.updateMatrixWorld(true);mesh.bind(new T.Skeleton(bones));
+ const old=worker.g;old.clear();old.add(rig);worker={g:old,torso,head,jaw,arms,legs,feet,rig,meshy:true};
+ console.info('V16: single Meshy supervisor',ids.length,tri.length/3,bones.length);
+}
+function loadWorkerModel(){
+ return new Promise(resolve=>{new GLTFLoader().load(MESHY_WORKER_MODEL,gltf=>{try{buildMeshyWorker(gltf);resolve(true)}catch(e){console.warn('Meshy-Lagerleiter:',e);loadLegacyWorkerModel().then(resolve)}},undefined,e=>{console.warn('Meshy-Lagerleiter:',e);loadLegacyWorkerModel().then(resolve)})});
+}
+
 function animateWorkerFace(time){
  if(!worker?.head)return;
  const talking=voicePlaying&&voiceWho==='Lagerleiter';
  worker.jaw.rotation.x=talking?-.12*Math.abs(Math.sin(time*12)):0;
+ if(worker.meshy){for(const [a,f] of worker.arms){a.rotation.x=clamp(a.rotation.x,-.27,.27);a.rotation.z=clamp(a.rotation.z,-.09,.09);f.rotation.x=clamp(f.rotation.x,-.22,.22);}const frames=SPEECH_FRAMES[voiceLine],t=voiceAudio?voiceAudio.currentTime:ac?Math.max(0,(ac.currentTime-voiceStartedAt)*voicePlaybackRate):0;if(talking&&frames){const k=Math.floor(t/.02)*3;worker.jaw.rotation.x=-.20*(frames[k]||0)/100;}}
  const instructing=state.phase==='intro'&&intro.step<4;
  worker.head.rotation.y=instructing?-.12+.045*Math.sin(time*2):.04*Math.sin(time*1.2);
  worker.head.rotation.x=state.phase==='playing'&&manualPose==='work'?.12:talking?.025*Math.sin(time*5):0;
