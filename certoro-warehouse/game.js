@@ -226,7 +226,67 @@ function polishWorkerMotion(dt,time){
   for(const b of [th,sh,a,f]){const q=m.angles.get(b)||b.rotation.clone();q.x=lerp(q.x,b.rotation.x,1-Math.exp(-dt*15));q.z=lerp(q.z,b.rotation.z,1-Math.exp(-dt*15));b.rotation.x=q.x;b.rotation.z=q.z;m.angles.set(b,q)}
   worker.feet[i].rotation.x=-.75*(th.rotation.x+sh.rotation.x);
  }
- worker.torso.rotation.x+=breath;worker.torso.rotation.y=.025*g*Math.sin(t);
+ worker.torso.rotation.x=state.phase==='playing'&&manualPose==='work'?.10:0;worker.torso.rotation.y=0;
+}
+
+// V25: studio-style directional illumination and a more tangible industrial set.
+// No character geometry, mouth topology, grip or collision changes.
+function cinematicFinish(){
+ const concrete=texture(1024,1024,(c,w,h)=>{
+  const im=c.createImageData(w,h);let seed=9341;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){seed=(Math.imul(seed,1664525)+1013904223)>>>0;const grain=(seed>>>24)/255-.5;const v=119+7*Math.sin(x*.018)*Math.cos(y*.024)+5*Math.sin((x+y)*.043)+grain*15;const j=(y*w+x)*4;im.data[j]=v;im.data[j+1]=v+1;im.data[j+2]=v+3;im.data[j+3]=255}c.putImageData(im,0,0);
+  // Fine forklift rubber traces and scuffs baked into the surface, not floating polygons.
+  c.lineWidth=1.2;for(let i=0;i<110;i++){const x=(i*139.13)%w,y=(i*83.7)%h;c.strokeStyle=i%3?'rgba(38,37,39,.10)':'rgba(221,218,209,.15)';c.beginPath();c.moveTo(x,y);c.lineTo(x+8+(i%9)*7,y+Math.sin(i)*18);c.stroke()}
+ });
+ concrete.wrapS=concrete.wrapT=T.RepeatWrapping;concrete.repeat.set(3,3);concrete.anisotropy=Math.min(16,renderer.capabilities.getMaxAnisotropy());
+ const seen=new Set();
+ scene.traverse(o=>{if(!o.isMesh)return;for(const m of Array.isArray(o.material)?o.material:[o.material]){
+  if(!m?.isMeshStandardMaterial||seen.has(m))continue;seen.add(m);const n=m.name.toLowerCase();
+  if(n.includes('concrete')){m.map=concrete;m.color.setHex(0xc2c0bb);m.roughness=.76;m.bumpScale=.018;m.envMapIntensity=.35;m.needsUpdate=true}
+  if(n.includes('graphite')||n.includes('charcoal')){m.color.multiplyScalar(.78);m.roughness=.48}
+  if(n.includes('upholstery')||n.includes('textile')){m.roughness=.87;m.color.multiplyScalar(.82)}
+ }});
+ const steel=mat(0x414b56,.34,.65),brace=mat(0x68747e,.40,.57),dark=mat(0x303741,.63,.25),glass=mat(0x728995,.23,.39);
+ // Shallow roof truss above the rear loading wall. No overhead geometry over the playing area.
+ function strut(a,b,w,m){const A=v(...a),B=v(...b),d=B.clone().sub(A),c=A.clone().add(B).multiplyScalar(.5);const o=box(scene,w,d.length(),w,c.x,c.y,c.z,m);o.quaternion.setFromUnitVectors(v(0,1,0),d.normalize());return o}
+ for(const z of [-6.72,-5.98]){
+  box(scene,19.1,.18,.18,0,5.50,z,steel);
+  box(scene,19.1,.12,.16,0,5.98,z,steel);
+  for(let x=-9;x<9;x+=1.5)strut([x,5.50,z],[x+1.5,5.98,z],.075,brace);
+ }
+ for(const x of [-9,-6,-3,0,3,6,9])strut([x,5.50,-6.72],[x,5.98,-5.98],.075,steel);
+ // Architectural window band and lit recess between loading doors.
+ for(const x of [-8.5,-6.8,0,6.8,8.5]){
+  box(scene,1.36,.62,.045,x,4.84,-6.89,dark);
+  for(const d of [-.32,.32])box(scene,.59,.50,.026,x+d,4.84,-6.855,glass,false);
+ }
+ // Wall-mounted industrial cable trays and bolts, outside collision routes.
+ for(const x of [-9.35,9.35])for(const z of [-4.8,-1.8,1.2]){
+  box(scene,.10,.14,2.55,x,2.76,z,steel);
+  for(const dz of [-.95,.95])box(scene,.17,.20,.075,x,2.76,z+dz,brace);
+ }
+ // Low-key cinematic look with a brighter directional key and a distinct edge light.
+ renderer.toneMappingExposure=.94;scene.environmentIntensity=.73;
+ const main=gfx.key;main.color.setHex(0xffead4);main.intensity=3.15;main.position.set(-5.8,8.4,6.2);
+ main.shadow.normalBias=.018;main.shadow.bias=-.00016;main.shadow.radius=3.5;
+ scene.traverse(o=>{if(o.isHemisphereLight){o.intensity=.55;o.groundColor.setHex(0x51443e)}else if(o.isPointLight)o.intensity*=.68;else if(o.isDirectionalLight&&o!==main)o.intensity*=.72});
+ const edge=new T.DirectionalLight(0xc0ddff,1.18);edge.position.set(5,5,-5);scene.add(edge);
+ // A subtle secondary fill keeps Certoro's face readable even during the close-up.
+ const portrait=new T.DirectionalLight(0xfff2e5,.46);portrait.position.set(1,3,8);scene.add(portrait);
+}
+// Refine the existing texture's contrast; preserve exact mascot design and mouth colors.
+function refineMascotMaterial(root){
+ const mesh=root.getObjectByName('HighDetailCertoro');if(!mesh||!mesh.material?.isMeshStandardMaterial)return;
+ const m=mesh.material;m.roughness=.62;m.envMapIntensity=.80;
+ const previous=m.onBeforeCompile; m.onBeforeCompile=function(shader,renderer){
+  previous?.call(this,shader,renderer);
+  shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
+   vec3 base=diffuseColor.rgb;
+   float lum=dot(base,vec3(.2126,.7152,.0722));
+   vec3 rich=mix(vec3(lum),base,1.12);
+   diffuseColor.rgb=clamp(pow(max(rich,vec3(.0001)),vec3(1.09))*1.055,0.0,1.0);
+  `);
+ };m.customProgramCacheKey=()=> 'certoro-v25-material';m.needsUpdate=true;
 }
 
 function warehouse(){scene.background=new T.Color(0x252c35);scene.fog=new T.Fog(0x252c35,30,65);const pmrem=new T.PMREMGenerator(renderer);scene.environment=pmrem.fromScene(new RoomEnvironment(),.04).texture;scene.environmentIntensity=.92;pmrem.dispose();const hem=new T.HemisphereLight(0xe6f0ff,0x6e6256,.88);scene.add(hem);const key=new T.DirectionalLight(0xfff0d9,2.75);key.position.set(-6,11,7);key.castShadow=true;key.shadow.mapSize.set(2048,2048);key.shadow.camera.left=-11;key.shadow.camera.right=11;key.shadow.camera.top=11;key.shadow.camera.bottom=-11;key.shadow.normalBias=.012;key.shadow.bias=-.00012;key.shadow.radius=3;key.shadow.camera.near=.5;key.shadow.camera.far=34;gfx.key=key;scene.add(key);const fill=new T.DirectionalLight(0xd7e7ff,.78);fill.position.set(7,6,-5);scene.add(fill);const floorTx=texture(1024,1024,(c,w,h)=>{
@@ -412,7 +472,7 @@ function animateWorkerFace(time,dt=.016){
  for(let i=0;i<2;i++){const [thigh,shin]=worker.legs[i];worker.feet[i].rotation.x=-.75*(thigh.rotation.x+shin.rotation.x);}
 }
 
-async function init(){renderer=new T.WebGLRenderer({canvas:$('world'),antialias:true,alpha:false,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,2.5,Math.sqrt(3200000/(innerWidth*innerHeight))));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.0;scene=new T.Scene();camera=new T.PerspectiveCamera(43,1,.1,100);$('loading').textContent='Lagerhalle wird geladen …';const [kitReady]=await Promise.all([loadEnvironmentKit(),loadProductAtlas()]);warehouse();batchWarehouse();makeTraining();enhanceWarehouse();addWarehouseFinish();const workerReady=loadWorkerModel();resize();window.addEventListener('resize',resize);bindInput();updateScreen();loadCertoro(gltf=>{const rig=gltf.scene.getObjectByName('CERTORO_RIG');if(!rig)throw Error('Rig fehlt');model=group(scene);model.add(rig);rig.updateMatrixWorld(true);let bounds=new T.Box3().setFromObject(rig);let size=bounds.getSize(v(0,0,0));let scale=2.5/size.y;rig.scale.setScalar(scale);rig.position.y=-bounds.min.y*scale;model.position.copy(certPos);model.rotation.y=0;model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;if(o.material?.name==='Transparent cyan visor'){o.material.transparent=true;o.material.opacity=.28;o.material.depthWrite=false;if('transmission'in o.material)o.material.transmission=0}}});mixer=new T.AnimationMixer(rig);let clip=gltf.animations.find(x=>x.name==='CERTORO_RIG')||gltf.animations[0];if(clip){for(const [name,index]of Object.entries({idle:0,walk:1,sit:9,talk:13,wave:17,point:18,celebrate:22})){const sub=T.AnimationUtils.subclip(clip,name,index*48,index*48+47,24);actions[name]=mixer.clipAction(sub);actions[name].setLoop(T.LoopRepeat,Infinity)}}actions.sit=mixer.clipAction(makeSofaSitClip(T,rig,model));actions.sit.setLoop(T.LoopRepeat,Infinity);actions.coffeeBend=mixer.clipAction(makeSofaSitClip(T,rig,model,.74));actions.coffeeBend.setLoop(T.LoopRepeat,Infinity);prepareTripoPose(rig);polishCharacterMaps(model);play('idle');phoneModel=group(model);box(phoneModel,.17,.30,.035,0,0,0,0x14111f);box(phoneModel,.065,.073,.008,-.045,.098,-.021,0x292733);for(const y of [.078,.113]){const lens=cyl(phoneModel,.014,.014,.006,-.045,y,-.027,0x0b0d16,24);lens.rotation.x=Math.PI/2}buildPhotoScreen();phoneModel.position.set(.34,1.35,.30);phoneModel.visible=false;workerReady.then(ok=>{$('loading').classList.add('hidden');$('start').disabled=false;$('loadText').textContent='Certoro HD · Touch & Desktop';});},p=>{$('loading').textContent='3D-Modell wird geladen … '+(p.total?Math.round(p.loaded/p.total*100)+'%':'')},e=>{console.error(e);$('loading').textContent='3D-Modell konnte nicht geladen werden. Bitte Seite neu laden.'});requestAnimationFrame(loop)}
+async function init(){renderer=new T.WebGLRenderer({canvas:$('world'),antialias:true,alpha:false,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,2.5,Math.sqrt(3200000/(innerWidth*innerHeight))));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.0;scene=new T.Scene();camera=new T.PerspectiveCamera(43,1,.1,100);$('loading').textContent='Lagerhalle wird geladen …';const [kitReady]=await Promise.all([loadEnvironmentKit(),loadProductAtlas()]);warehouse();batchWarehouse();makeTraining();enhanceWarehouse();addWarehouseFinish();cinematicFinish();const workerReady=loadWorkerModel();resize();window.addEventListener('resize',resize);bindInput();updateScreen();loadCertoro(gltf=>{const rig=gltf.scene.getObjectByName('CERTORO_RIG');if(!rig)throw Error('Rig fehlt');model=group(scene);model.add(rig);rig.updateMatrixWorld(true);let bounds=new T.Box3().setFromObject(rig);let size=bounds.getSize(v(0,0,0));let scale=2.5/size.y;rig.scale.setScalar(scale);rig.position.y=-bounds.min.y*scale;model.position.copy(certPos);model.rotation.y=0;model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;if(o.material?.name==='Transparent cyan visor'){o.material.transparent=true;o.material.opacity=.28;o.material.depthWrite=false;if('transmission'in o.material)o.material.transmission=0}}});mixer=new T.AnimationMixer(rig);let clip=gltf.animations.find(x=>x.name==='CERTORO_RIG')||gltf.animations[0];if(clip){for(const [name,index]of Object.entries({idle:0,walk:1,sit:9,talk:13,wave:17,point:18,celebrate:22})){const sub=T.AnimationUtils.subclip(clip,name,index*48,index*48+47,24);actions[name]=mixer.clipAction(sub);actions[name].setLoop(T.LoopRepeat,Infinity)}}actions.sit=mixer.clipAction(makeSofaSitClip(T,rig,model));actions.sit.setLoop(T.LoopRepeat,Infinity);actions.coffeeBend=mixer.clipAction(makeSofaSitClip(T,rig,model,.74));actions.coffeeBend.setLoop(T.LoopRepeat,Infinity);prepareTripoPose(rig);polishCharacterMaps(model);refineMascotMaterial(model);play('idle');phoneModel=group(model);box(phoneModel,.17,.30,.035,0,0,0,0x14111f);box(phoneModel,.065,.073,.008,-.045,.098,-.021,0x292733);for(const y of [.078,.113]){const lens=cyl(phoneModel,.014,.014,.006,-.045,y,-.027,0x0b0d16,24);lens.rotation.x=Math.PI/2}buildPhotoScreen();phoneModel.position.set(.34,1.35,.30);phoneModel.visible=false;workerReady.then(ok=>{$('loading').classList.add('hidden');$('start').disabled=false;$('loadText').textContent='Certoro HD · Touch & Desktop';});},p=>{$('loading').textContent='3D-Modell wird geladen … '+(p.total?Math.round(p.loaded/p.total*100)+'%':'')},e=>{console.error(e);$('loading').textContent='3D-Modell konnte nicht geladen werden. Bitte Seite neu laden.'});requestAnimationFrame(loop)}
 function resize(){let w=innerWidth,h=innerHeight;gfx.ratio=qualityRatio();applyGraphics(true);camera.aspect=w/h;camera.fov=w/h<.9?58:43;camera.updateProjectionMatrix()}
 // V14: distance-driven two-bone foot placement and audio-timed facial shapes.
 let tripoMotion=null, voiceStartedAt=0, voicePlaybackRate=1;
@@ -1401,7 +1461,7 @@ function updateActors(dt,time){if(state.phase==='outro'){watchColleague(dt,time)
   else destination=pallets[1].worldToLocal(v(3.25,1.0,-.42));
  }
  p.g.position.lerp(destination,1-Math.exp(-dt*4))});}
-function loop(){requestAnimationFrame(loop);let elapsedDelta=clock.getDelta(),dt=Math.min(elapsedDelta,.12),time=performance.now()/1000;tick(document.hidden?0:elapsedDelta);updateActors(state.paused?0:dt,time);updatePhotoShot(state.paused?0:dt);animateWorkerFace(time,dt);polishWorkerMotion(state.paused?0:dt,time);updateContactShadows();adaptGraphics(elapsedDelta*1000);updateAmbience();if(!cinematicCamera(dt)&&autoCamera){let playing=state.phase==='playing'&&!overview,portrait=innerWidth/innerHeight<.8;let focus=playing?(state.role==='cert'?(lounge.active?certPos.x:state.autoStep>=1?-4.8:-3.15):3.55):0;let targetZ=playing?(state.role==='cert'&&lounge.active?certPos.z:state.role==='cert'&&state.autoStep>=1?3.9:state.role==='manual'&&state.manualStep>0?2.3:-.15):-.2;const pan=1-Math.exp(-dt*2.14),zoom=1-Math.exp(-dt*1.52);camTarget.x=lerp(camTarget.x,focus,pan);camTarget.z=lerp(camTarget.z,targetZ,pan);camTarget.y=lerp(camTarget.y,playing?(state.role==='cert'&&state.autoStep>=2?(lounge.active?.55:.18):1.0):.8,pan);yaw=lerp(yaw,.05,zoom);pitch=lerp(pitch,playing?(portrait?.54:.39):(portrait?.76:.55),zoom);dist=lerp(dist,playing?(portrait?9.8:10.5):(portrait?23:17.5),zoom)}camera.position.set(camTarget.x+Math.sin(yaw)*Math.cos(pitch)*dist,camTarget.y+Math.sin(pitch)*dist,camTarget.z+Math.cos(yaw)*Math.cos(pitch)*dist);camera.lookAt(camTarget);if(time-lastUi>.15){lastUi=time;updateUI()}updateTarget();renderer.render(scene,camera)}
+function loop(){requestAnimationFrame(loop);let elapsedDelta=clock.getDelta(),dt=Math.min(elapsedDelta,.12),time=performance.now()/1000;tick(document.hidden?0:elapsedDelta);updateActors(state.paused?0:dt,time);updatePhotoShot(state.paused?0:dt);animateWorkerFace(time,dt);polishWorkerMotion(state.paused?0:dt,time);updateContactShadows();adaptGraphics(elapsedDelta*1000);updateAmbience();if(!cinematicCamera(dt)&&autoCamera){let playing=state.phase==='playing'&&!overview,portrait=innerWidth/innerHeight<.8;let focus=playing?(state.role==='cert'?(lounge.active?certPos.x:state.autoStep>=1?-4.8:-3.15):3.55):0;let targetZ=playing?(state.role==='cert'&&lounge.active?certPos.z:state.role==='cert'&&state.autoStep>=1?3.9:state.role==='manual'&&state.manualStep>0?2.3:-.15):-.2;const pan=1-Math.exp(-dt*2.14),zoom=1-Math.exp(-dt*1.52);camTarget.x=lerp(camTarget.x,focus,pan);camTarget.z=lerp(camTarget.z,targetZ,pan);camTarget.y=lerp(camTarget.y,playing?(state.role==='cert'&&state.autoStep>=2?(lounge.active?.55:.18):1.0):.8,pan);yaw=lerp(yaw,.05,zoom);pitch=lerp(pitch,playing?(portrait?.54:.39):(portrait?.76:.55),zoom);dist=lerp(dist,playing?(portrait?8.8:9.6):(portrait?23:17.5),zoom)}camera.position.set(camTarget.x+Math.sin(yaw)*Math.cos(pitch)*dist,camTarget.y+Math.sin(pitch)*dist,camTarget.z+Math.cos(yaw)*Math.cos(pitch)*dist);camera.lookAt(camTarget);if(time-lastUi>.15){lastUi=time;updateUI()}updateTarget();renderer.render(scene,camera)}
 try{init()}catch(e){console.error(e);$('loading').textContent='WebGL ist nicht verfügbar. Bitte einen aktuellen Browser verwenden.'}
 
 
