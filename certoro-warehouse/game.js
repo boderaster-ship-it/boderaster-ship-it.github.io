@@ -431,6 +431,44 @@ function makePalmAnchors(mesh,bones){
  }
 }
 function palmWorld(side){const b=tripoMotion.bones['Hand'+side];return b.b.localToWorld(b.palm.clone())}
+// A shared rigid grip frame is defined in the original glove's bind coordinates.
+// Unlike the old independent world-space offsets, both object and palm use this frame.
+function setupGripFrames(mesh,bones){
+ for(const [side,sg] of [['R',-1],['L',1]]){
+  const h=bones['Hand'+side],hand=h.b;hand.updateWorldMatrix(true,false);
+  // Inward glove surface, between curled fingers and thumb, rather than wrist center.
+  h.contact=hand.worldToLocal(mesh.localToWorld(v(sg*.535,1.475,.038)));
+  h.restHandQ=h.wq.clone();
+  h.restPalmNormal=v(-sg,0,0);
+  h.restFinger=v(0,-1,0);
+ }
+}
+function gripPose(side,normal,finger){
+ const h=tripoMotion.bones['Hand'+side],f=finger.clone().normalize(),n=normal.clone().addScaledVector(f,-normal.dot(f)).normalize();
+ const right=f.clone().cross(n).normalize(),basis=new T.Matrix4().makeBasis(right,f,n);
+ const sr=h.restFinger.clone().cross(h.restPalmNormal).normalize();
+ const source=new T.Matrix4().makeBasis(sr,h.restFinger,h.restPalmNormal);
+ const q=new T.Quaternion().setFromRotationMatrix(basis).multiply(new T.Quaternion().setFromRotationMatrix(source).invert()).multiply(h.restHandQ);
+ return {q,normal:n,finger:f,right};
+}
+function gripPoint(side){const h=tripoMotion.bones['Hand'+side];return h.b.localToWorld(h.contact.clone())}
+function gripWristTarget(side,point,q){
+ const h=tripoMotion.bones['Hand'+side],s=h.b.getWorldScale(v(0,0,0));
+ return point.clone().sub(h.contact.clone().multiply(s).applyQuaternion(q));
+}
+function applyGrip(side,point,pose,weight=1){
+ const h=tripoMotion.bones['Hand'+side],hand=h.b;
+ aimCoffeeArm(side,gripWristTarget(side,point,pose.q),weight);
+ const q=hand.parent.getWorldQuaternion(new T.Quaternion()).invert().multiply(pose.q);
+ hand.quaternion.slerp(q,weight);model.updateMatrixWorld(true);
+ return gripPoint(side)
+}
+function setWorldPose(obj,point,q){
+ const par=obj.parent;par.updateWorldMatrix(true,false);
+ obj.position.copy(par.worldToLocal(point.clone()));
+ obj.quaternion.copy(par.getWorldQuaternion(new T.Quaternion()).invert().multiply(q));obj.updateMatrixWorld(true);
+}
+
 function alignPalm(side,dir,weight=1){
  const h=tripoMotion.bones['Hand'+side],hand=h.b,world=hand.getWorldQuaternion(new T.Quaternion());
  const from=h.palm.clone().normalize().applyQuaternion(world);
@@ -530,7 +568,7 @@ function prepareTripoPose(rig){
   spread[i*3]=x*.18*lip;
  }
  ji.needsUpdate=true;wi.needsUpdate=true;
- const armRepair=repairTripoArms(mesh,bones);makePalmAnchors(mesh,bones);
+ const armRepair=repairTripoArms(mesh,bones);makePalmAnchors(mesh,bones);setupGripFrames(mesh,bones);
  geo.morphTargetsRelative=true;geo.morphAttributes.position=[open,round,spread].map(a=>new T.BufferAttribute(a,3));mesh.updateMorphTargets();mesh.frustumCulled=false;
  const mouth={value:0},mouthRound={value:0},mouthSpread={value:0};
  const config={x:0,y:3.043,z:.305,width:.127,height:.028,depth:.045,front:.235};
@@ -750,7 +788,7 @@ function cinematicCamera(dt){let portrait=innerWidth/innerHeight<.85;let target,
   const side=photoAim().sub(model.position);side.y=0;side.normalize();
   const poseTarget=model.position.clone().add(v(0,1.12,0)).addScaledVector(side,.45);
   target=poseTarget.lerp(phone,blend);
-  const screenAngle=Math.atan2(normal.x,normal.z)-.28,sideAngle=screenAngle-1.02;
+  const screenAngle=Math.atan2(normal.x,normal.z)+.20,sideAngle=screenAngle+1.12;
   angle=sideAngle+Math.atan2(Math.sin(screenAngle-sideAngle),Math.cos(screenAngle-sideAngle))*blend;
   elev=lerp(.14,Math.asin(clamp(normal.y,-1,1)),blend);distance=lerp(portrait?4.4:3.8,portrait?.51:.58,blend);
   const ease=1-Math.exp(-dt*8);camTarget.lerp(target,ease);yaw=angleTo(yaw,angle,dt*.66);pitch=lerp(pitch,elev,ease);dist=lerp(dist,distance,ease);return true;
@@ -808,7 +846,7 @@ function renderPalletPhoto(saved=false){
  scene.updateMatrixWorld(true);
  const center=pallets[0].getWorldPosition(v(0,0,0));
  const shotCamera=new T.PerspectiveCamera(92,4/3,.035,35);
- const origin=phoneModel.getWorldPosition(v(0,0,0));shotCamera.position.copy(origin);shotCamera.lookAt(photoAim());
+ const origin=phoneModel.getWorldPosition(v(0,0,0));const lens=phoneModel.localToWorld(v(-.045,.098,-.030));shotCamera.position.copy(lens);shotCamera.lookAt(lens.clone().add(v(0,0,-1).applyQuaternion(phoneModel.getWorldQuaternion(new T.Quaternion()))));
  const prev=renderer.getRenderTarget(),old=phoneModel.visible,beam=scanBeam.visible,person=model.visible;
  // Capture just as the phone camera sees the articles, without player or scan overlay obscuring them.
  phoneModel.visible=false;scanBeam.visible=false;model.visible=false;
@@ -832,38 +870,53 @@ function photoAim(){
 const phoneDraw={t:0,grasped:false,active:false};
 function updatePhoneDraw(dt){
  if(!model||!phoneModel||!tripoMotion)return;
- const drawing=state.role==='cert'&&state.phase==='playing'&&state.autoRun&&state.autoStep===0&&flow.certPhase==='photo'&&!photoShot.returning;
+ const drawing=state.role==='cert'&&state.phase==='playing'&&state.autoRun&&state.autoStep===0&&flow.certPhase==='photo';
  if(!drawing){if(phoneDraw.active){phoneDraw.active=false;phoneDraw.t=0;phoneDraw.grasped=false}phoneModel.visible=false;return}
  phoneDraw.active=true;phoneDraw.t+=dt;
  const dir=photoAim().sub(model.position);dir.y=0;dir.normalize();
- const right=v(dir.z,0,-dir.x),up=v(0,1,0),side='R';
+ const lateral=v(dir.z,0,-dir.x),up=v(0,1,0),side='R';
  const shoulder=model.getObjectByName('UpperArmR').getWorldPosition(v(0,0,0));
- const pocket=model.position.clone().addScaledVector(right,-.41).addScaledVector(dir,.065).add(v(0,1.08,0));
- const holding=shoulder.clone().addScaledVector(dir,.50).addScaledVector(right,-.08).add(v(0,-.06,0));
- const reach=motionSmooth(0,.32,phoneDraw.t),raise=motionSmooth(.34,1.03,phoneDraw.t);
- const wrist=pocket.clone().lerp(holding,raise);
- aimCoffeeArm(side,wrist,reach);
- if(phoneDraw.t>=.32)phoneDraw.grasped=true;
- // Hand and phone share a calibrated palm transform. Phone is only visible after pickup.
- alignPalm(side,dir.clone().multiplyScalar(.82).add(v(0,.57,0)),raise*.58);
- const palm=palmWorld(side),center=palm.clone().addScaledVector(dir,.070).addScaledVector(up,.108).addScaledVector(right,-.018);
- const normal=center.clone().sub(photoAim()).normalize();
- const q=new T.Quaternion().setFromRotationMatrix(new T.Matrix4().lookAt(center.clone().add(normal),center,up));
- phoneModel.position.copy(model.worldToLocal(center));phoneModel.quaternion.copy(model.getWorldQuaternion(new T.Quaternion()).invert().multiply(q));phoneModel.visible=phoneDraw.grasped;
- model.updateMatrixWorld(true);scanBeam.visible=false;
- if(photoShot.active&&!photoShot.returning&&raise>.95){const head=model.getObjectByName('Head'),world=head.getWorldQuaternion(new T.Quaternion());const pitch=new T.Quaternion().setFromAxisAngle(right,.12);head.quaternion.copy(head.parent.getWorldQuaternion(new T.Quaternion()).invert().multiply(pitch.multiply(world)));model.updateMatrixWorld(true)}
+ const pocket=model.position.clone().addScaledVector(lateral,-.41).addScaledVector(dir,.095).add(v(0,1.04,0));
+ const holding=shoulder.clone().addScaledVector(dir,.46).addScaledVector(lateral,-.015).add(v(0,-.02,0));
+ const reach=motionSmooth(0,.38,phoneDraw.t),raise=motionSmooth(.43,1.28,phoneDraw.t);
+ const stow=photoShot.returning?motionSmooth(3.35,4.15,photoShot.t):0;
+ const lift=raise*(1-stow);
+ // Target palm, not wrist. Reach the pocket first, then pull the phone up.
+ const point=pocket.clone().lerp(holding,lift);
+ const normal=point.clone().sub(photoAim()).normalize();
+ const screenUp=up.clone().addScaledVector(normal,-up.dot(normal)).normalize();
+ const screenRight=screenUp.clone().cross(normal).normalize();
+ const pocketNormal=lateral.clone(),pocketFinger=v(0,-1,0);
+ const n=pocketNormal.lerp(normal,lift).normalize();
+ const f=pocketFinger.lerp(screenUp,lift);
+ if(f.length()<.06)f.copy(dir);
+ const pose=gripPose(side,n,f);
+ const grip=applyGrip(side,point,pose,reach);
+ // The contact is on the lower back of the phone; the glove stays behind the
+ // display and the curled fingers meet the lower edge. No independent offsets.
+ const actualNormal=pose.normal,actualUp=pose.finger;
+ const q=new T.Quaternion().setFromRotationMatrix(new T.Matrix4().makeBasis(pose.right,actualUp,actualNormal));
+ const center=grip.clone().addScaledVector(actualNormal,.0175).addScaledVector(actualUp,.076).addScaledVector(pose.right,.010);
+ setWorldPose(phoneModel,center,q);
+ if(phoneDraw.t>=.38)phoneDraw.grasped=true;
+ phoneModel.visible=phoneDraw.grasped&&stow<.92;
+ scanBeam.visible=false;
+ if(photoShot.active&&!photoShot.returning&&lift>.95){
+  const head=model.getObjectByName('Head'),world=head.getWorldQuaternion(new T.Quaternion());
+  const pitch=new T.Quaternion().setFromAxisAngle(lateral,.12);head.quaternion.copy(head.parent.getWorldQuaternion(new T.Quaternion()).invert().multiply(pitch.multiply(world)));model.updateMatrixWorld(true);
+ }
 }
 function updatePhotoShot(dt){
  if(!photoShot.active||!model)return;
  const arrived=certPos.distanceTo(v(-3.25,0,.10))<.18;
- if(!arrived||(!photoShot.returning&&phoneDraw.t<1.05))return;
+ if(!arrived||(!photoShot.returning&&phoneDraw.t<1.30))return;
  photoShot.t+=dt;
  if(!photoShot.returning){
   if(photoShot.t>=.35&&!photoShot.preview){photoShot.preview=true;renderPalletPhoto(false)}
   if(photoShot.t>=1.65&&!photoShot.captured){photoShot.captured=true;renderPalletPhoto(true);capture()}
  }
- if(photoShot.t>=3.35&&!photoShot.returning){photoShot.returning=true;phoneModel.visible=false;state.autoRun=false;flow.simCert=9;state.autoTime=9;state.autoStep=1;setCert('sofa')}
- if(photoShot.t>=4.05){photoShot.active=false;phoneModel.visible=false;$('chapter').classList.add('hidden');$('hud').classList.remove('hidden');refresh();msg('10 Fotos im Pool')}
+ if(photoShot.t>=3.35&&!photoShot.returning)photoShot.returning=true;
+ if(photoShot.t>=4.22){photoShot.active=false;phoneModel.visible=false;state.autoRun=false;flow.simCert=9;state.autoTime=9;state.autoStep=1;setCert('sofa');$('chapter').classList.add('hidden');$('hud').classList.remove('hidden');refresh();msg('10 Fotos im Pool')}
 }
 
 function capture(){ $('flash').style.opacity='.75';setTimeout(()=>$('flash').style.opacity='0',120);sound('scan') }
@@ -1119,32 +1172,35 @@ function aimCoffeeArm(side,target,weight){
  aim(upper,fore,elbow);aim(fore,hand,end);
 }
 function updateCoffee(dt=.016){
- if(!model||!coffeeCup)return;
+ if(!model||!coffeeCup||!tripoMotion)return;
  if(!lounge.held&&lounge.reach<=0)return;
  model.updateMatrixWorld(true);
  if(!lounge.side){
-  const target=v(...COFFEE_HOME);
+  const target=v(...COFFEE_HOME).add(v(.103,0,0));
   const l=model.getObjectByName('UpperArmL'),r=model.getObjectByName('UpperArmR');
-  if(!l||!r)return;
   lounge.side=l.getWorldPosition(v(0,0,0)).distanceTo(target)<r.getWorldPosition(v(0,0,0)).distanceTo(target)?'L':'R';
  }
- const side=lounge.side,hand=model.getObjectByName('Hand'+side),upper=model.getObjectByName('UpperArm'+side);
- if(!hand||!upper)return;
- const sg=side==='L'?1:-1;
- const shoulder=upper.getWorldPosition(v(0,0,0));
+ const side=lounge.side,upper=model.getObjectByName('UpperArm'+side);
  const forward=v(0,0,1).applyAxisAngle(v(0,1,0),model.rotation.y);
- const carry=shoulder.clone().addScaledVector(forward,.32).add(v(0,-.38,0));
- const home=v(...COFFEE_HOME).addScaledVector(forward,-.055);home.y-=.035;
+ const outward=v(side==='L'?1:-1,0,0).applyAxisAngle(v(0,1,0),model.rotation.y);
+ const shoulder=upper.getWorldPosition(v(0,0,0));
  const picking=lounge.active&&LOUNGE_ROUTE[lounge.index]?.kind==='pick';
- const target=picking?(lounge.held?carry.clone().lerp(home,lounge.reach):home):carry;
- aimCoffeeArm(side,target,lounge.held?1:lounge.reach);
+ const rise=picking&&lounge.held?motionSmooth(.60,.96,lounge.time/LOUNGE_ROUTE[lounge.index].duration):lounge.held?1:0;
+ const cupYaw=model.rotation.y+(side==='R'?Math.PI:0);
+ const homeHandle=v(...COFFEE_HOME).add(v(.104,.003,0));
+ const carry=shoulder.clone().addScaledVector(forward,.26).addScaledVector(outward,.045).add(v(0,-.38,0));
+ const want=homeHandle.clone().lerp(carry,rise);
+ const handleOut=v(1,0,0).lerp(outward,rise).normalize();
+ const normal=handleOut.clone().negate(),f=v(0,-1,0).addScaledVector(forward,.20*rise);
+ const pose=gripPose(side,normal,f);
+ const grip=applyGrip(side,want,pose,lounge.held?1:lounge.reach);
  if(lounge.held){
-  alignPalm(side,forward.clone().add(v(0,-.22,0)),.50);
-  const palm=palmWorld(side),cupYaw=model.rotation.y+(side==='R'?0:Math.PI);
-  const handleOffset=v(.095,.005,0).applyAxisAngle(v(0,1,0),cupYaw),cupTarget=palm.clone().sub(handleOffset);
-  if(picking){lounge.grabBlend=clamp((lounge.grabBlend||0)+dt/.13,0,1);coffeeCup.position.copy(v(...COFFEE_HOME)).lerp(cupTarget,motionSmooth(0,1,lounge.grabBlend))}else coffeeCup.position.copy(cupTarget);
-  coffeeCup.rotation.set(0,cupYaw,0);
-
+  // The handle's center is the shared contact. Keep the cup upright as the hand
+  // turns, and leave the table without a positional jump.
+  const yaw=Math.atan2(-handleOut.z,handleOut.x),q=new T.Quaternion().setFromAxisAngle(v(0,1,0),yaw);
+  const center=grip.clone().sub(v(.104,.003,0).applyQuaternion(q));
+  if(picking&&rise<.04){const k=motionSmooth(0,.04,rise);center.lerp(v(...COFFEE_HOME),1-k)}
+  setWorldPose(coffeeCup,center,q);
  }
 }
 
@@ -1163,7 +1219,7 @@ function updateActors(dt,time){if(state.phase==='outro'){watchColleague(dt,time)
    }
   }
   const delta=certTarget.clone().sub(certPos),d=delta.length();certPos.lerp(certTarget,Math.min(1,dt*1.75/Math.max(.001,d)));
-  if(model){model.position.copy(certPos);const facingPallet=state.role==='cert'&&auto===0&&run&&flow.certPhase==='photo';const aim=facingPallet?photoAim().sub(certPos):delta;const angle=facingPallet?Math.atan2(aim.x,aim.z):d>.25?Math.atan2(delta.x,delta.z):(state.role==='manual'&&auto>=3?Math.PI/2:0);model.rotation.y=angleTo(model.rotation.y,angle,dt);if(d>.15&&cp!=='sit')cp='walk';play(cp)}
+  if(model){model.position.copy(certPos);const facingPallet=state.role==='cert'&&((auto===0&&run&&flow.certPhase==='photo')||flow.certPhase==='sofa');const aim=facingPallet?photoAim().sub(certPos):delta;const angle=facingPallet?Math.atan2(aim.x,aim.z):d>.25?Math.atan2(delta.x,delta.z):(state.role==='manual'&&auto>=3?Math.PI/2:0);model.rotation.y=angleTo(model.rotation.y,angle,dt);if(d>.15&&cp!=='sit')cp='walk';play(cp)}
  }
  if(phoneModel)phoneModel.visible=false;
  advanceCertoroPose(state.paused?0:dt);updateCoffee(state.paused?0:dt);
