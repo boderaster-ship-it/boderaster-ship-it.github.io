@@ -310,35 +310,18 @@ function prepareWorkerMouth(mesh){
   const seam=cy+.004*Math.min(1,(x/.047)**2),low=sm(1.81,1.889,y)*(1-sm(seam-.006,seam+.011,y));
   const upper=sm(seam-.008,seam+.010,y)*(1-sm(seam+.018,seam+.038,y));
   const k=front*width,lip=k*sm(seam-.046,seam-.015,y)*(1-sm(seam+.018,seam+.046,y));
-  open[i*3+1]=k*(-.013*low+.003*upper);open[i*3+2]=-.004*k*low;
+  open[i*3+1]=k*(-.008*low+.002*upper);open[i*3+2]=-.004*k*low;
   round[i*3]=-x*.24*lip;round[i*3+2]=.009*lip;
   spread[i*3]=x*.25*lip;spread[i*3+1]=.004*lip;
  }
  geo.morphTargetsRelative=true;geo.morphAttributes.position=[open,round,spread].map(a=>new T.BufferAttribute(a,3));mesh.updateMorphTargets();
  const mouth={value:0},mouthRound={value:0},mouthSpread={value:0};
- const mat=mesh.material.clone();mesh.material=mat;
- mat.onBeforeCompile=sh=>{
-  sh.uniforms.workerMouth=mouth;sh.uniforms.workerRound=mouthRound;sh.uniforms.workerSpread=mouthSpread;
-  sh.vertexShader='varying vec3 workerRest;\n'+sh.vertexShader;
-  sh.vertexShader=sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nworkerRest=position;');
-  sh.fragmentShader='varying vec3 workerRest;\nuniform float workerMouth,workerRound,workerSpread;\n'+sh.fragmentShader;
-  sh.fragmentShader=sh.fragmentShader.replace('#include <opaque_fragment>',`
-   float w=.038*(1.0-.25*workerRound+.18*workerSpread);
-   float mx=(workerRest.x-.010)/max(w,.01);
-   float seam=1.928+.004*min(1.0,mx*mx);
-   float h=max(.0001,.0105*workerMouth);
-   float my=(workerRest.y-seam+h*.27)/h;
-   float d=mx*mx+my*my;
-   float mask=(1.0-smoothstep(.80,1.02,d))*smoothstep(.100,.139,workerRest.z)*smoothstep(.04,.15,workerMouth);
-   vec3 inside=mix(vec3(.061,.018,.015),vec3(.006,.002,.003),clamp(1.0-d,0.0,1.0));
-   float teeth=smoothstep(.30,.43,my)*(1.0-smoothstep(.65,.84,my))*(1.0-smoothstep(.65,.90,abs(mx)))*smoothstep(.20,.48,workerMouth);
-   inside=mix(inside,vec3(.55,.49,.42),teeth*.73);
-   outgoingLight=mix(outgoingLight,inside,mask);
-   #include <opaque_fragment>`);
- };
- mat.customProgramCacheKey=()=> 'worker-lips-v18';mat.needsUpdate=true;
- return {mesh,mouth,mouthRound,mouthSpread,values:[0,0,0]};
+ const config={x:.010,y:1.928,z:.142,width:.037,height:.0105,depth:.022,front:.100};
+ const head=mesh.skeleton.bones.find(b=>b.name==='WorkerHead');
+ const oral=buildOralCavity(mesh,head,config);installMouthCut(mesh,config,{open:mouth,round:mouthRound,spread:mouthSpread});
+ return {mesh,mouth,mouthRound,mouthSpread,oral,values:[0,0,0]};
 }
+
 function animateWorkerMouth(dt,talking){
  const f=worker.face;if(!f)return;
  const target=[0,0,0];
@@ -349,7 +332,7 @@ function animateWorkerMouth(dt,talking){
  target[0]=Math.min(1,target[0]*1.4);
  const k=1-Math.exp(-Math.max(0,dt)*29);
  for(let j=0;j<3;j++){f.values[j]=lerp(f.values[j],target[j],k);f.mesh.morphTargetInfluences[j]=f.values[j]}
- f.mouth.value=f.values[0];f.mouthRound.value=f.values[1];f.mouthSpread.value=f.values[2];
+ f.mouth.value=f.values[0];f.mouthRound.value=f.values[1];f.mouthSpread.value=f.values[2];moveOralCavity(f.oral,f.values[0],f.values[1],f.values[2]);
 }
 
 function animateWorkerFace(time,dt=.016){
@@ -369,6 +352,149 @@ function resize(){let w=innerWidth,h=innerHeight;renderer.setPixelRatio(Math.min
 let tripoMotion=null, voiceStartedAt=0, voicePlaybackRate=1;
 const WORKER_SPEECH_FRAMES={"0":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,55,80,0,55,80,2,55,80,6,55,80,3,55,80,2,55,80,3,27,21,14,0,0,0,63,0,1,78,0,1,72,0,1,65,80,0,89,65,0,100,19,0,95,55,0,55,80,0,55,80,0,55,80,0,59,80,0,58,80,0,57,52,1,55,0,0,55,40,0,55,80,0,50,73,0,41,36,0,35,30,0,31,45,0,21,30,0,7,0,10,6,0,8,21,0,5,25,0,23,19,0,30,38,0,23,56,16,13,56,37,9,56,16,7,56,12,4,36,0,0,11,9,0,9,0,5,19,0,26,19,0,25,52,0,3,57,0,0,57,39,0,56,54,0,56,60,0,58,59,0,65,67,0,67,63,0,62,34,0,28,33,0,16,20,0,20,25,0,30,38,0,40,46,0,40,47,0,35,44,0,46,25,0,40,22,0,38,24,0,31,27,1,21,7,0,6,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,7,55,80,1,55,80,8,55,0,13,55,0,10,45,0,70,30,0,46,27,0,41,7,0,11,0,0,0,0,0,0,17,0,25,36,0,52,36,0,37,48,67,19,66,80,2,96,53,2,100,33,3,90,49,21,73,79,20,57,80,9,55,80,6,55,80,4,45,66,1,38,56,1,55,80,6,55,80,6,55,80,4,55,80,1,47,59,0,40,12,6,49,70,9,55,80,3,55,80,6,55,80,12,55,80,19,55,80,15,56,80,6,56,80,19,56,80,38,56,66,30,57,54,3,56,8,2,47,0,2,32,0,1,14,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,43,63,1,55,80,3,55,78,6,55,80,6,55,69,8,53,0,1,45,0,0,49,0,3,55,71,13,55,80,15,55,80,3,55,80,3,55,60,7,55,0,8,55,0,5,55,0,7,50,16,20,54,0,6,55,0,3,55,47,6,55,80,12,55,80,5,55,80,4,57,80,10,60,63,10,37,31,2,51,25,2,66,24,1,78,5,1,58,4,5,56,0,4,41,0,0,15,0,0,0,0,0,24,0,33,24,0,37,35,0,54,55,80,2,55,80,9,50,26,14,31,0,1,8,0,4,26,0,32,30,0,33,43,0,7,55,25,10,55,68,9,51,70,12,36,45,5,26,35,1,30,2,3,23,0,2,41,0,7,53,9,4,62,24,6,55,78,0,55,80,0,55,80,0,53,76,0,46,67,0,40,57,3,33,48,1,32,46,2,35,50,12,35,50,6,33,48,6,32,47,8,30,43,11,27,37,16,24,33,22,18,26,10,8,12,8,0,0,0,15,22,0,22,31,0,25,35,0,26,37,0,26,34,5,28,0,3,0,0,0],"1":[0,0,0,0,0,0,0,0,0,12,0,18,16,0,24,23,0,32,58,77,2,61,80,2,57,80,1,50,72,11,35,51,19,42,61,42,55,80,11,55,80,5,56,80,2,59,80,4,61,80,6,60,80,2,59,80,0,57,80,0,55,79,1,39,56,23,51,0,77,50,0,77,26,0,40,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,21,0,14,48,68,0,60,80,0,61,48,0,51,0,1,27,0,1,38,0,18,50,35,1,58,18,0,51,0,0,34,0,0,36,0,0,39,0,4,41,0,4,56,0,4,75,0,5,65,0,1,61,0,1,44,0,2,32,0,34,7,0,6,0,0,0,12,0,17,15,0,23,47,69,8,55,80,1,55,74,1,55,73,1,55,80,2,55,80,1,55,80,2,54,41,4,38,0,2,50,7,1,59,0,1,55,0,0,55,0,0,55,0,0,55,0,0,55,0,0,48,0,1,47,10,4,55,15,3,55,34,6,55,42,14,55,57,7,55,68,3,55,80,2,55,80,1,46,58,0,38,55,1,39,57,7,54,78,4,55,73,5,55,54,9,55,49,8,55,53,2,55,49,2,52,0,0,45,0,3,47,0,5,54,5,1,55,0,2,54,0,3,52,0,79,43,0,67,25,0,36,5,0,7,0,0,0,0,0,0,10,0,2,13,0,2,0,0,0,20,5,1,48,22,0,66,21,0,61,59,0,55,66,0,48,63,2,65,14,32,58,38,0,61,44,0,58,28,0,58,2,0,28,0,0,14,0,1,35,0,3,30,0,13,0,0,0,17,0,23,17,0,20,4,6,0,0,0,0,0,0,0,15,0,5,51,0,21,86,0,3,75,0,3,76,0,5,68,31,13,60,49,17,58,69,16,56,80,5,52,75,1,44,64,1,38,12,1,29,30,7,15,21,5,13,0,18,20,0,29,27,0,42,30,0,47,25,0,38,14,0,21,18,15,5,20,18,4,18,11,5,15,10,4,11,13,6,7,6,5,3,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"2":[0,0,0,0,0,0,20,0,30,59,2,14,90,0,3,94,23,3,100,20,7,96,14,11,84,46,6,61,77,1,56,28,1,58,10,1,58,0,1,58,0,1,59,0,0,58,0,0,56,0,0,55,0,0,55,0,1,38,0,20,36,0,55,40,0,61,52,0,79,56,0,2,55,23,0,55,36,0,56,33,0,57,44,0,52,31,0,31,0,0,8,0,0,0,0,0,60,0,14,56,27,0,56,5,1,56,0,1,55,0,0,55,0,0,42,0,0,53,21,5,55,46,6,55,60,12,55,37,22,55,23,14,49,16,7,38,0,0,38,4,8,53,45,13,55,24,5,50,34,2,50,73,5,46,67,13,26,32,14,32,9,4,68,0,2,79,0,3,64,9,7,47,32,8,24,34,0,2,2,0,0,0,0,19,0,26,26,0,40,22,0,33,48,69,2,55,80,4,50,50,6,35,0,1,16,0,0,2,0,2,7,0,7,40,51,8,55,80,2,55,80,3,53,33,8,48,0,5,55,0,0,55,0,0,55,0,0,60,0,1,60,0,0,59,0,0,58,0,0,55,0,0,55,0,0,55,0,0,56,0,0,67,10,1,67,10,1,70,4,1,66,0,1,66,0,1,65,0,1,59,0,0,57,0,0,48,0,0,34,0,0,14,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,2,0,54,75,0,56,26,0,58,0,0,59,0,1,60,0,1,56,0,0,55,3,0,54,53,0,35,38,1,22,0,33,20,0,31,11,0,16,9,0,13,8,0,12,0,0,0,0,0,0,0,0,0,3,0,4,14,0,19,49,7,1,55,0,4,55,41,7,55,49,4,47,52,0,32,35,0,16,0,0,14,0,12,17,0,14,0,0,0,0,0,0,42,26,0,61,19,0,64,16,1,56,60,0,50,72,0,40,59,1,31,0,46,54,16,5,62,80,2,59,73,1,49,35,0,20,26,0,2,0,0,0,0,0,36,0,6,36,0,11,0,0,0,0,0,0,13,0,19,15,0,22,8,0,12,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,12,0,16,32,0,15,41,20,5,53,14,6,51,0,4,41,0,3,31,0,5,36,0,6,41,0,4,41,0,7,36,0,18,22,0,24,8,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,26,37,0,30,43,1,23,31,1,16,21,1,8,12,1,3,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"3":[0,0,0,0,0,0,0,0,0,40,58,1,55,48,0,55,44,1,55,70,3,56,80,16,56,80,13,58,80,5,54,75,3,33,48,1,0,0,0,0,0,0,0,0,0,13,0,18,17,0,25,21,0,26,21,0,30,17,0,26,13,0,18,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,9,21,0,32,26,0,41,30,0,47,28,0,43,20,0,22,0,0,0,28,1,1,53,0,1,81,5,1,87,5,1,85,1,3,68,15,19,57,26,20,56,33,10,56,50,11,56,43,9,38,0,0,40,0,0,55,0,0,55,0,0,55,0,0,55,9,0,55,11,0,55,20,0,46,0,0,49,0,3,55,26,3,55,33,3,55,47,1,55,64,1,55,58,4,55,44,6,55,38,6,56,12,19,56,16,15,56,22,7,52,62,3,25,28,0,3,0,0,0,0,0,0,0,0,0,0,0,14,0,15,25,0,34,29,0,44,24,0,37,28,0,42,55,80,1,55,80,1,55,80,2,55,80,1,50,31,2,31,0,1,6,2,0,0,0,0,0,0,0,23,0,25,27,0,32,15,0,22,40,37,5,55,42,1,55,45,1,55,39,2,55,37,3,55,34,2,55,21,2,54,18,1,50,5,1,43,6,1,33,7,1,21,28,0,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,25,6,1,48,5,0,57,30,0,58,80,0,56,80,0,55,80,0,55,80,0,48,11,0,27,0,33,17,0,25,4,0,6,0,0,0,0,0,0,0,0,0,6,0,3,39,26,1,51,16,1,55,0,2,54,0,32,44,0,68,35,0,54,36,0,55,38,0,59,32,0,35,26,0,17,0,0,0,31,17,3,61,30,2,74,4,2,72,0,2,68,0,6,41,0,53,33,20,49,29,22,43,27,22,39,24,29,22,20,19,11,16,24,0,15,22,0,25,0,14,27,7,1,30,18,0,33,2,0,26,13,0,17,4,0,0,0,0,6,8,1,6,9,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"6":[0,0,0,0,0,0,0,0,0,0,0,0,28,0,0,47,0,0,55,0,4,55,0,1,55,79,1,55,80,1,55,80,3,55,80,4,55,80,6,55,80,6,55,80,4,41,60,0,51,74,9,55,80,2,56,80,6,58,77,22,61,77,1,51,48,0,44,0,0,41,0,0,46,0,2,61,27,0,63,14,0,46,3,0,29,0,0,14,0,0,6,0,0,54,0,1,61,0,1,44,0,1,70,1,2,69,3,0,85,9,1,81,19,0,63,47,0,56,55,0,56,56,0,55,65,0,55,30,0,47,0,8,17,0,0,0,0,0,15,0,18,19,0,28,15,0,23,7,0,10,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,17,0,23,25,0,39,34,0,49,33,0,50,30,0,44,24,0,36,51,1,3,55,75,8,55,80,7,55,80,7,55,80,5,54,78,4,51,74,8,54,77,6,55,80,0,55,80,0,50,72,0,34,48,0,11,0,1,23,0,12,24,0,13,3,0,0,0,0,0,39,15,0,69,24,1,67,26,1,55,0,0,55,4,0,55,4,11,56,26,12,60,75,2,61,52,1,39,19,0,18,3,0,0,0,0,0,0,0,24,0,3,31,0,13,10,0,15,0,0,0,0,0,0,14,0,19,18,0,27,18,0,28,21,30,8,19,9,19,13,13,9,10,4,8,4,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,29,0,0,47,3,6,55,58,14,56,54,14,56,22,41,63,46,22,73,38,14,78,0,11,79,0,4,74,13,3,60,0,1,37,0,0,15,16,6,0,0,0,15,0,20,26,0,35,31,0,47,38,0,59,54,16,1,57,48,1,43,23,2,26,18,25,20,24,6,24,15,7,36,13,2,51,35,5,55,56,5,55,47,8,56,36,16,56,37,23,56,33,1,61,7,2,57,0,27,49,0,73,39,0,60,42,0,64,35,0,54,20,0,30,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,30,0,2,60,0,2,97,0,2,100,0,2,69,9,2,58,51,0,58,68,0,65,47,2,60,5,2,66,0,1,74,0,2,42,0,0,35,0,0,56,0,1,73,6,2,62,47,2,55,80,0,56,80,0,55,80,0,55,80,0,55,80,0,46,66,38,54,79,3,56,76,0,54,77,0,50,72,0,42,61,0,37,46,1,42,56,0,49,66,0,50,68,0,49,65,0,50,67,0,57,69,0,42,43,0,24,25,7,15,0,21,25,0,38,41,30,4,48,69,1,40,56,2,29,0,27,12,0,15,9,0,12,18,0,26,19,0,25,34,0,47,50,13,16,56,10,73,58,15,37,70,0,6,90,2,3,70,50,2,54,39,1,38,0,1,12,0,0,0,0,0,11,0,11,9,0,14,36,41,4,43,25,6,41,28,6,41,46,1,34,29,0,17,0,26,1,0,2,5,0,7,8,0,13,7,0,11,3,0,4,0,0,0,0,0,0,0,0,0],"8":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,44,64,6,55,80,11,55,40,5,55,0,2,44,0,39,28,0,41,29,0,40,13,1,19,0,0,0,0,0,0,44,0,42,55,80,2,55,80,5,56,80,3,56,80,1,55,80,0,55,80,0,55,80,0,55,80,0,55,80,0,57,80,0,62,80,0,77,80,0,80,18,0,40,0,0,13,0,3,24,0,6,10,0,15,0,0,0,0,0,0,18,0,26,41,60,1,56,75,1,64,65,0,70,28,1,67,19,0,50,0,0,48,0,0,46,0,0,44,0,0,56,0,1,70,11,0,85,0,0,77,0,1,84,0,1,78,0,1,64,0,2,59,0,15,56,0,28,54,0,9,53,2,8,55,21,4,55,19,2,53,14,3,46,6,2,40,0,0,38,7,0,36,3,10,45,0,2,51,2,0,51,33,1,44,52,3,31,45,8,26,36,7,26,34,4,49,0,3,57,20,1,58,40,2,49,22,2,34,46,11,16,24,0,0,0,0,13,0,15,19,0,24,15,0,22,39,0,56,55,0,1,55,41,10,50,42,7,34,50,1,12,12,0,0,0,0,0,0,0,21,0,21,48,0,2,56,42,2,55,64,2,55,69,3,49,36,2,31,4,2,6,0,1,0,0,0,0,0,0,0,0,0,1,0,0,35,0,5,90,0,3,74,0,33,67,0,39,61,37,28,58,71,14,57,80,6,55,80,0,55,80,0,52,75,0,30,44,1,13,0,11,19,0,28,32,0,49,33,0,51,24,0,34,29,0,21,47,20,3,58,80,4,56,80,4,55,80,2,55,80,0,55,80,0,42,32,0,25,29,0,17,15,1,24,0,2,49,0,2,83,0,5,100,9,3,59,80,1,56,80,0,55,80,0,40,57,1,18,23,7,19,0,8,28,0,43,29,0,45,24,0,36,19,0,6,37,34,3,43,58,2,40,37,1,30,0,2,26,5,3,22,6,3,23,0,22,26,18,10,26,9,11,24,7,19,22,8,16,20,2,31,19,3,25,17,0,26,13,0,20,1,0,0,0,0,0,0,0,0,12,17,1,17,1,1,16,15,0,15,13,1,14,13,1,11,15,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]};
 const SPEECH_FRAMES={"4":[0,0,0,0,0,0,0,0,0,17,1,26,10,5,11,5,3,6,1,1,1,3,2,3,11,5,11,24,12,25,46,12,12,100,6,25,37,2,9,1,1,2,1,1,2,5,3,5,4,2,4,1,0,1,0,0,0,28,2,44,40,3,64,33,9,9,16,4,4,8,4,8,6,3,6,0,0,0,0,0,0,100,6,25,100,6,25,46,12,12,46,12,12,36,9,9,26,7,7,27,2,43,22,1,34,13,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"5":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,33,2,52,46,3,73,36,2,58,18,5,5,19,5,5,40,10,10,43,11,11,26,7,7,70,4,18,82,5,20,11,6,12,3,1,3,2,1,2,1,0,1,0,0,0,1,0,2,41,11,11,46,12,12,23,12,24,12,6,13,16,8,17,46,12,12,57,85,3,44,66,2,7,3,7,3,1,3,1,1,2,1,0,1,4,0,6,27,2,43,41,11,11,43,11,11,37,10,10,90,5,23,90,5,22,40,3,64,46,3,73,46,3,73,45,12,12,45,12,12,39,10,10,17,8,17,14,7,15,5,3,6,5,0,1,3,0,1,4,0,1,75,5,19,24,12,25,20,10,21,11,5,11,8,0,12,6,0,9,13,1,20,29,7,7,34,9,9,31,8,8,27,7,7,23,6,6,20,3,3,7,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,6,8,8,12,7,7,11,3,3,4,1,1,2,0,0,0,24,2,38,34,2,54,42,11,11,45,12,12,39,10,10,36,9,9,42,3,67,46,12,12,45,3,71,30,2,48,28,2,44,100,6,25,46,12,12,46,12,12,24,12,25,35,2,56,29,2,46,12,1,19,1,1,1,5,5,7,79,5,20,56,3,14,28,2,7,0,0,0,0,0,0,18,5,5,31,2,50,46,3,73,46,3,73,39,3,62,22,11,23,24,12,25,24,12,25,24,12,25,20,10,21,8,4,9,10,1,16,8,0,12,30,2,48,46,3,73,43,3,68,60,9,7,45,7,6,17,2,2,17,3,2,8,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"7":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,23,11,24,24,12,25,22,11,23,11,6,11,7,3,7,7,4,8,3,1,3,0,0,0,0,0,0,46,3,73,46,12,12,46,12,12,46,12,12,44,11,11,16,8,17,6,3,7,8,1,13,7,0,11,5,0,8,26,2,41,46,12,12,46,12,12,46,12,12,24,12,25,24,12,25,24,12,25,24,12,25,26,2,42,7,0,12,0,0,0,0,0,0,0,0,0,14,4,4,18,5,5,16,4,4,9,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,12,0,19,29,1,22,33,1,28,42,1,29,2,46,35,2,56,42,3,66,34,2,55,23,34,1,37,2,9,93,6,23,46,3,73,46,3,73,46,3,73,21,11,22,14,7,14,6,3,6,1,0,1,0,0,0,0,0,0,0,0,0,5,2,5,7,4,8,6,3,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,12,18,1,22,33,1,25,37,1,26,39,1,25,37,1,21,31,1,15,22,1,19,3,2,20,3,3,15,2,2,4,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]};
+// Use welded mesh connectivity, not just X/Y thresholds, to distinguish the actual
+// free-standing arms from pockets, trousers and tail. UV seams share the same weights.
+function repairTripoArms(mesh,bones){
+ const g=mesh.geometry,p=g.attributes.position,j=g.attributes.skinIndex,w=g.attributes.skinWeight,n=p.count;
+ const weld=new Map(),ids=new Int32Array(n),pos=[];
+ for(let i=0;i<n;i++){const x=p.getX(i),y=p.getY(i),z=p.getZ(i),key=[x,y,z].map(t=>Math.round(t*100000)).join(',');let k=weld.get(key);if(k===undefined){k=pos.length;weld.set(key,k);pos.push([x,y,z])}ids[i]=k}
+ const par=Int32Array.from(pos,(_,i)=>i),size=new Int32Array(pos.length).fill(1);
+ function find(i){while(par[i]!==i){par[i]=par[par[i]];i=par[i]}return i}
+ function join(a,b){if(pos[a][1]>=2.1||pos[b][1]>=2.1)return;a=find(a);b=find(b);if(a===b)return;if(size[a]<size[b])[a,b]=[b,a];par[b]=a;size[a]+=size[b]}
+ for(let i=0;i<g.index.count;i+=3){const a=ids[g.index.getX(i)],b=ids[g.index.getX(i+1)],c=ids[g.index.getX(i+2)];join(a,b);join(b,c);join(c,a)}
+ const stats=new Map();
+ for(let i=0;i<pos.length;i++){const a=pos[i];if(a[1]>=2.1)continue;const k=find(i),s=stats.get(k)||{n:0,x:0,min:Infinity,max:-Infinity};s.n++;s.x+=a[0];s.min=Math.min(s.min,a[0]);s.max=Math.max(s.max,a[0]);stats.set(k,s)}
+ const arms=new Map();for(const [k,s] of stats){if(s.n>100&&s.min>.40)arms.set(k,'L');if(s.n>100&&s.max<-.40)arms.set(k,'R')}
+ const names=mesh.skeleton.bones.map(b=>b.name),ix=n=>names.indexOf(n),sm=(a,b,x)=>motionSmooth(a,b,x);
+ const isArm=k=>/^(UpperArm|Forearm|Hand|Finger)/.test(names[k]||'');
+ const out=new Map();let changed=0;
+ for(let i=0;i<n;i++){
+  const y=p.getY(i);if(y>=2.24||y<1.18)continue;
+  const k=ids[i];if(out.has(k)){const a=out.get(k);j.setXYZW(i,...a.j);w.setXYZW(i,...a.w);continue}
+  const oldJ=[j.getX(i),j.getY(i),j.getZ(i),j.getW(i)],oldW=[w.getX(i),w.getY(i),w.getZ(i),w.getW(i)];
+  const side=y<2.1?arms.get(find(k)):null;
+  const map=new Map(),add=(b,t)=>{if(t>0&&b>=0)map.set(b,(map.get(b)||0)+t)};
+  if(y<2.1&&side){
+   const h=1-sm(1.54,1.78,y),u=sm(1.88,2.13,y);
+   add(ix('Hand'+side),h);add(ix('Forearm'+side),(1-h)*(1-u));add(ix('UpperArm'+side),(1-h)*u);
+  }else if(y<2.1){
+   for(let q=0;q<4;q++)if(!isArm(oldJ[q]))add(oldJ[q],oldW[q]);
+   if(!map.size)add(ix(y<1.88?'Pelvis':'Spine'),1);
+  }else{
+   for(let q=0;q<4;q++)add(oldJ[q],oldW[q]);
+  }
+  const a=[...map].sort((a,b)=>b[1]-a[1]).slice(0,4),sum=a.reduce((s,x)=>s+x[1],0)||1;while(a.length<4)a.push([0,0]);
+  const rec={j:a.map(x=>x[0]),w:a.map(x=>x[1]/sum)};out.set(k,rec);j.setXYZW(i,...rec.j);w.setXYZW(i,...rec.w);changed++;
+ }
+ // Laplacian relaxation over the welded surface, constrained to the same anatomical
+ // components below the shoulder. This removes isolated high-gradient weights.
+ const N=pos.length,B=names.length,adj=Array.from({length:N},()=>[]);
+ const links=new Set();
+ for(let i=0;i<g.index.count;i+=3){const t=[ids[g.index.getX(i)],ids[g.index.getX(i+1)],ids[g.index.getX(i+2)]];for(let k=0;k<3;k++){let a=t[k],b=t[(k+1)%3];if(a===b)continue;if(a>b)[a,b]=[b,a];const key=a*N+b;if(links.has(key))continue;links.add(key);adj[a].push(b);adj[b].push(a)}}
+ // Multi-source geodesic distances measured on the actual welded surface.
+ // At the armpit this avoids jumping across the air gap between arm and torso.
+ function distances(seed){
+  const d=new Float64Array(N).fill(Infinity),heap=[];
+  const push=(k,v)=>{let i=heap.length;heap.push([k,v]);while(i){const p=(i-1)>>1;if(heap[p][1]<=v)break;heap[i]=heap[p];i=p}heap[i]=[k,v]};
+  const pop=()=>{const top=heap[0],last=heap.pop();if(heap.length){let i=0;while(i*2+1<heap.length){let c=i*2+1;if(c+1<heap.length&&heap[c+1][1]<heap[c][1])c++;if(heap[c][1]>=last[1])break;heap[i]=heap[c];i=c}heap[i]=last}return top};
+  for(let k=0;k<N;k++)if(seed(k)){d[k]=0;push(k,0)}
+  while(heap.length){const [k,c]=pop();if(c!==d[k]||c>1.2)continue;const p=pos[k];for(const q of adj[k]){const a=pos[q],nd=c+Math.hypot(a[0]-p[0],a[1]-p[1],a[2]-p[2]);if(nd<d[q]&&nd<=1.2){d[q]=nd;push(q,nd)}}}return d
+ }
+ const armDist=distances(k=>pos[k][1]>=1.77&&pos[k][1]<2.025&&arms.has(find(k)));
+ const bodyDist=distances(k=>{const [x,y,z]=pos[k];return y>1.76&&y<2.02&&!arms.has(find(k))||y>=2.04&&y<2.78&&Math.abs(x)<.26||y>=2.70&&y<2.90});
+ let current=new Float32Array(N*B),next=new Float32Array(N*B),done=new Uint8Array(N),relax=[];
+ for(let i=0;i<n;i++){const k=ids[i];if(done[k])continue;done[k]=1;const js=[j.getX(i),j.getY(i),j.getZ(i),j.getW(i)],ws=[w.getX(i),w.getY(i),w.getZ(i),w.getW(i)];for(let q=0;q<4;q++)current[k*B+js[q]]+=ws[q]}
+ for(let k=0;k<N;k++){const [x,y,z]=pos[k];if(y>=2.025&&y<2.78&&Math.abs(x)>.25&&Number.isFinite(armDist[k])&&Number.isFinite(bodyDist[k])){
+  const blend=motionSmooth(0,1,bodyDist[k]/Math.max(.0001,armDist[k]+bodyDist[k]));
+  const base=k*B,side=x>=0?'L':'R',old=[];let sum=0;
+  for(let b=0;b<B;b++)if(!isArm(b)){old[b]=current[base+b];sum+=old[b]}else old[b]=0;
+  if(sum<.001){old[ix(y>2.22?'Chest':'Spine')]=1;sum=1}
+  for(let b=0;b<B;b++)current[base+b]=(old[b]||0)/sum*(1-blend);
+  const elbow=1-motionSmooth(2.00,2.20,y);
+  current[base+ix('UpperArm'+side)]+=blend*(1-elbow);current[base+ix('Forearm'+side)]+=blend*elbow;
+ }}
+ for(let k=0;k<N;k++){const [x,y,z]=pos[k];if(y>1.14&&y<2.78&&Math.abs(x)>.25&&adj[k].length){const ar=y<2.1&&arms.has(find(k)),lock=ar&&y<1.51;if(!lock)relax.push(k)}}
+ const allow=(k,b)=>{const y=pos[k][1];if(y>=2.025)return true;const side=arms.get(find(k));return side?names[b].endsWith(side)&&isArm(b):!isArm(b)};
+ for(let pass=0;pass<18;pass++){next.set(current);for(const k of relax){const base=k*B,ns=adj[k],ratio=.58;let sum=0;for(let b=0;b<B;b++){let t=0;for(const q of ns)t+=current[q*B+b];const val=allow(k,b)?current[base+b]*(1-ratio)+ratio*t/ns.length:0;next[base+b]=val;sum+=val}if(sum>1e-6)for(let b=0;b<B;b++)next[base+b]/=sum;else next.set(current.subarray(base,base+B),base)}[current,next]=[next,current]}
+ const result=new Map();
+ for(let i=0;i<n;i++){const k=ids[i],y=pos[k][1];if(y<=1.14||y>=2.78||Math.abs(pos[k][0])<=.25)continue;
+  let a=result.get(k);if(!a){const pairs=[];for(let b=0;b<B;b++)if(current[k*B+b]>.0001)pairs.push([b,current[k*B+b]]);pairs.sort((a,b)=>b[1]-a[1]);pairs.length=Math.min(4,pairs.length);const total=pairs.reduce((t,a)=>t+a[1],0)||1;while(pairs.length<4)pairs.push([0,0]);a={j:pairs.map(x=>x[0]),w:pairs.map(x=>x[1]/total)};result.set(k,a)}j.setXYZW(i,...a.j);w.setXYZW(i,...a.w)
+ }
+ j.needsUpdate=true;w.needsUpdate=true;return {components:arms.size,changed};
+}
+// Rest palm centers are actual mesh positions, transformed into each wrist's bind space.
+function makePalmAnchors(mesh,bones){
+ mesh.updateWorldMatrix(true,false);
+ for(const [side,sg] of [['L',1],['R',-1]]){
+  const hand=bones['Hand'+side].b;hand.updateWorldMatrix(true,false);
+  const p=mesh.localToWorld(v(sg*.60,1.495,.055));bones['Hand'+side].palm=hand.worldToLocal(p);
+ }
+}
+function palmWorld(side){const b=tripoMotion.bones['Hand'+side];return b.b.localToWorld(b.palm.clone())}
+function alignPalm(side,dir,weight=1){
+ const h=tripoMotion.bones['Hand'+side],hand=h.b,world=hand.getWorldQuaternion(new T.Quaternion());
+ const from=h.palm.clone().normalize().applyQuaternion(world);
+ const q=new T.Quaternion().setFromUnitVectors(from,dir.clone().normalize()).multiply(world);
+ const local=hand.parent.getWorldQuaternion(new T.Quaternion()).invert().multiply(q);
+ hand.quaternion.slerp(local,weight);model.updateMatrixWorld(true);
+}
+
+// Actual visible 3D oral cavity: cut away the front shell at the animated lip seam,
+// and reveal recessed sculpted geometry (not a dark color painted over the face).
+function buildOralCavity(mesh,head,config){
+ const {x,y,z,width,height,depth}=config,root=new T.Group();root.name='PhysicalOralCavity';
+ mesh.updateWorldMatrix(true,false);head.updateWorldMatrix(true,false);
+ const bind=head.matrixWorld.clone().invert().multiply(mesh.matrixWorld);
+ bind.decompose(root.position,root.quaternion,root.scale);head.add(root);
+ const pocket=new T.Group();root.add(pocket);pocket.position.set(x,y,z);
+ const material=(col,r=.55)=>new T.MeshStandardMaterial({color:col,roughness:r,metalness:0,side:T.DoubleSide});
+ const inside=material(0x471b22,.74),gum=material(0x8a4647,.52),tooth=material(0xd8c9af,.38),tongue=material(0x985050,.49);
+ // Recessed bowl, elliptical rim and domed inner throat. Its front edge is always
+ // behind the original lips, so closed lips occlude everything.
+ const N=40,R=8,verts=[],indices=[];
+ for(let j=0;j<=R;j++){const r=Math.max(.001,j/R);for(let k=0;k<N;k++){const a=k/N*Math.PI*2;verts.push(Math.cos(a)*r*width*1.27,Math.sin(a)*r*height*1.8,-depth*(.20+.80*Math.sqrt(Math.max(0,1-r*r))))}}
+ for(let j=0;j<R;j++)for(let k=0;k<N;k++){const a=j*N+k,b=j*N+(k+1)%N,c=a+N,d=b+N;indices.push(a,b,c,b,d,c)}
+ const bg=new T.BufferGeometry();bg.setAttribute('position',new T.Float32BufferAttribute(verts,3));bg.setIndex(indices);bg.computeVertexNormals();pocket.add(new T.Mesh(bg,inside));
+ const upper=new T.Group(),lower=new T.Group();pocket.add(upper,lower);
+ // Small curved tooth arch, not a single white strip.
+ for(let row=0;row<2;row++){
+  const group=row?lower:upper;
+  for(let i=0;i<6;i++){const f=(i-2.5)/3,xx=f*width*.79,zz=-depth*.46-depth*.28*f*f;
+   const toothMesh=new T.Mesh(new T.SphereGeometry(1,12,8),tooth);toothMesh.position.set(xx,0,zz);toothMesh.scale.set(width*.127,height*(row?.14:.28),depth*.14);group.add(toothMesh)}
+  const g=new T.Mesh(new T.SphereGeometry(1,24,12),gum);g.position.set(0,row?-height*.24:height*.28,-depth*.56);g.scale.set(width*.85,height*.24,depth*.22);group.add(g);
+ }
+ const t=new T.Mesh(new T.SphereGeometry(1,24,12),tongue);t.scale.set(width*.62,height*.34,depth*.35);t.position.set(0,-height*.57,-depth*.70);pocket.add(t);
+ root.visible=false;
+ return {root,pocket,upper,lower,tongue:t,config};
+}
+function moveOralCavity(c,open,round,spread){
+ if(!c)return;const o=clamp(open,0,1),{width,height,y}=c.config;
+ c.root.visible=o>.055;c.pocket.scale.set(1-.22*round+.13*spread,Math.max(.22,o),1);
+ c.pocket.position.y=y-height*.30*o;
+ c.upper.position.y=height*.69;c.lower.position.y=-height*.91;
+ c.tongue.position.y=-height*.57;
+}
+function installMouthCut(mesh,config,uniforms){
+ const mat=mesh.material.clone(),{x,y,width,height,z,front}=config;mesh.material=mat;
+ mat.onBeforeCompile=shader=>{
+  shader.uniforms.oralOpen=uniforms.open;shader.uniforms.oralRound=uniforms.round;shader.uniforms.oralSpread=uniforms.spread;
+  shader.vertexShader='varying vec3 lipRest;\n'+shader.vertexShader;
+  shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nlipRest=position;');
+  shader.fragmentShader='varying vec3 lipRest;\nuniform float oralOpen,oralRound,oralSpread;\n'+shader.fragmentShader;
+  shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`
+   float ww=${width.toFixed(6)}*(1.0-.22*oralRound+.13*oralSpread);
+   float mx=(lipRest.x-${x.toFixed(6)})/max(ww,.0001);
+   float cy=${y.toFixed(6)}+${(height*.36).toFixed(6)}*min(1.0,mx*mx);
+   float hh=max(.0001,${height.toFixed(6)}*oralOpen);
+   float my=(lipRest.y-cy+hh*.28)/hh;
+   // Discard actual surface fragments only at the mouth opening. Lighting/material
+   // of the surrounding textured face is unchanged; physical geometry is behind it.
+   if(oralOpen>.055 && lipRest.z>${front.toFixed(6)} && mx*mx+my*my<1.0) discard;
+   #include <opaque_fragment>`);
+ };
+ mat.customProgramCacheKey=()=> 'physical-oral-v20-'+config.width;mat.needsUpdate=true;
+}
+
 function prepareTripoPose(rig){
  const bones={};rig.traverse(b=>{if(b.isBone)bones[b.name]={b,p:b.position.clone(),q:b.quaternion.clone(),s:b.scale.clone()}});
  model.updateMatrixWorld(true);
@@ -398,39 +524,19 @@ function prepareTripoPose(rig){
   const lower=sm(2.88,2.975,y)*(1-sm(seam-.012,seam+.018,y));
   const upper=sm(seam-.008,seam+.014,y)*(1-sm(3.075,3.112,y));
   const k=front*width;
-  open[i*3+1]=k*(-.058*lower+.006*upper);open[i*3+2]=-.012*k*lower;
+  open[i*3+1]=k*(-.028*lower+.005*upper);open[i*3+2]=-.005*k*lower;
   const lip=k*sm(2.975,3.018,y)*(1-sm(3.073,3.115,y));
   round[i*3]=-x*.28*lip;round[i*3+2]=.026*lip;
   spread[i*3]=x*.18*lip;
  }
  ji.needsUpdate=true;wi.needsUpdate=true;
+ const armRepair=repairTripoArms(mesh,bones);makePalmAnchors(mesh,bones);
  geo.morphTargetsRelative=true;geo.morphAttributes.position=[open,round,spread].map(a=>new T.BufferAttribute(a,3));mesh.updateMorphTargets();mesh.frustumCulled=false;
- // The generated asset has a sealed muzzle. Shade an animated recessed aperture on the
- // original textured surface, independently of the lower-jaw deformation.
  const mouth={value:0},mouthRound={value:0},mouthSpread={value:0};
- const material=mesh.material.clone();mesh.material=material;
- material.onBeforeCompile=shader=>{
-  shader.uniforms.certMouth=mouth;shader.uniforms.certRound=mouthRound;shader.uniforms.certSpread=mouthSpread;
-  shader.vertexShader='varying vec3 certRest;\n'+shader.vertexShader;
-  shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\ncertRest=position;');
-  shader.fragmentShader='varying vec3 certRest;\nuniform float certMouth,certRound,certSpread;\n'+shader.fragmentShader;
-  shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`
-    float mouthWidth=.138*(1.0-.24*certRound+.16*certSpread);
-    float mx=certRest.x/max(mouthWidth,.01);
-    float seamY=3.043+.020*min(1.0,mx*mx);
-    float aperture=max(.0001,certMouth*.035);
-    float my=(certRest.y-seamY+aperture*.43)/aperture;
-    float dist=mx*mx+my*my;
-    float mask=(1.0-smoothstep(.79,1.0,dist))*smoothstep(.235,.28,certRest.z)*smoothstep(.015,.09,certMouth);
-    float inner=clamp(1.0-dist,0.0,1.0);
-    vec3 cavity=mix(vec3(.065,.016,.012),vec3(.009,.003,.003),inner);
-    outgoingLight=mix(outgoingLight,cavity,mask);
-    #include <opaque_fragment>`);
- };
- material.customProgramCacheKey=()=> 'certoro-mouth-v15';
- material.needsUpdate=true;
+ const config={x:0,y:3.043,z:.305,width:.127,height:.028,depth:.045,front:.235};
+ const oral=buildOralCavity(mesh,bones.Head.b,config);installMouthCut(mesh,config,{open:mouth,round:mouthRound,spread:mouthSpread});
  const hip=bones.ThighL.wp.y,ankle=bones.FootL.wp.y;
- tripoMotion={rig,bones,mesh,hip,ankle,last:model.position.clone(),distance:0,gait:0,bend:0,seat:0,face:[0,0,0],mouth,mouthRound,mouthSpread,repaired,time:0};
+ tripoMotion={rig,bones,mesh,hip,ankle,last:model.position.clone(),distance:0,gait:0,bend:0,seat:0,face:[0,0,0],mouth,mouthRound,mouthSpread,oral,armRepair,repaired,time:0};
 }
 function motionSmooth(a,b,x){const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)}
 function animateTripoFace(dt){
@@ -442,7 +548,7 @@ function animateTripoFace(dt){
  target[0]=Math.min(1,target[0]*1.35);
  const f=1-Math.exp(-Math.max(0,dt)*30);
  for(let j=0;j<3;j++){m.face[j]=lerp(m.face[j],target[j],f);m.mesh.morphTargetInfluences[j]=m.face[j]}
- m.mouth.value=m.face[0];m.mouthRound.value=m.face[1];m.mouthSpread.value=m.face[2];
+ m.mouth.value=m.face[0];m.mouthRound.value=m.face[1];m.mouthSpread.value=m.face[2];moveOralCavity(m.oral,m.face[0],m.face[1],m.face[2]);
 }
 function advanceCertoroPose(dt){
  if(mixer)mixer.update(dt);const m=tripoMotion;if(!m)return;
@@ -644,9 +750,9 @@ function cinematicCamera(dt){let portrait=innerWidth/innerHeight<.85;let target,
   const side=photoAim().sub(model.position);side.y=0;side.normalize();
   const poseTarget=model.position.clone().add(v(0,1.12,0)).addScaledVector(side,.45);
   target=poseTarget.lerp(phone,blend);
-  const screenAngle=Math.atan2(normal.x,normal.z),sideAngle=screenAngle-1.18;
+  const screenAngle=Math.atan2(normal.x,normal.z)-.28,sideAngle=screenAngle-1.02;
   angle=sideAngle+Math.atan2(Math.sin(screenAngle-sideAngle),Math.cos(screenAngle-sideAngle))*blend;
-  elev=lerp(.14,Math.asin(clamp(normal.y,-1,1)),blend);distance=lerp(portrait?4.4:3.8,portrait?.55:.65,blend);
+  elev=lerp(.14,Math.asin(clamp(normal.y,-1,1)),blend);distance=lerp(portrait?4.4:3.8,portrait?.51:.58,blend);
   const ease=1-Math.exp(-dt*8);camTarget.lerp(target,ease);yaw=angleTo(yaw,angle,dt*.66);pitch=lerp(pitch,elev,ease);dist=lerp(dist,distance,ease);return true;
  }
  if(photoShot.active&&photoShot.returning){target=v(-3.25,1.0,.10);angle=.05;elev=portrait?.54:.39;distance=portrait?9.8:10.5;const ease=1-Math.exp(-dt*6);camTarget.lerp(target,ease);yaw=lerp(yaw,angle,ease);pitch=lerp(pitch,elev,ease);dist=lerp(dist,distance,ease);return true;}
@@ -723,37 +829,41 @@ function photoAim(){
  const center=pallets[0].getWorldPosition(v(0,0,0));
  return center.add(v(0,.48,0));
 }
+const phoneDraw={t:0,grasped:false,active:false};
+function updatePhoneDraw(dt){
+ if(!model||!phoneModel||!tripoMotion)return;
+ const drawing=state.role==='cert'&&state.phase==='playing'&&state.autoRun&&state.autoStep===0&&flow.certPhase==='photo'&&!photoShot.returning;
+ if(!drawing){if(phoneDraw.active){phoneDraw.active=false;phoneDraw.t=0;phoneDraw.grasped=false}phoneModel.visible=false;return}
+ phoneDraw.active=true;phoneDraw.t+=dt;
+ const dir=photoAim().sub(model.position);dir.y=0;dir.normalize();
+ const right=v(dir.z,0,-dir.x),up=v(0,1,0),side='R';
+ const shoulder=model.getObjectByName('UpperArmR').getWorldPosition(v(0,0,0));
+ const pocket=model.position.clone().addScaledVector(right,-.41).addScaledVector(dir,.065).add(v(0,1.08,0));
+ const holding=shoulder.clone().addScaledVector(dir,.50).addScaledVector(right,-.08).add(v(0,-.06,0));
+ const reach=motionSmooth(0,.32,phoneDraw.t),raise=motionSmooth(.34,1.03,phoneDraw.t);
+ const wrist=pocket.clone().lerp(holding,raise);
+ aimCoffeeArm(side,wrist,reach);
+ if(phoneDraw.t>=.32)phoneDraw.grasped=true;
+ // Hand and phone share a calibrated palm transform. Phone is only visible after pickup.
+ alignPalm(side,dir.clone().multiplyScalar(.82).add(v(0,.57,0)),raise*.58);
+ const palm=palmWorld(side),center=palm.clone().addScaledVector(dir,.070).addScaledVector(up,.108).addScaledVector(right,-.018);
+ const normal=center.clone().sub(photoAim()).normalize();
+ const q=new T.Quaternion().setFromRotationMatrix(new T.Matrix4().lookAt(center.clone().add(normal),center,up));
+ phoneModel.position.copy(model.worldToLocal(center));phoneModel.quaternion.copy(model.getWorldQuaternion(new T.Quaternion()).invert().multiply(q));phoneModel.visible=phoneDraw.grasped;
+ model.updateMatrixWorld(true);scanBeam.visible=false;
+ if(photoShot.active&&!photoShot.returning&&raise>.95){const head=model.getObjectByName('Head'),world=head.getWorldQuaternion(new T.Quaternion());const pitch=new T.Quaternion().setFromAxisAngle(right,.12);head.quaternion.copy(head.parent.getWorldQuaternion(new T.Quaternion()).invert().multiply(pitch.multiply(world)));model.updateMatrixWorld(true)}
+}
 function updatePhotoShot(dt){
  if(!photoShot.active||!model)return;
  const arrived=certPos.distanceTo(v(-3.25,0,.10))<.18;
- if(!arrived&&photoShot.t<.2)return;
+ if(!arrived||(!photoShot.returning&&phoneDraw.t<1.05))return;
  photoShot.t+=dt;
  if(!photoShot.returning){
-  const target=photoAim(),dir=target.clone().sub(model.position);dir.y=0;dir.normalize();
-  model.rotation.y=Math.atan2(dir.x,dir.z);scanBeam.visible=false;model.updateMatrixWorld(true);
-  const up=v(0,1,0),right=v(dir.z,0,-dir.x);
-  const head=model.getObjectByName('Head');
-  if(head){const q=new T.Quaternion().setFromAxisAngle(right,.19).multiply(head.getWorldQuaternion(new T.Quaternion()));head.quaternion.copy(head.parent.getWorldQuaternion(new T.Quaternion()).invert().multiply(q));model.updateMatrixWorld(true)}
-  // Right hand raises the phone, with its rear camera pointing at the pallet.
-  const lift=motionSmooth(0,.65,photoShot.t);
-  const shoulder=model.getObjectByName('UpperArmR').getWorldPosition(v(0,0,0));
-  const goal=shoulder.clone().addScaledVector(dir,.43*lift).addScaledVector(right,-.065).add(v(0,lerp(-.51,-.09,lift),0));
-  aimCoffeeArm('R',goal,1);
-  const hand=model.getObjectByName('HandR');model.updateMatrixWorld(true);
-  const grip=hand.getWorldPosition(v(0,0,0));
-  const center=grip.clone().addScaledVector(right,.056).add(v(0,.105,0)).addScaledVector(dir,.02);
-  phoneModel.position.copy(model.worldToLocal(center.clone()));model.updateMatrixWorld(true);
-  const back=center.clone().sub(target).normalize();
-  const q=new T.Quaternion().setFromRotationMatrix(new T.Matrix4().lookAt(center.clone().add(back),center,up));
-  phoneModel.quaternion.copy(model.getWorldQuaternion(new T.Quaternion()).invert().multiply(q));
-  // Turn palm toward the edge of the phone. Keep the phone anchored to the wrist even if IK clamps.
-  model.updateMatrixWorld(true);
-  phoneModel.visible=true;
-  if(photoShot.t>=.85&&!photoShot.preview){photoShot.preview=true;renderPalletPhoto(false)}
-  if(photoShot.t>=1.85&&!photoShot.captured){photoShot.captured=true;renderPalletPhoto(true);capture();}
+  if(photoShot.t>=.35&&!photoShot.preview){photoShot.preview=true;renderPalletPhoto(false)}
+  if(photoShot.t>=1.65&&!photoShot.captured){photoShot.captured=true;renderPalletPhoto(true);capture()}
  }
- if(photoShot.t>=3.55&&!photoShot.returning){photoShot.returning=true;phoneModel.visible=false;state.autoRun=false;flow.simCert=9;state.autoTime=9;state.autoStep=1;setCert('sofa');}
- if(photoShot.t>=4.25){photoShot.active=false;phoneModel.rotation.set(0,0,0);phoneModel.position.set(.34,1.35,.30);$('chapter').classList.add('hidden');$('hud').classList.remove('hidden');refresh();msg('10 Fotos im Pool')}
+ if(photoShot.t>=3.35&&!photoShot.returning){photoShot.returning=true;phoneModel.visible=false;state.autoRun=false;flow.simCert=9;state.autoTime=9;state.autoStep=1;setCert('sofa')}
+ if(photoShot.t>=4.05){photoShot.active=false;phoneModel.visible=false;$('chapter').classList.add('hidden');$('hud').classList.remove('hidden');refresh();msg('10 Fotos im Pool')}
 }
 
 function capture(){ $('flash').style.opacity='.75';setTimeout(()=>$('flash').style.opacity='0',120);sound('scan') }
@@ -995,9 +1105,9 @@ function aimCoffeeArm(side,target,weight){
  const goal=c.clone().lerp(target,weight),axis=goal.clone().sub(a),l1=a.distanceTo(b),l2=b.distanceTo(c);
  if(axis.length()<.001||l1<.001||l2<.001)return;
  const d=clamp(axis.length(),Math.abs(l1-l2)+.001,l1+l2-.002);axis.normalize();
- const elbowDir=b.clone().sub(a);elbowDir.addScaledVector(axis,-elbowDir.dot(axis));
- if(elbowDir.length()<.01){elbowDir.set(0,-1,0);elbowDir.addScaledVector(axis,-elbowDir.dot(axis))}
- if(elbowDir.length()<.001)elbowDir.set(1,0,0);
+ const forward=v(0,0,1).applyAxisAngle(v(0,1,0),model.rotation.y),out=v(side==='L'?1:-1,0,0).applyAxisAngle(v(0,1,0),model.rotation.y);
+ const elbowDir=out.multiplyScalar(.55).add(v(0,-1,0)).addScaledVector(forward,-.15);
+ elbowDir.addScaledVector(axis,-elbowDir.dot(axis));if(elbowDir.length()<.01)elbowDir.set(0,-1,0);
  const along=(l1*l1-l2*l2+d*d)/(2*d);
  const elbow=a.clone().addScaledVector(axis,along).addScaledVector(elbowDir.normalize(),Math.sqrt(Math.max(0,l1*l1-along*along)));
  const end=a.clone().addScaledVector(axis,d);
@@ -1029,10 +1139,12 @@ function updateCoffee(dt=.016){
  const target=picking?(lounge.held?carry.clone().lerp(home,lounge.reach):home):carry;
  aimCoffeeArm(side,target,lounge.held?1:lounge.reach);
  if(lounge.held){
-  const p=hand.getWorldPosition(v(0,0,0));
-  const cupTarget=p.addScaledVector(forward,.055);cupTarget.y+=.035;
+  alignPalm(side,forward.clone().add(v(0,-.22,0)),.50);
+  const palm=palmWorld(side),cupYaw=model.rotation.y+(side==='R'?0:Math.PI);
+  const handleOffset=v(.095,.005,0).applyAxisAngle(v(0,1,0),cupYaw),cupTarget=palm.clone().sub(handleOffset);
   if(picking){lounge.grabBlend=clamp((lounge.grabBlend||0)+dt/.13,0,1);coffeeCup.position.copy(v(...COFFEE_HOME)).lerp(cupTarget,motionSmooth(0,1,lounge.grabBlend))}else coffeeCup.position.copy(cupTarget);
-  coffeeCup.rotation.set(0,model.rotation.y,0);
+  coffeeCup.rotation.set(0,cupYaw,0);
+
  }
 }
 
@@ -1051,11 +1163,11 @@ function updateActors(dt,time){if(state.phase==='outro'){watchColleague(dt,time)
    }
   }
   const delta=certTarget.clone().sub(certPos),d=delta.length();certPos.lerp(certTarget,Math.min(1,dt*1.75/Math.max(.001,d)));
-  if(model){model.position.copy(certPos);const angle=d>.25?Math.atan2(delta.x,delta.z):(state.role==='manual'&&auto>=3?Math.PI/2:0);model.rotation.y=angleTo(model.rotation.y,angle,dt);if(d>.15&&cp!=='sit')cp='walk';play(cp)}
+  if(model){model.position.copy(certPos);const facingPallet=state.role==='cert'&&auto===0&&run&&flow.certPhase==='photo';const aim=facingPallet?photoAim().sub(certPos):delta;const angle=facingPallet?Math.atan2(aim.x,aim.z):d>.25?Math.atan2(delta.x,delta.z):(state.role==='manual'&&auto>=3?Math.PI/2:0);model.rotation.y=angleTo(model.rotation.y,angle,dt);if(d>.15&&cp!=='sit')cp='walk';play(cp)}
  }
- if(phoneModel)phoneModel.visible=state.phase==='playing'&&auto===0&&run;
+ if(phoneModel)phoneModel.visible=false;
  advanceCertoroPose(state.paused?0:dt);updateCoffee(state.paused?0:dt);
- scanBeam.visible=state.phase==='playing'&&auto===0&&run;scanBeam.position.y=.28+((time*1.2)%1)*.95;scanBeam.material.opacity=.11+.10*Math.sin(time*4)**2;
+ scanBeam.visible=state.phase==='playing'&&auto===0&&run;scanBeam.position.y=.28+((time*1.2)%1)*.95;scanBeam.material.opacity=.11+.10*Math.sin(time*4)**2;updatePhoneDraw(dt);
  if(state.phase==='playing'||state.phase==='done'){let k=state.manualStep;manualTarget.set(k<1?3.25:4.7,0,k<1?.15:4.10);manualPose=state.manualRun?(k<1?'photo':'work'):'idle'}else{manualTarget.set(3.1,0,2.25);manualPose='idle'}let md=manualPos.distanceTo(manualTarget);manualPos.lerp(manualTarget,1-Math.exp(-dt*2.7));worker.g.position.copy(manualPos);worker.g.rotation.y=lerp(worker.g.rotation.y,manualPose==='photo'?Math.PI:manualPose==='work'?Math.PI:0,1-Math.exp(-dt*5));let t=time*5;worker.arms.forEach(([a,f],i)=>{a.rotation.x=md>.2?Math.sin(t)*(i?1:-1)*.45:manualPose==='work'?-0.65:manualPose==='photo'?-1.03:0;a.rotation.z=(i?1:-1)*.12;f.rotation.x=manualPose==='work'?-.65+Math.sin(t*2+i)*.12:manualPose==='photo'?-.80:0});worker.legs.forEach(([a,k],i)=>{a.rotation.x=md>.2?Math.sin(t)*(i?-1:1)*.38:0;k.rotation.x=md>.2?Math.max(0,-Math.sin(t)*(i?-1:1))*.5:0});worker.torso.rotation.x=manualPose==='work'?.10:0;let acount=state.autoTime<15?0:Math.min(10,Math.floor((state.autoTime-15)/7.5+1e-7)),mcount=state.manualItem;for(let lane=0;lane<2;lane++)productsMeshes[lane].forEach((p,i)=>{let done=i<(lane?mcount:acount);p.marker.material.opacity=done?.8:(state.phase==='playing'&&state.role==='manual'&&lane===1&&i===state.manualItem?.25:0);p.mesh.scale.y=1;
  let destination=p.base.clone();
  if(lane===1&&state.phase==='playing'&&state.role==='manual'&&i===flow.selected&&flow.manualPhase!=='pick'){
