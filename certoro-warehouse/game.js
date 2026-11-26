@@ -218,30 +218,6 @@ function makeSofaSitClip(T,rig,model,hipHeight=.71){
 }
 
 
-const WORKER_MODEL='https://d2ol7oe51mr4n9.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/31d7543c-59e0-4663-a915-4f46b0ee6b8e.glb';
-function loadLegacyWorkerModel(){
- return new Promise(resolve=>{
-  new GLTFLoader().load(WORKER_MODEL,gltf=>{
-   try{
-    const rig=gltf.scene.getObjectByName('WORKER_RIG');
-    if(!rig)throw Error('Lagerleiter-Rig fehlt');
-    const find=n=>{let o=rig.getObjectByName(n);if(!o)throw Error('Gelenk fehlt: '+n);return o};
-    const torso=find('WorkerTorso'),head=find('WorkerHead'),jaw=find('WorkerJaw');
-    const arms=['L','R'].map(side=>[find('WorkerUpperArm'+side),find('WorkerForearm'+side)]);
-    const legs=['L','R'].map(side=>[find('WorkerThigh'+side),find('WorkerShin'+side)]);
-    const feet=['L','R'].map(side=>find('WorkerFoot'+side));
-    rig.updateMatrixWorld(true);
-    const bounds=new T.Box3().setFromObject(rig);
-    const scale=2.16/bounds.getSize(v(0,0,0)).y;
-    rig.scale.setScalar(scale);rig.position.y=-bounds.min.y*scale;
-    rig.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});
-    const old=worker.g;old.clear();old.add(rig);
-    worker={g:old,torso,arms,legs,head,jaw,feet,rig};
-    resolve(true);
-   }catch(e){console.warn('Lagerleiter-Modell:',e);resolve(false)}
-  },undefined,e=>{console.warn('Lagerleiter-Modell konnte nicht geladen werden:',e);resolve(false)});
- });
-}
 const MESHY_WORKER_MODEL='https://d8j0ntlcm91z4.cloudfront.net/user_3JoVMcU64SCr3ZOXnqrL8fUEJOx/hf_20261125_201209_db50a227-7169-4452-8f8d-3dc03b6b8a94.glb';
 // Meshy returned two disconnected characters with a single incorrectly shared skeleton.
 // Keep only the negative-X character and fit an independent skeleton to its actual proportions.
@@ -297,7 +273,7 @@ function buildMeshyWorker(gltf){
  console.info('V16: single Meshy supervisor',ids.length,tri.length/3,bones.length);
 }
 function loadWorkerModel(){
- return new Promise(resolve=>{new GLTFLoader().load(MESHY_WORKER_MODEL,gltf=>{try{buildMeshyWorker(gltf);resolve(true)}catch(e){console.warn('Meshy-Lagerleiter:',e);loadLegacyWorkerModel().then(resolve)}},undefined,e=>{console.warn('Meshy-Lagerleiter:',e);loadLegacyWorkerModel().then(resolve)})});
+ return new Promise(resolve=>{new GLTFLoader().load(MESHY_WORKER_MODEL,gltf=>{try{buildMeshyWorker(gltf);resolve(true)}catch(e){console.warn('Meshy-Lagerleiter:',e);resolve(false)}},undefined,e=>{console.warn('Meshy-Lagerleiter:',e);resolve(false)})});
 }
 
 function prepareWorkerMouth(mesh){
@@ -623,10 +599,10 @@ function rebuildCertoroMouth(mesh,head){
  const teeth=new T.Group();root.add(teeth);
  // One short, curved row of broad stylized upper teeth; the lower teeth are tucked away.
  for(let i=0;i<6;i++){
-  const x=(i-2.5)*.031;
+  const x=(i-2.5)*.024;
   const o=new T.Mesh(new T.SphereGeometry(1,16,10),toothMat);
-  o.position.set(x,3.041+.010*(x/.10)**2,.295-.030*(x/.105)**2);
-  o.scale.set(.017,.010,.014);teeth.add(o)
+  o.position.set(x,3.045+.010*(x/.10)**2,.291-.030*(x/.105)**2);
+  o.scale.set(.013,.0055,.010);teeth.add(o)
  }
  const tongue=new T.Mesh(new T.SphereGeometry(1,32,16),tongueMat);tongue.scale.set(.071,.015,.028);root.add(tongue);
  let last=[-1,-1,-1];
