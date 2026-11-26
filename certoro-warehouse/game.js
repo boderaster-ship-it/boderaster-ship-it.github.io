@@ -533,13 +533,126 @@ function installMouthCut(mesh,config,uniforms){
  mat.customProgramCacheKey=()=> 'physical-oral-v20-'+config.width;mat.needsUpdate=true;
 }
 
+// Certoro facial topology: a real split along the original textured lip seam.
+// No alpha mask, discard, dark decal or painted mouth is used.
+function rebuildCertoroMouth(mesh,head){
+ const src=mesh.geometry,p=src.attributes.position,idx=src.index;
+ const seam=x=>3.041+.023*Math.min(1,(x/.153)**2);
+ const value=i=>p.getY(i)-seam(p.getX(i));
+ const ease=(a,b,x)=>motionSmooth(a,b,x);
+ const width=.157;
+ const taper=x=>Math.pow(Math.max(0,1-(x/width)**2),1.05);
+ const front=z=>ease(.19,.27,z);
+ const extra=[],indices=[],edges=new Map(),samples=[];
+ const names=Object.keys(src.attributes).filter(k=>!['tangent'].includes(k));
+ // Intersect each triangle with the lip line, duplicating the intersected edge
+ // separately for the upper and lower shell. UVs and skin weights are preserved.
+ function edge(a,b,side){
+  const key=Math.min(a,b)+':'+Math.max(a,b)+':'+side;
+  if(edges.has(key))return edges.get(key);
+  const va=value(a),vb=value(b),t=clamp(va/(va-vb),0,1);
+  const x=lerp(p.getX(a),p.getX(b),t),z=lerp(p.getZ(a),p.getZ(b),t);
+  const rec={a,b,t,side,x,y:seam(x),z},id=p.count+extra.length;extra.push(rec);edges.set(key,id);
+  if(side===1&&Math.abs(x)<width+.025&&z>.19)samples.push([x,z]);
+  return id
+ }
+ function clip(tri,side){
+  const out=[];
+  for(let k=0;k<3;k++){
+   const a=tri[k],b=tri[(k+1)%3],aIn=value(a)*side>=0,bIn=value(b)*side>=0;
+   if(aIn)out.push(a);if(aIn!==bIn)out.push(edge(a,b,side));
+  }
+  for(let k=1;k<out.length-1;k++)indices.push(out[0],out[k],out[k+1]);
+ }
+ for(let i=0;i<idx.count;i+=3){
+  const tri=[idx.getX(i),idx.getX(i+1),idx.getX(i+2)];
+  const vs=tri.map(value);
+  if(Math.min(...vs)<0&&Math.max(...vs)>0&&tri.some(j=>Math.abs(p.getX(j))<width+.015&&p.getZ(j)>.20&&p.getY(j)>2.98&&p.getY(j)<3.10)){
+   clip(tri,1);clip(tri,-1);
+  }else indices.push(...tri);
+ }
+ if(extra.length<40)throw Error('Certoro lip seam insufficient topology '+extra.length);
+ const geo=new T.BufferGeometry(),count=p.count+extra.length;
+ for(const k of names){
+  const a=src.attributes[k],arr=new a.array.constructor(count*a.itemSize),read=(i,c)=>a.isInterleavedBufferAttribute?a.data.array[i*a.data.stride+a.offset+c]:a.array[i*a.itemSize+c];for(let i=0;i<p.count;i++)for(let c=0;c<a.itemSize;c++)arr[i*a.itemSize+c]=read(i,c);
+  for(let n=0;n<extra.length;n++){
+   const r=extra[n],j=p.count+n;
+   for(let c=0;c<a.itemSize;c++)arr[j*a.itemSize+c]=lerp(read(r.a,c),read(r.b,c),r.t);
+   if(k==='position'){arr[j*3]=r.x;arr[j*3+1]=r.y;arr[j*3+2]=r.z}
+   if(k==='skinIndex'){for(let c=0;c<4;c++)arr[j*4+c]=read(r.a,c)}
+   if(k==='skinWeight'){for(let c=0;c<4;c++)arr[j*4+c]=read(r.a,c)}
+  }
+  geo.setAttribute(k,new T.BufferAttribute(arr,a.itemSize,a.normalized));
+ }
+ geo.setIndex(indices);geo.computeBoundingBox();geo.computeBoundingSphere();
+ const shapes=[new Float32Array(count*3),new Float32Array(count*3),new Float32Array(count*3)];
+ function deform(x,y,z,side,open,round,wide){
+  const d=y-seam(x),w=taper(x)*front(z);
+  const lip=(1-ease(.018,.085,Math.abs(d)))*w;
+  const jaw=side<0?ease(2.83,2.955,y)*(1-ease(.018,.135,-d))*w:0;
+  // Underlip and chin move together; upper lip moves only slightly.
+  const center=1-ease(.025,.13,Math.abs(x));
+  const dy=open*(side<0?-.064*jaw:.009*lip)+round*(side<0?jaw*(.019*(1-center)-.032*center):.013*lip*center)+wide*.004*lip;
+  const dz=open*(-.009*jaw)+round*.023*lip;
+  const dx=(-round*.38+wide*.12)*x*lip;
+  return [dx,dy,dz]
+ }
+ const pp=geo.attributes.position;
+ for(let i=0;i<count;i++){
+  const x=pp.getX(i),y=pp.getY(i),z=pp.getZ(i),side=i<p.count?(y<seam(x)?-1:1):extra[i-p.count].side;
+  for(let k=0;k<3;k++){const a=deform(x,y,z,side,+(k===0),+(k===1),+(k===2));shapes[k].set(a,i*3)}
+ }
+ geo.morphTargetsRelative=true;geo.morphAttributes.position=shapes.map(a=>new T.BufferAttribute(a,3));mesh.geometry=geo;mesh.updateMorphTargets();
+ // The lining is built directly from the actual front-shell seam samples.
+ const root=new T.Group();root.name='CertoroSculptedMouth';mesh.updateWorldMatrix(true,false);head.updateWorldMatrix(true,false);
+ head.matrixWorld.clone().invert().multiply(mesh.matrixWorld).decompose(root.position,root.quaternion,root.scale);head.add(root);
+ const material=(c,r)=>new T.MeshStandardMaterial({color:c,roughness:r,side:T.DoubleSide});
+ const inside=material(0x371b1a,.88),lipMat=material(0x81513b,.80),toothMat=material(0xe1d0b4,.58),tongueMat=material(0x88504b,.75);
+ const N=48,curve=[];
+ for(let i=0;i<=N;i++){
+  const x=lerp(-width,width,i/N);let nearest=samples.filter(a=>Math.abs(a[0]-x)<.013);
+  if(!nearest.length)nearest=[samples.reduce((a,b)=>Math.abs(a[0]-x)<Math.abs(b[0]-x)?a:b)];
+  const z=Math.max(...nearest.map(a=>a[1]));curve.push([x,seam(x),z-.0015])
+ }
+ // Continuous lining with four rows: upper lip, upper recess, lower recess, lower lip.
+ const inner=new T.BufferGeometry(),arr=new Float32Array((N+1)*4*3),tri=[];
+ for(let row=0;row<3;row++)for(let i=0;i<N;i++){const a=row*(N+1)+i,b=a+N+1;tri.push(a,b,a+1,b,b+1,a+1)}
+ inner.setAttribute('position',new T.BufferAttribute(arr,3));inner.setIndex(tri);
+ inner.addGroup(0,N*6,0);inner.addGroup(N*6,N*6,1);inner.addGroup(N*12,N*6,0);
+ const lining=new T.Mesh(inner,[lipMat,inside]);lining.frustumCulled=false;root.add(lining);
+ const teeth=new T.Group();root.add(teeth);
+ // One short, curved row of broad stylized upper teeth; the lower teeth are tucked away.
+ for(let i=0;i<6;i++){
+  const x=(i-2.5)*.031;
+  const o=new T.Mesh(new T.SphereGeometry(1,16,10),toothMat);
+  o.position.set(x,3.041+.010*(x/.10)**2,.295-.030*(x/.105)**2);
+  o.scale.set(.017,.010,.014);teeth.add(o)
+ }
+ const tongue=new T.Mesh(new T.SphereGeometry(1,32,16),tongueMat);tongue.scale.set(.071,.015,.028);root.add(tongue);
+ let last=[-1,-1,-1];
+ function update(open,round,wide){
+  if(Math.max(Math.abs(last[0]-open),Math.abs(last[1]-round),Math.abs(last[2]-wide))<.001)return;last=[open,round,wide];
+  root.visible=open>.018;
+  for(let i=0;i<=N;i++){
+   const [x,y,z]=curve[i],u=deform(x,y,z,1,open,round,wide),l=deform(x,y,z,-1,open,round,wide),w=taper(x);
+   const a=[x+u[0],y+u[1],z+u[2]],b=[x+l[0],y+l[1],z+l[2]];
+   const rows=[a,[a[0]*.92,a[1]+.004*w,z-.045*w],[b[0]*.92,b[1]-.004*w,z-.052*w],b];
+   for(let r=0;r<4;r++)arr.set(rows[r],(r*(N+1)+i)*3)
+  }
+  inner.attributes.position.needsUpdate=true;inner.computeVertexNormals();
+  teeth.visible=open>.18&&round<.72;teeth.scale.x=1-.32*round+.08*wide;
+  tongue.visible=open>.48;tongue.position.set(0,3.033-.055*open,.273);tongue.scale.y=.012+.003*open;
+ }
+ update(0,0,0);
+ return {root,pocket:root,update,split:extra.length,curve};
+}
+
 function prepareTripoPose(rig){
  const bones={};rig.traverse(b=>{if(b.isBone)bones[b.name]={b,p:b.position.clone(),q:b.quaternion.clone(),s:b.scale.clone()}});
  model.updateMatrixWorld(true);
  const mq=model.getWorldQuaternion(new T.Quaternion()).invert();
  for(const o of Object.values(bones)){o.wq=mq.clone().multiply(o.b.getWorldQuaternion(new T.Quaternion()));o.wp=model.worldToLocal(o.b.getWorldPosition(v(0,0,0)))}
  const mesh=rig.getObjectByName('HighDetailCertoro'),geo=mesh.geometry,src=geo.attributes.position;
- const open=new Float32Array(src.count*3),round=new Float32Array(src.count*3),spread=new Float32Array(src.count*3);
  const sm=(a,b,x)=>{let t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)};
  // Rigid shoes: no pelvis influence, no opposite-foot influence, and a soft ankle transition.
  const ji=geo.attributes.skinIndex,wi=geo.attributes.skinWeight;
@@ -557,22 +670,13 @@ function prepareTripoPose(rig){
    let a=0,b=0;for(let k=0;k<4;k++){if(j[k]===shin)a+=w[k];if(j[k]===thigh)b+=w[k]}
    if(a+b>.001){ji.setXYZW(i,shin,thigh,0,0);wi.setXYZW(i,a/(a+b),b/(a+b),0,0);repaired++}
   }
-  const front=sm(.18,.28,z),width=1-sm(.13,.24,Math.abs(x));
-  const seam=3.043+.020*Math.pow(Math.min(1,Math.abs(x)/.15),2);
-  const lower=sm(2.88,2.975,y)*(1-sm(seam-.012,seam+.018,y));
-  const upper=sm(seam-.008,seam+.014,y)*(1-sm(3.075,3.112,y));
-  const k=front*width;
-  open[i*3+1]=k*(-.028*lower+.005*upper);open[i*3+2]=-.005*k*lower;
-  const lip=k*sm(2.975,3.018,y)*(1-sm(3.073,3.115,y));
-  round[i*3]=-x*.28*lip;round[i*3+2]=.026*lip;
-  spread[i*3]=x*.18*lip;
+
  }
  ji.needsUpdate=true;wi.needsUpdate=true;
  const armRepair=repairTripoArms(mesh,bones);makePalmAnchors(mesh,bones);setupGripFrames(mesh,bones);
- geo.morphTargetsRelative=true;geo.morphAttributes.position=[open,round,spread].map(a=>new T.BufferAttribute(a,3));mesh.updateMorphTargets();mesh.frustumCulled=false;
+ const oral=rebuildCertoroMouth(mesh,bones.Head.b);
+ mesh.frustumCulled=false;
  const mouth={value:0},mouthRound={value:0},mouthSpread={value:0};
- const config={x:0,y:3.043,z:.305,width:.127,height:.028,depth:.045,front:.235};
- const oral=buildOralCavity(mesh,bones.Head.b,config);installMouthCut(mesh,config,{open:mouth,round:mouthRound,spread:mouthSpread});
  const hip=bones.ThighL.wp.y,ankle=bones.FootL.wp.y;
  tripoMotion={rig,bones,mesh,hip,ankle,last:model.position.clone(),distance:0,gait:0,bend:0,seat:0,face:[0,0,0],mouth,mouthRound,mouthSpread,oral,armRepair,repaired,time:0};
 }
@@ -583,10 +687,10 @@ function animateTripoFace(dt){
   const frames=SPEECH_FRAMES[voiceLine],t=voiceAudio?voiceAudio.currentTime:ac?Math.max(0,(ac.currentTime-voiceStartedAt)*voicePlaybackRate):0;
   if(frames){const p=t/.02,k=Math.floor(p),f=p-k;for(let j=0;j<3;j++)target[j]=lerp(frames[k*3+j]||0,frames[(k+1)*3+j]||0,f)/100}
  }
- target[0]=Math.min(1,target[0]*1.35);
+ target[0]=Math.min(1,target[0]*1.14);
  const f=1-Math.exp(-Math.max(0,dt)*30);
  for(let j=0;j<3;j++){m.face[j]=lerp(m.face[j],target[j],f);m.mesh.morphTargetInfluences[j]=m.face[j]}
- m.mouth.value=m.face[0];m.mouthRound.value=m.face[1];m.mouthSpread.value=m.face[2];moveOralCavity(m.oral,m.face[0],m.face[1],m.face[2]);
+ m.mouth.value=m.face[0];m.mouthRound.value=m.face[1];m.mouthSpread.value=m.face[2];m.oral.update(m.face[0],m.face[1],m.face[2]);
 }
 function advanceCertoroPose(dt){
  if(mixer)mixer.update(dt);const m=tripoMotion;if(!m)return;
